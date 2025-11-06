@@ -1,0 +1,14 @@
+/* Base styles for the app; safe minimal sheet to satisfy Vite import */
+:root {
+  color-scheme: light;
+  --brand: #ff6600;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: #fff;
+  color: #222;
+}
+
+#root { min-height: 100vh; }
