@@ -4,6 +4,7 @@
 // This makes the app work in web IDEs like StackBlitz without local installs.
 
 let supabase = null;
+let initPromise = null;
 
 async function init() {
   let mod = null;
@@ -41,6 +42,14 @@ async function init() {
   });
 }
 
-supabase = await init();
+// Lazy initializer to avoid top-level await in build
+export async function getSupabase() {
+  if (supabase) return supabase;
+  if (!initPromise) initPromise = init();
+  supabase = await initPromise;
+  return supabase;
+}
 
-export { supabase };
+export function isSupabaseReady() {
+  return Boolean(supabase);
+}
