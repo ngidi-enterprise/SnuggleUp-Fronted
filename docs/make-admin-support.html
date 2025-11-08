@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Make Admin - SnuggleUp</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background: #218838;
+    }
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+      margin-bottom: 20px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Make Admin</h1>
+    <p class="subtitle">Grant admin access to support@snuggleup.co.za</p>
+
+    <div class="info">
+      <strong>ℹ️ Note:</strong> This will make the email <code>support@snuggleup.co.za</code> an admin in your database.
+    </div>
+
+    <button id="makeAdminBtn" onclick="makeAdmin()">
+      Grant Admin Access
+    </button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'https://snuggleup-backend.onrender.com';
+    const EMAIL = 'support@snuggleup.co.za';
+    const SECRET = 'snuggleup-admin-setup-2025';
+
+    async function makeAdmin() {
+      const btn = document.getElementById('makeAdminBtn');
+      const resultDiv = document.getElementById('result');
+      
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      resultDiv.innerHTML = '';
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/setup/make-admin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: EMAIL,
+            secret: SECRET
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <div class="result success">
+              <strong>✅ Success!</strong>
+              <p>${data.message}</p>
+              <pre>${JSON.stringify(data.user, null, 2)}</pre>
+              <p style="margin-top: 15px;">
+                <strong>Next steps:</strong><br>
+                1. Go back to your SnuggleUp website<br>
+                2. Refresh the page (F5)<br>
+                3. You should now see the Admin Dashboard button
+              </p>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="result error">
+              <strong>❌ Error</strong>
+              <p>${data.error || 'Unknown error occurred'}</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <strong>❌ Connection Error</strong>
+            <p>${error.message}</p>
+            <p style="margin-top: 10px;">
+              <strong>Possible reasons:</strong><br>
+              • Backend server might be sleeping (Render free tier)<br>
+              • Network connection issue<br>
+              • Backend not deployed yet
+            </p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Grant Admin Access';
+      }
+    }
+  </script>
+</body>
+</html>

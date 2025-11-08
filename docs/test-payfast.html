@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnuggleUp - PayFast Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button { 
+            background: #667eea; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover { background: #5a6fd8; }
+        .order-details {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .logo { font-size: 2rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <div class="logo">👶</div>
+        <h1>SnuggleUp PayFast Test</h1>
+        
+        <div class="order-details">
+            <h3>Test Order</h3>
+            <p><strong>Items:</strong> Cotton Swaddle Blanket (x2)</p>
+            <p><strong>Total:</strong> R558.00</p>
+            <p><strong>Email:</strong> test@snuggleup.co.za</p>
+        </div>
+        
+        <button onclick="testPayment()">🛒 Test PayFast Payment</button>
+        <button onclick="testHealth()">🔧 Test Backend Health</button>
+        
+        <div id="result" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        async function testPayment() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Creating payment...</p>';
+            
+            try {
+                const response = await fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: 558.00,
+                        email: 'test@snuggleup.co.za',
+                        orderItems: [
+                            { id: 1, name: 'Cotton Swaddle Blanket', price: 279, quantity: 2 }
+                        ]
+                    })
+                });
+                
+                const paymentData = await response.json();
+                
+                if (paymentData.paymentUrl) {
+                    resultDiv.innerHTML = `
+                        <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                            <h4>✅ Payment Created Successfully!</h4>
+                            <p><strong>Order ID:</strong> ${paymentData.orderId}</p>
+                            <p><strong>PayFast URL:</strong> <a href="${paymentData.paymentUrl}" target="_blank">Click to test</a></p>
+                            <details>
+                                <summary>Debug Info</summary>
+                                <pre style="font-size: 10px; background: #f8f9fa; padding: 10px; margin: 10px 0; overflow: auto;">
+${JSON.stringify(paymentData, null, 2)}
+                                </pre>
+                            </details>
+                            <button onclick="window.open('${paymentData.paymentUrl}', '_blank')">🔍 Debug PayFast URL</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">❌ Payment creation failed</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testHealth() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing backend...</p>';
+            
+            try {
+                const response = await fetch('https://snuggleup-backend.onrender.com/health');
+                const health = await response.json();
+                
+                if (health.status === 'ok') {
+                    resultDiv.innerHTML = '<p style="color: green;">✅ Backend is healthy!</p>';
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">❌ Backend issue</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">❌ Backend offline: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
