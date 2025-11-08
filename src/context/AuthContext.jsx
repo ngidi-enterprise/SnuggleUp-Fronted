@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
@@ -33,12 +33,13 @@ export const AuthProvider = ({ children }) => {
   // Load session from Supabase on mount and subscribe to changes
   useEffect(() => {
     let mounted = true;
-    if (!supabase) {
-      // Running without Supabase (e.g., dependency not loaded yet)
-      setLoading(false);
-      return () => {};
-    }
+
     const init = async () => {
+      const supabase = await getSupabase();
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -46,25 +47,30 @@ export const AuthProvider = ({ children }) => {
       setUser(toAppUser(session?.user || null));
       setToken(session?.access_token || null);
       setLoading(false);
+
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setUser(toAppUser(session?.user || null));
+          setToken(session?.access_token || null);
+        }
+      );
+
+      return () => {
+        listener.subscription.unsubscribe();
+      };
     };
 
-    init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(toAppUser(session?.user || null));
-        setToken(session?.access_token || null);
-      }
-    );
-
+    let cleanup;
+    init().then((c) => (cleanup = c)).catch(() => setLoading(false));
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
+      if (typeof cleanup === 'function') cleanup();
     };
   }, []);
 
   // New auth methods using Supabase
   const loginWithCredentials = async (email, password) => {
+    const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -79,6 +85,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerWithCredentials = async ({ name, email, phone, password }) => {
+    const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     const { data, error } = await supabase.auth.signUp({
@@ -97,6 +104,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const sendPasswordReset = async (email) => {
+    const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -107,6 +115,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updatePassword = async (newPassword) => {
+    const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     const { data, error } = await supabase.auth.updateUser({
@@ -117,6 +126,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signInWithProvider = async (provider) => {
+    const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     
@@ -135,12 +145,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (!supabase) {
-      setUser(null);
-      setToken(null);
-      return;
+    const supabase = await getSupabase();
+    if (supabase) {
+      await supabase.auth.signOut();
     }
-    await supabase.auth.signOut();
     setUser(null);
     setToken(null);
   };
