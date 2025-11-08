@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './CheckoutSuccess.css';
+import { trackPurchase } from './lib/analytics';
 
 function CheckoutSuccess() {
   const [orderDetails, setOrderDetails] = useState(null);
@@ -16,6 +17,24 @@ function CheckoutSuccess() {
         paymentId,
         timestamp: new Date().toLocaleString()
       });
+      
+      // Mark that user has made their first purchase (stop showing promo popup)
+      localStorage.setItem('hasMadeFirstPurchase', 'true');
+      
+      // Get cart items from localStorage before clearing
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        try {
+          const cartItems = JSON.parse(savedCart);
+          const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          const shipping = total >= 800 ? 0 : 99;
+          
+          // Track purchase conversion
+          trackPurchase(orderId, cartItems, total + shipping, shipping);
+        } catch (err) {
+          console.error('Failed to track purchase:', err);
+        }
+      }
       
       // Clear cart from localStorage
       localStorage.removeItem('cart');
