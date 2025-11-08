@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './ProductDetail.css';
+import { trackProductView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
@@ -24,6 +25,15 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         const res = await response.json();
         const data = res.product;
         setProduct(data);
+        
+        // Track product view
+        trackProductView({
+          id: data.id || data.cj_pid,
+          pid: data.cj_pid,
+          name: data.product_name,
+          category: data.category || 'uncategorized',
+          price: data.custom_price || data.suggested_price || 0
+        });
         
         // Normalize image URL
         const normalizeUrl = (u) => {
@@ -57,9 +67,16 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
 
   // Curated products have a single fixed price (no variants in simplified model)
   const price = product?.custom_price || product?.suggested_price || 0;
+  const stockQuantity = product?.stock_quantity || 0;
+  const isOutOfStock = stockQuantity === 0;
+  const isLowStock = stockQuantity > 0 && stockQuantity < 10;
 
   const handleAdd = () => {
-    if (!product) return;
+    if (!product || isOutOfStock) return;
+    
+    // Limit quantity to available stock
+    const quantityToAdd = Math.min(qty, stockQuantity);
+    
     const name = product.product_name || 'Product';
     const item = {
       id: `curated-${product.id}`,
@@ -68,7 +85,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       image: selectedImage || images[0] || '',
       category: product.category || 'Store',
     };
-    for (let i = 0; i < qty; i++) onAddToCart?.(item);
+    for (let i = 0; i < quantityToAdd; i++) onAddToCart?.(item);
     onClose?.();
   };
 
@@ -113,26 +130,72 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
           <div className="product-info">
             <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
             <h1 className="product-title">{product?.product_name || 'Product'}</h1>
+            
+            {isOutOfStock && (
+              <div style={{
+                padding: '12px 16px',
+                background: '#fee',
+                border: '2px solid #e74c3c',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                color: '#c0392b',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                ⚠️ SOLD OUT - This product is currently unavailable
+              </div>
+            )}
+            
+            {isLowStock && !isOutOfStock && (
+              <div style={{
+                padding: '12px 16px',
+                background: '#fef5e7',
+                border: '2px solid #f39c12',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                color: '#d68910',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                ⚡ Only {stockQuantity} left in stock - Order soon!
+              </div>
+            )}
+            
             <div className="product-price">
               <span className="current-price">R {Number(price).toFixed(2)}</span>
-              {product?.cj_cost_price && product?.cj_cost_price !== price && (
-                <span style={{ marginLeft: 12, color: '#999', textDecoration: 'line-through', fontSize: '14px' }}>
-                  Cost: R {Number(product.cj_cost_price).toFixed(2)}
-                </span>
-              )}
             </div>
 
             <div className="quantity-selector">
               <label>Quantity:</label>
               <div className="quantity-controls">
-                <button className="qty-btn" onClick={() => setQty((q) => Math.max(1, q - 1))}>-</button>
+                <button className="qty-btn" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={isOutOfStock}>-</button>
                 <span className="quantity-display">{qty}</span>
-                <button className="qty-btn" onClick={() => setQty((q) => q + 1)}>+</button>
+                <button 
+                  className="qty-btn" 
+                  onClick={() => setQty((q) => Math.min(stockQuantity, q + 1))}
+                  disabled={isOutOfStock || qty >= stockQuantity}
+                >+</button>
               </div>
+              {!isOutOfStock && isLowStock && (
+                <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
+                  Max: {stockQuantity} available
+                </small>
+              )}
             </div>
 
             <div className="action-buttons">
-              <button className="add-to-cart-btn" onClick={handleAdd}>🛒 Add to Cart</button>
+              <button 
+                className="add-to-cart-btn" 
+                onClick={handleAdd}
+                disabled={isOutOfStock}
+                style={{
+                  opacity: isOutOfStock ? 0.8 : 1,
+                  cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                  background: isOutOfStock ? '#95a5a6' : ''
+                }}
+              >
+                {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
+              </button>
               <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
 

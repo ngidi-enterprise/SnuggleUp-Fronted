@@ -14,13 +14,14 @@ function useProductMapping(items) {
   };
   return useMemo(() => (items || []).map((p) => {
     // Map curated_products table fields
-    const pid = p.cj_pid || p.id;
+    const pid = p.id; // Use database ID for product detail lookup
     const name = p.product_name || 'Product';
     const image = normalizeUrl(p.product_image);
     const minPrice = Number(p.custom_price || p.suggested_price || 0);
     const maxPrice = minPrice; // Curated products have fixed pricing
     const category = p.category || 'general';
-    return { pid, name, image, minPrice, maxPrice, category, raw: p };
+    const isValidPrice = !isNaN(minPrice) && minPrice > 0;
+    return { pid, name, image, minPrice, maxPrice, category, raw: p, isValidPrice };
   }), [items]);
 }
 
@@ -136,11 +137,6 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
           <option value="price_asc">Price: Low to High</option>
           <option value="price_desc">Price: High to Low</option>
         </select>
-        <select className="cj-input cj-input-small" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); runSearch(1); }}>
-          <option value={12}>12</option>
-          <option value={24}>24</option>
-          <option value={48}>48</option>
-        </select>
       </div>
 
       {error && <div className="cj-error">{error}</div>}
@@ -167,25 +163,76 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
       )}
 
       <div className="cj-grid" aria-busy={opening ? 'true' : 'false'}>
-        {sortedProducts.map((p) => (
-          <div key={p.pid} className="cj-card" style={{pointerEvents: opening ? 'none' : 'auto', opacity: opening ? 0.6 : 1}} onClick={() => {
-            if (opening) return;
-            setOpening(true);
-            try { onOpenProduct?.(p.pid); } finally { setTimeout(() => setOpening(false), 1200); }
-          }}>
-            <div className="cj-thumb">
-              {p.image ? (
-                <img src={p.image} alt={p.name} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.classList.add('cj-thumb-fallback'); }} />
-              ) : (
-                <div className="cj-thumb-fallback">🍼</div>
+        {sortedProducts.map((p) => {
+          const isOutOfStock = p.raw.stock_quantity === 0;
+          return (
+            <div 
+              key={p.pid} 
+              className="cj-card" 
+              style={{
+                pointerEvents: opening ? 'none' : 'auto', 
+                opacity: opening ? 0.6 : 1,
+                position: 'relative'
+              }} 
+              onClick={() => {
+                if (opening) return;
+                setOpening(true);
+                try { onOpenProduct?.(p.pid); } finally { setTimeout(() => setOpening(false), 1200); }
+              }}
+            >
+              {isOutOfStock && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: '#e74c3c',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  zIndex: 10,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  SOLD OUT
+                </div>
               )}
+              <div className="cj-thumb">
+                {p.image ? (
+                  <img 
+                    src={p.image} 
+                    alt={p.name} 
+                    onError={(e) => { 
+                      e.currentTarget.style.display = 'none'; 
+                      e.currentTarget.parentElement.classList.add('cj-thumb-fallback'); 
+                    }} 
+                  />
+                ) : (
+                  <div className="cj-thumb-fallback">🍼</div>
+                )}
+              </div>
+              <div className="cj-card-body">
+                <div className="cj-name" title={p.name}>{p.name}</div>
+                <div className="cj-price">
+                  {p.isValidPrice ? (
+                    <>
+                      From R {Number(p.minPrice).toFixed(2)}
+                      {p.raw.stock_quantity > 0 && p.raw.stock_quantity < 10 && (
+                        <div style={{ fontSize: '11px', color: '#f39c12', marginTop: '4px' }}>
+                          ⚡ Only {p.raw.stock_quantity} left!
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                      Price pending
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="cj-card-body">
-              <div className="cj-name" title={p.name}>{p.name}</div>
-              <div className="cj-price">From R {Number(p.minPrice).toFixed(2)}</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {opening && (

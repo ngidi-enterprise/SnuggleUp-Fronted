@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 import SocialLoginButtons from './SocialLoginButtons';
+import { trackLogin } from '../lib/analytics';
 
 function Login({ onClose, onSwitchToRegister }) {
   const [email, setEmail] = useState('');
@@ -17,6 +18,7 @@ function Login({ onClose, onSwitchToRegister }) {
 
     try {
       await loginWithCredentials(email, password);
+      trackLogin('email');
       onClose();
     } catch (err) {
       setError(err.message);

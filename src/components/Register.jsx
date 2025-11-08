@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 import SocialLoginButtons from './SocialLoginButtons';
+import { trackSignUp } from '../lib/analytics';
 
 function Register({ onClose, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -46,6 +47,7 @@ function Register({ onClose, onSwitchToLogin }) {
         phone: formData.phone,
         password: formData.password,
       });
+      trackSignUp('email');
       onClose();
     } catch (err) {
       setError(err.message);
