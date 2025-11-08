@@ -89,7 +89,7 @@ export default function PricingManager() {
           <thead>
             <tr>
               <th>Product</th>
-              <th>Cost Price (CJ)</th>
+              <th>Cost Price (Supplier)</th>
               <th>Suggested Price (2x)</th>
               <th>Current Retail Price</th>
               <th>Margin %</th>
@@ -187,7 +187,7 @@ export default function PricingManager() {
             <strong>Good margin:</strong> 50% or higher (green badge).
           </li>
           <li>
-            <strong>Suggested price:</strong> Automatically calculated as 2x the CJ cost price.
+            <strong>Suggested price:</strong> Automatically calculated as 2x the supplier cost price.
           </li>
         </ul>
       </div>
