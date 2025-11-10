@@ -130,8 +130,10 @@ export const AuthProvider = ({ children }) => {
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     
-    // Use the complete current URL for StackBlitz compatibility
-    const redirectTo = window.location.href.split('?')[0].split('#')[0];
+    // Use production domain or fallback to current origin
+    const redirectTo = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za'
+      ? 'https://snuggleup.co.za'
+      : window.location.origin;
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
