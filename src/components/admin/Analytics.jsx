@@ -16,6 +16,19 @@ export default function Analytics() {
   const fetchAnalytics = async () => {
     setLoading(true);
     setError('');
+    
+    console.log('Analytics Debug:', {
+      token: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
+      apiBase: API_BASE,
+      hasToken: !!token
+    });
+    
+    if (!token) {
+      setError('No authentication token available. Please log in again.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const res = await fetch(`${API_BASE}/api/admin/analytics`, {
         headers: {
@@ -23,8 +36,12 @@ export default function Analytics() {
         },
       });
 
+      console.log('Analytics response:', res.status, res.statusText);
+
       if (!res.ok) {
-        throw new Error('Failed to fetch analytics');
+        const errorText = await res.text();
+        console.log('Analytics error response:', errorText);
+        throw new Error(`Failed to fetch analytics: ${res.status}`);
       }
 
       const data = await res.json();
