@@ -38,8 +38,92 @@ function App() {
   const [cjQuery, setCjQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
+  const [cartLoaded, setCartLoaded] = useState(false);
   
   const { user, token, isAuthenticated } = useAuth();
+
+  // API base URL
+  const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.snuggleup.co.za';
+
+  // Save cart to backend (authenticated users only)
+  const saveCartToBackend = async (items) => {
+    if (!isAuthenticated || !token) return;
+    
+    try {
+      await fetch(`${API_BASE}/api/cart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ items }),
+      });
+    } catch (error) {
+      console.error('Failed to save cart to backend:', error);
+    }
+  };
+
+  // Load cart from backend (authenticated users only)
+  const loadCartFromBackend = async () => {
+    if (!isAuthenticated || !token) return null;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/cart`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.items || [];
+      }
+    } catch (error) {
+      console.error('Failed to load cart from backend:', error);
+    }
+    
+    return null;
+  };
+
+  // Load cart from backend when user logs in
+  useEffect(() => {
+    const loadCart = async () => {
+      if (isAuthenticated && token && !cartLoaded) {
+        const backendCart = await loadCartFromBackend();
+        
+        if (backendCart && backendCart.length > 0) {
+          // Merge backend cart with any local cart items
+          const localCart = cartItems;
+          const mergedCart = [...backendCart];
+          
+          // Add local items that aren't in backend cart
+          localCart.forEach(localItem => {
+            const existsInBackend = backendCart.find(item => item.id === localItem.id);
+            if (!existsInBackend) {
+              mergedCart.push(localItem);
+            }
+          });
+          
+          setCartItems(mergedCart);
+          setCartCount(mergedCart.reduce((sum, item) => sum + item.quantity, 0));
+        }
+        
+        setCartLoaded(true);
+      } else if (!isAuthenticated) {
+        // Reset cart loaded flag when user logs out
+        setCartLoaded(false);
+      }
+    };
+    
+    loadCart();
+  }, [isAuthenticated, token]);
+
+  // Save cart to backend whenever cart changes (for authenticated users)
+  useEffect(() => {
+    if (cartLoaded && isAuthenticated && token) {
+      saveCartToBackend(cartItems);
+    }
+  }, [cartItems, cartLoaded, isAuthenticated, token]);
 
   // Show promo popup until user makes their first purchase (but not for admins)
   useEffect(() => {
