@@ -90,22 +90,40 @@ function App() {
     const loadCart = async () => {
       if (isAuthenticated && token && !cartLoaded) {
         const backendCart = await loadCartFromBackend();
+        const localCart = cartItems;
         
+        // Always merge - even if backend is empty, preserve local cart
+        const mergedCart = [];
+        const seenIds = new Set();
+        
+        // Add all backend items first
         if (backendCart && backendCart.length > 0) {
-          // Merge backend cart with any local cart items
-          const localCart = cartItems;
-          const mergedCart = [...backendCart];
-          
-          // Add local items that aren't in backend cart
-          localCart.forEach(localItem => {
-            const existsInBackend = backendCart.find(item => item.id === localItem.id);
-            if (!existsInBackend) {
-              mergedCart.push(localItem);
-            }
+          backendCart.forEach(item => {
+            mergedCart.push(item);
+            seenIds.add(item.id);
           });
-          
+        }
+        
+        // Add local items that aren't already in the merged cart
+        localCart.forEach(localItem => {
+          if (!seenIds.has(localItem.id)) {
+            mergedCart.push(localItem);
+            seenIds.add(localItem.id);
+          } else {
+            // If item exists in both, prefer higher quantity
+            const existingIndex = mergedCart.findIndex(item => item.id === localItem.id);
+            if (existingIndex !== -1 && localItem.quantity > mergedCart[existingIndex].quantity) {
+              mergedCart[existingIndex].quantity = localItem.quantity;
+            }
+          }
+        });
+        
+        // Update cart with merged items
+        if (mergedCart.length > 0) {
           setCartItems(mergedCart);
           setCartCount(mergedCart.reduce((sum, item) => sum + item.quantity, 0));
+          // Save merged cart to backend immediately
+          await saveCartToBackend(mergedCart);
         }
         
         setCartLoaded(true);
