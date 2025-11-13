@@ -15,6 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [showExpiryWarning, setShowExpiryWarning] = useState(false);
 
   // Normalize Supabase user into app user shape
   const toAppUser = (sbUser) => {
@@ -155,11 +157,73 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   };
 
+  // Auto-logout after 30 minutes of inactivity with 2-minute warning
+  useEffect(() => {
+    if (!user) return;
+
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    const WARNING_MS = 28 * 60 * 1000; // 28 minutes (2 min before logout)
+    let timeoutId;
+    let warningTimeoutId;
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      const timeSinceLastActivity = now - lastActivity;
+      
+      if (timeSinceLastActivity >= TIMEOUT_MS) {
+        console.log('🔒 Auto-logout: Session expired due to inactivity');
+        setShowExpiryWarning(false);
+        logout();
+      } else {
+        // Check again in remaining time
+        const remaining = TIMEOUT_MS - timeSinceLastActivity;
+        timeoutId = setTimeout(checkInactivity, remaining);
+      }
+    };
+
+    const showWarning = () => {
+      const now = Date.now();
+      const timeSinceLastActivity = now - lastActivity;
+      
+      if (timeSinceLastActivity >= WARNING_MS) {
+        setShowExpiryWarning(true);
+      } else {
+        // Check again in remaining time until warning
+        const remaining = WARNING_MS - timeSinceLastActivity;
+        warningTimeoutId = setTimeout(showWarning, remaining);
+      }
+    };
+
+    // Start timeout checkers
+    timeoutId = setTimeout(checkInactivity, TIMEOUT_MS);
+    warningTimeoutId = setTimeout(showWarning, WARNING_MS);
+
+    // Track user activity
+    const updateActivity = () => {
+      setLastActivity(Date.now());
+      setShowExpiryWarning(false); // Hide warning on activity
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(warningTimeoutId);
+      events.forEach(event => {
+        window.removeEventListener(event, updateActivity);
+      });
+    };
+  }, [user, lastActivity]);
+
   const value = {
     user,
     token,
     loading,
     isAuthenticated: !!user,
+    showExpiryWarning,
     // legacy flags
     login: () => {
       throw new Error('Use loginWithCredentials(email, password)');
@@ -176,7 +240,57 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
     signInWithProvider,
     logout,
+    // Keep session alive (extend timeout on manual action)
+    extendSession: () => setLastActivity(Date.now()),
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {showExpiryWarning && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            backgroundColor: '#ff9800',
+            color: 'white',
+            padding: '16px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 10000,
+            maxWidth: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+            ⏰ Session Expiring Soon
+          </div>
+          <div style={{ fontSize: '14px' }}>
+            Your session will expire in 2 minutes due to inactivity. Click below to stay logged in.
+          </div>
+          <button
+            onClick={() => {
+              setLastActivity(Date.now());
+              setShowExpiryWarning(false);
+            }}
+            style={{
+              backgroundColor: 'white',
+              color: '#ff9800',
+              border: 'none',
+              padding: '10px 16px',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            Stay Logged In
+          </button>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
 };
