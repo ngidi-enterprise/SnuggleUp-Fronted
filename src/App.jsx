@@ -155,8 +155,11 @@ function App() {
         }
         
         setCartLoaded(true);
-      } else if (!isAuthenticated) {
-        // Reset cart loaded flag when user logs out
+      } else if (!isAuthenticated && cartLoaded) {
+        // User logged out - clear the cart
+        console.log('🚪 User logged out - clearing cart');
+        setCartItems([]);
+        setCartCount(0);
         setCartLoaded(false);
       }
     };
