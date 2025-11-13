@@ -39,6 +39,23 @@ function CheckoutSuccess() {
       // Clear cart from localStorage
       localStorage.removeItem('cart');
       localStorage.removeItem('lastOrderId');
+      
+      // Clear cart from backend (for authenticated users)
+      const clearBackendCart = async () => {
+        const token = localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('supabase.auth.token');
+        if (token) {
+          try {
+            const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.snuggleup.co.za';
+            await fetch(`${API_BASE}/api/cart`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` },
+            });
+          } catch (err) {
+            console.error('Failed to clear backend cart:', err);
+          }
+        }
+      };
+      clearBackendCart();
     }
   }, []);
 
