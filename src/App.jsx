@@ -50,7 +50,7 @@ function App() {
     if (!isAuthenticated || !token) return;
     
     try {
-      await fetch(`${API_BASE}/api/cart`, {
+      const response = await fetch(`${API_BASE}/api/cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,8 +58,14 @@ function App() {
         },
         body: JSON.stringify({ items }),
       });
+      
+      if (!response.ok) {
+        console.warn('⚠️ Failed to save cart to backend (status:', response.status, ')');
+      } else {
+        console.log('✅ Cart saved to backend successfully');
+      }
     } catch (error) {
-      console.error('Failed to save cart to backend:', error);
+      console.error('❌ Failed to save cart to backend:', error);
     }
   };
 
@@ -76,54 +82,76 @@ function App() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Cart loaded from backend:', data.items?.length || 0, 'items');
         return data.items || [];
+      } else {
+        console.warn('⚠️ Failed to load cart from backend (status:', response.status, ')');
+        return [];
       }
     } catch (error) {
-      console.error('Failed to load cart from backend:', error);
+      console.error('❌ Failed to load cart from backend:', error);
+      return [];
     }
-    
-    return null;
   };
 
   // Load cart from backend when user logs in
   useEffect(() => {
     const loadCart = async () => {
       if (isAuthenticated && token && !cartLoaded) {
-        const backendCart = await loadCartFromBackend();
-        const localCart = cartItems;
+        console.log('🔄 Loading cart on login. Current local cart items:', cartItems.length);
         
-        // Always merge - even if backend is empty, preserve local cart
-        const mergedCart = [];
-        const seenIds = new Set();
-        
-        // Add all backend items first
-        if (backendCart && backendCart.length > 0) {
-          backendCart.forEach(item => {
-            mergedCart.push(item);
-            seenIds.add(item.id);
-          });
-        }
-        
-        // Add local items that aren't already in the merged cart
-        localCart.forEach(localItem => {
-          if (!seenIds.has(localItem.id)) {
-            mergedCart.push(localItem);
-            seenIds.add(localItem.id);
-          } else {
-            // If item exists in both, prefer higher quantity
-            const existingIndex = mergedCart.findIndex(item => item.id === localItem.id);
-            if (existingIndex !== -1 && localItem.quantity > mergedCart[existingIndex].quantity) {
-              mergedCart[existingIndex].quantity = localItem.quantity;
-            }
+        try {
+          const backendCart = await loadCartFromBackend();
+          console.log('📦 Backend cart loaded:', backendCart?.length || 0, 'items');
+          
+          // Capture current local cart at time of login
+          const localCart = [...cartItems];
+          console.log('🛒 Local cart at login:', localCart.length, 'items');
+          
+          // Always merge - even if backend is empty or fails, preserve local cart
+          const mergedCart = [];
+          const seenIds = new Set();
+          
+          // Add all backend items first (if any)
+          if (backendCart && Array.isArray(backendCart) && backendCart.length > 0) {
+            backendCart.forEach(item => {
+              mergedCart.push(item);
+              seenIds.add(item.id);
+            });
           }
-        });
-        
-        // Update cart with merged items
-        if (mergedCart.length > 0) {
-          setCartItems(mergedCart);
-          setCartCount(mergedCart.reduce((sum, item) => sum + item.quantity, 0));
-          // Save merged cart to backend immediately
-          await saveCartToBackend(mergedCart);
+          
+          // Add local items that aren't already in the merged cart
+          localCart.forEach(localItem => {
+            if (!seenIds.has(localItem.id)) {
+              mergedCart.push(localItem);
+              seenIds.add(localItem.id);
+            } else {
+              // If item exists in both, prefer higher quantity
+              const existingIndex = mergedCart.findIndex(item => item.id === localItem.id);
+              if (existingIndex !== -1 && localItem.quantity > mergedCart[existingIndex].quantity) {
+                mergedCart[existingIndex].quantity = localItem.quantity;
+              }
+            }
+          });
+          
+          console.log('✅ Merged cart:', mergedCart.length, 'items');
+          
+          // ONLY update cart if we have items to show (never clear cart on login)
+          if (mergedCart.length > 0) {
+            setCartItems(mergedCart);
+            setCartCount(mergedCart.reduce((sum, item) => sum + item.quantity, 0));
+            
+            // Try to save merged cart to backend (best effort, don't fail if it errors)
+            await saveCartToBackend(mergedCart);
+          } else if (localCart.length > 0) {
+            // Edge case: if merge resulted in empty but local had items, keep local
+            console.warn('⚠️ Merge produced empty cart but local had items. Keeping local cart.');
+            setCartItems(localCart);
+            setCartCount(localCart.reduce((sum, item) => sum + item.quantity, 0));
+          }
+        } catch (error) {
+          console.error('❌ Error during cart load/merge:', error);
+          // On error, keep the local cart as-is (don't clear it)
         }
         
         setCartLoaded(true);
@@ -134,7 +162,7 @@ function App() {
     };
     
     loadCart();
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, cartLoaded]);
 
   // Save cart to backend whenever cart changes (for authenticated users)
   useEffect(() => {
