@@ -9,7 +9,7 @@ export default function InventoryPanel() {
   const [error, setError] = useState('');
   const [syncResult, setSyncResult] = useState(null);
   const [expandedProducts, setExpandedProducts] = useState(new Set());
-  const { session } = useAuth();
+  const { token } = useAuth();
 
   const loadInventory = async () => {
     setLoading(true);
@@ -29,7 +29,6 @@ export default function InventoryPanel() {
     setSyncResult(null);
     setError('');
     try {
-      const token = session?.access_token;
       const result = await syncInventory(token);
       setSyncResult(result);
       // Reload inventory after sync
