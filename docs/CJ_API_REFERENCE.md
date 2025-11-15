@@ -105,6 +105,92 @@ GET /api/cj/inventory/D4057F56-3F09-4541-8461-9D76D014846D
 
 ---
 
+### 3b. Curated Products Inventory Snapshot (NEW)
+Aggregated + per-warehouse inventory for all active curated products.
+
+**Endpoint:** `GET /api/cj/inventory/curated`
+
+**Response:**
+```json
+{
+  "source": "curated",
+  "products": [
+    {
+      "curatedProductId": 12,
+      "productName": "Ergonomic Baby Carrier",
+      "cj_pid": "PID-123",
+      "cj_vid": "VID-456",
+      "stock_quantity": 240, // sum of totalInventory across warehouses
+      "warehouses": [
+        {
+          "warehouseId": "1",
+          "warehouseName": "China Warehouse",
+          "countryCode": "CN",
+          "totalInventory": 200,
+          "cjInventory": 40,
+          "factoryInventory": 160,
+          "updated_at": "2025-11-14T09:21:30.123Z"
+        },
+        {
+          "warehouseId": "2",
+          "warehouseName": "US Warehouse",
+          "countryCode": "US",
+          "totalInventory": 40,
+          "cjInventory": 10,
+          "factoryInventory": 30,
+          "updated_at": "2025-11-14T09:21:30.123Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Use this for storefront availability, low-stock warnings, and admin dashboards.
+
+---
+
+### 3c. Manual Inventory Sync (Admin) (NEW)
+Trigger a real-time sync of CJ inventory for curated products. Updates `curated_products.stock_quantity` and per-warehouse breakdown table `curated_product_inventories`.
+
+**Endpoint:** `POST /api/cj/inventory/sync`
+
+**Body (optional):**
+```json
+{ "limit": 50 } // Only process first 50 active curated products (useful for throttling)
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "processed": 120,
+  "updated": 118,
+  "failures": 2,
+  "updatedProducts": [
+    { "id": 12, "cj_pid": "PID-123", "cj_vid": "VID-456", "total": 240, "warehouses": 2 }
+  ],
+  "failuresList": [
+    { "id": 57, "cj_pid": "PID-999", "reason": "Missing cj_vid" }
+  ]
+}
+```
+
+Permissions: Requires admin credentials (uses `requireAdmin` middleware).
+
+Scheduling: Enabled by default via `CJ_INVENTORY_SYNC_ENABLED` (set to `false` to disable). Interval configurable with `CJ_INVENTORY_SYNC_INTERVAL_MS` (default 15 minutes). Batch size via `CJ_INVENTORY_SYNC_BATCH_LIMIT`.
+
+Environment Variables:
+```env
+CJ_INVENTORY_SYNC_ENABLED=true
+CJ_INVENTORY_SYNC_INTERVAL_MS=900000
+CJ_INVENTORY_SYNC_BATCH_LIMIT=100
+```
+
+---
+
+---
+
 ### 4. Create Order
 **Endpoint:** `POST /api/cj/orders`
 
