@@ -16,10 +16,23 @@ export default function InventoryPanel() {
     setLoading(true);
     setError('');
     try {
-  const data = await getCuratedInventory();
+      const data = await getCuratedInventory();
       console.log('🔎 Inventory snapshot response:', data);
-      setInventory(Array.isArray(data.products) ? data.products : []);
-  setLastUpdated(new Date());
+      const products = Array.isArray(data?.products)
+        ? data.products
+        : Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+      // Normalize warehouses field to an array for downstream rendering
+      const normalized = products.map(p => ({
+        ...p,
+        stock_quantity: typeof p.stock_quantity === 'number' ? p.stock_quantity : Number(p.stock_quantity || 0),
+        warehouses: Array.isArray(p.warehouses) ? p.warehouses : [],
+      }));
+      setInventory(normalized);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || 'Failed to load inventory');
     } finally {
@@ -234,11 +247,11 @@ export default function InventoryPanel() {
                             fontSize: '12px'
                           }}
                         >
-                          {isExpanded ? '▼ Hide' : `▶ Show (${product.warehouses.length})`}
+                          {isExpanded ? '▼ Hide' : `▶ Show (${(product.warehouses && product.warehouses.length) || 0})`}
                         </button>
                       </td>
                     </tr>
-                    {isExpanded && product.warehouses.length > 0 && (
+                    {isExpanded && product.warehouses && product.warehouses.length > 0 && (
                       <tr>
                         <td colSpan="5" style={{ padding: '0', background: '#f8f9fa' }}>
                           <div style={{ padding: '16px' }}>
