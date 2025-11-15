@@ -724,23 +724,39 @@ function App() {
                 {cartItems.length === 0 ? (
                   <p className="empty-cart">Your cart is empty</p>
                 ) : (
-                  cartItems.map(item => (
-                    <div key={item.id} className="cart-item">
-                      <img src={item.image} alt={item.name} className="cart-item-image" />
-                      <div className="cart-item-details">
-                        <h4>{item.name}</h4>
-                        <p>R{item.price} each</p>
-                        <div className="quantity-controls">
-                          <button onClick={() => removeFromCart(item.id)}>-</button>
-                          <span>{item.quantity}</span>
-                          <button onClick={() => addToCartCj(item)}>+</button>
+                  cartItems.map(item => {
+                    const stockQty = item.stock_quantity || 0;
+                    const isOutOfStock = stockQty === 0;
+                    const isLowStock = stockQty > 0 && stockQty < item.quantity;
+                    
+                    return (
+                      <div key={item.id} className="cart-item">
+                        <img src={item.image} alt={item.name} className="cart-item-image" />
+                        <div className="cart-item-details">
+                          <h4>{item.name}</h4>
+                          <p>R{item.price} each</p>
+                          {isOutOfStock && (
+                            <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                              ⚠️ Out of stock
+                            </p>
+                          )}
+                          {isLowStock && (
+                            <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                              ⚠️ Only {stockQty} available
+                            </p>
+                          )}
+                          <div className="quantity-controls">
+                            <button onClick={() => removeFromCart(item.id)}>-</button>
+                            <span>{item.quantity}</span>
+                            <button onClick={() => addToCartCj(item)}>+</button>
+                          </div>
+                        </div>
+                        <div className="cart-item-total">
+                          R{item.price * item.quantity}
                         </div>
                       </div>
-                      <div className="cart-item-total">
-                        R{item.price * item.quantity}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
               {cartItems.length > 0 && (
@@ -907,23 +923,39 @@ function App() {
               {cartItems.length === 0 ? (
                 <p className="empty-cart">Your cart is empty</p>
               ) : (
-                cartItems.map(item => (
-                  <div key={item.id} className="cart-item">
-                    <img src={item.image} alt={item.name} className="cart-item-image" />
-                    <div className="cart-item-details">
-                      <h4>{item.name}</h4>
-                      <p>R{item.price} each</p>
-                      <div className="quantity-controls">
-                        <button onClick={() => removeFromCart(item.id)}>-</button>
-                        <span>{item.quantity}</span>
-                        <button onClick={() => addToCart(item)}>+</button>
+                cartItems.map(item => {
+                  const stockQty = item.stock_quantity || 0;
+                  const isOutOfStock = stockQty === 0;
+                  const isLowStock = stockQty > 0 && stockQty < item.quantity;
+                  
+                  return (
+                    <div key={item.id} className="cart-item">
+                      <img src={item.image} alt={item.name} className="cart-item-image" />
+                      <div className="cart-item-details">
+                        <h4>{item.name}</h4>
+                        <p>R{item.price} each</p>
+                        {isOutOfStock && (
+                          <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                            ⚠️ Out of stock
+                          </p>
+                        )}
+                        {isLowStock && (
+                          <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                            ⚠️ Only {stockQty} available
+                          </p>
+                        )}
+                        <div className="quantity-controls">
+                          <button onClick={() => removeFromCart(item.id)}>-</button>
+                          <span>{item.quantity}</span>
+                          <button onClick={() => addToCart(item)}>+</button>
+                        </div>
+                      </div>
+                      <div className="cart-item-total">
+                        R{item.price * item.quantity}
                       </div>
                     </div>
-                    <div className="cart-item-total">
-                      R{item.price * item.quantity}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             {cartItems.length > 0 && (
