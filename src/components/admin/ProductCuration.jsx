@@ -24,6 +24,7 @@ export default function ProductCuration() {
   });
   const [suggestedPrice, setSuggestedPrice] = useState(null);
   const [targetMargin, setTargetMargin] = useState(100); // Default 100% margin (2x markup)
+  const [addingProducts, setAddingProducts] = useState(new Set()); // Track which products are being added
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -93,9 +94,12 @@ export default function ProductCuration() {
       const costPrice = Number(product.price) || 0;
       
       if (costPrice <= 0) {
-        alert('⚠️ Cannot add product: Invalid or missing price from supplier. Please contact support.');
+        setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
         return;
       }
+
+      // Mark product as being added (optimistic UI)
+      setAddingProducts(prev => new Set(prev).add(product.pid));
 
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
@@ -114,14 +118,31 @@ export default function ProductCuration() {
       });
 
       if (res.ok) {
-        alert('Product added to curated list!');
-        fetchCuratedProducts();
+        // Brief delay to show success state, then refresh and reset
+        await fetchCuratedProducts();
+        setTimeout(() => {
+          setAddingProducts(prev => {
+            const next = new Set(prev);
+            next.delete(product.pid);
+            return next;
+          });
+        }, 1500);
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to add product');
+        setError(data.error || 'Failed to add product');
+        setAddingProducts(prev => {
+          const next = new Set(prev);
+          next.delete(product.pid);
+          return next;
+        });
       }
     } catch (err) {
-      alert('Error adding product: ' + err.message);
+      setError('Error adding product: ' + err.message);
+      setAddingProducts(prev => {
+        const next = new Set(prev);
+        next.delete(product.pid);
+        return next;
+      });
     }
   };
 
@@ -301,6 +322,7 @@ export default function ProductCuration() {
                 const isAlreadyCurated = curatedProducts.some(
                   (cp) => cp.cj_pid === product.pid
                 );
+                const isAdding = addingProducts.has(product.pid);
 
                 return (
                   <div key={product.pid} className="product-card">
@@ -325,10 +347,15 @@ export default function ProductCuration() {
                         </button>
                       ) : (
                         <button
-                          className="btn-primary"
+                          className={`btn-primary ${isAdding ? 'btn-success-flash' : ''}`}
                           onClick={() => addToCurated(product)}
+                          disabled={isAdding}
+                          style={{
+                            background: isAdding ? '#27ae60' : '',
+                            transition: 'all 0.3s ease'
+                          }}
                         >
-                          + Add to Store
+                          {isAdding ? '✓ Added to Store!' : '+ Add to Store'}
                         </button>
                       )}
                     </div>
