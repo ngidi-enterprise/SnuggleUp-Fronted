@@ -5,6 +5,7 @@ import ProductCuration from './admin/ProductCuration';
 import PricingManager from './admin/PricingManager';
 import OrderManagement from './admin/OrderManagement';
 import UserManagement from './admin/UserManagement';
+import InventoryPanel from './admin/InventoryPanel';
 import './AdminDashboard.css';
 
 export default function AdminDashboard({ onClose, onStorePreview }) {
@@ -64,8 +65,9 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
     { id: 'analytics', label: 'Analytics', icon: '📊' },
     { id: 'products', label: 'Product Curator', icon: '🛍️' },
     { id: 'pricing', label: 'Pricing', icon: '💰' },
+    { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'store', label: 'Store Preview', icon: '🏪' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'orders', label: 'Orders', icon: '�' },
     { id: 'users', label: 'Users', icon: '👥' },
   ];
 
@@ -77,6 +79,8 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
         return <ProductCuration />;
       case 'pricing':
         return <PricingManager />;
+      case 'inventory':
+        return <InventoryPanel />;
       case 'store':
         return null; // Will show store through parent component
       case 'orders':
