@@ -9,15 +9,17 @@ export default function InventoryPanel() {
   const [error, setError] = useState('');
   const [syncResult, setSyncResult] = useState(null);
   const [expandedProducts, setExpandedProducts] = useState(new Set());
+  const [lastUpdated, setLastUpdated] = useState(null);
   const { token } = useAuth();
 
   const loadInventory = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await getCuratedInventory();
+  const data = await getCuratedInventory();
       console.log('🔎 Inventory snapshot response:', data);
       setInventory(Array.isArray(data.products) ? data.products : []);
+  setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || 'Failed to load inventory');
     } finally {
@@ -39,6 +41,10 @@ export default function InventoryPanel() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    await loadInventory();
   };
 
   const toggleExpand = (productId) => {
@@ -76,23 +82,46 @@ export default function InventoryPanel() {
           <p style={{ color: '#666', margin: 0 }}>
             Real-time CJ Dropshipping inventory sync
           </p>
+          {lastUpdated && (
+            <div style={{ marginTop: '6px', fontSize: '12px', color: '#6c757d' }}>
+              Last updated: {new Date(lastUpdated).toLocaleString()}
+            </div>
+          )}
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          style={{
-            padding: '12px 24px',
-            background: syncing ? '#95a5a6' : '#3498db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: syncing ? 'not-allowed' : 'pointer',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}
-        >
-          {syncing ? '🔄 Syncing...' : '🔄 Sync Now'}
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleRefresh}
+            disabled={loading || syncing}
+            style={{
+              padding: '12px 16px',
+              background: loading ? '#95a5a6' : '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: loading || syncing ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          >
+            {loading ? '↻ Refreshing…' : '↻ Refresh'}
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            style={{
+              padding: '12px 24px',
+              background: syncing ? '#95a5a6' : '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: syncing ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          >
+            {syncing ? '🔄 Syncing…' : '🔄 Sync Now'}
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
