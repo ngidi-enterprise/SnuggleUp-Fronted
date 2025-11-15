@@ -6,7 +6,7 @@ const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && impor
   ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
   : DEFAULT_BASE;
 
-async function http(path, { method = 'GET', query = {}, body } = {}) {
+async function http(path, { method = 'GET', query = {}, body, headers = {} } = {}) {
   const qs = Object.entries(query)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
@@ -15,7 +15,10 @@ async function http(path, { method = 'GET', query = {}, body } = {}) {
 
   const res = await fetch(url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...headers
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -49,6 +52,18 @@ export async function getProduct(pid) {
 
 export async function getInventory(vid) {
   return http(`/api/cj/inventory/${encodeURIComponent(vid)}`);
+}
+
+export async function getCuratedInventory() {
+  return http('/api/cj/inventory/curated');
+}
+
+export async function syncInventory(token, limit) {
+  return http('/api/cj/inventory/sync', {
+    method: 'POST',
+    body: { limit },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  });
 }
 
 export async function createOrder(order) {
