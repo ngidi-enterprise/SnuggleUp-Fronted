@@ -164,7 +164,11 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
 
       <div className="cj-grid" aria-busy={opening ? 'true' : 'false'}>
         {sortedProducts.map((p) => {
-          const isOutOfStock = p.raw.stock_quantity === 0;
+          const stock = p.raw.stock_quantity || 0;
+          const isOutOfStock = stock === 0;
+          const isLowStock = stock > 0 && stock < 10;
+          const isInStock = stock >= 10;
+
           return (
             <div 
               key={p.pid} 
@@ -180,6 +184,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 try { onOpenProduct?.(p.pid); } finally { setTimeout(() => setOpening(false), 1200); }
               }}
             >
+              {/* Stock badge */}
               {isOutOfStock && (
                 <div style={{
                   position: 'absolute',
@@ -187,14 +192,48 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                   right: '8px',
                   background: '#e74c3c',
                   color: 'white',
-                  padding: '4px 8px',
+                  padding: '4px 10px',
                   borderRadius: '4px',
                   fontSize: '11px',
                   fontWeight: 'bold',
                   zIndex: 10,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                  SOLD OUT
+                  OUT OF STOCK
+                </div>
+              )}
+              {isLowStock && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: '#f39c12',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  zIndex: 10,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  ⚡ {stock} LEFT
+                </div>
+              )}
+              {isInStock && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: '#27ae60',
+                  color: 'white',
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  zIndex: 10,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  ✓ IN STOCK
                 </div>
               )}
               <div className="cj-thumb">
@@ -215,14 +254,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 <div className="cj-name" title={p.name}>{p.name}</div>
                 <div className="cj-price">
                   {p.isValidPrice ? (
-                    <>
-                      From R {Number(p.minPrice).toFixed(2)}
-                      {p.raw.stock_quantity > 0 && p.raw.stock_quantity < 10 && (
-                        <div style={{ fontSize: '11px', color: '#f39c12', marginTop: '4px' }}>
-                          ⚡ Only {p.raw.stock_quantity} left!
-                        </div>
-                      )}
-                    </>
+                    <>From R {Number(p.minPrice).toFixed(2)}</>
                   ) : (
                     <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
                       Price pending
