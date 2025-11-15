@@ -63,7 +63,8 @@ export async function getInventory(vid) {
 }
 
 export async function getCuratedInventory() {
-  return http('/api/cj/inventory/curated');
+  // Add cache-busting query to avoid stale CDN/proxy caches
+  return http('/api/cj/inventory/curated', { query: { t: Date.now() } });
 }
 
 export async function syncInventory(token, limit) {
