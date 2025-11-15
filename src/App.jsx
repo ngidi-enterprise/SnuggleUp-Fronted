@@ -430,11 +430,11 @@ function App() {
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
     // If we have a selected real-time shipping option use it
-    if (selectedShipping && typeof selectedShipping.costZAR === 'number') {
+    if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
       // Free shipping promotion still applies over R800 (optional)
       const subtotal = getSubtotal();
       if (subtotal >= 800) return 0;
-      return selectedShipping.costZAR;
+      return selectedShipping.priceZAR;
     }
     // Fallback flat policy
     const subtotal = getSubtotal();
@@ -586,7 +586,7 @@ function App() {
           shipping: getShippingCost(),
           discount: getDiscount(),
           shippingMethod: selectedShipping?.logisticName || 'STANDARD',
-          shippingQuoted: selectedShipping?.costZAR || getShippingCost()
+          shippingQuoted: selectedShipping?.priceZAR || getShippingCost()
         })
       });
 
@@ -627,10 +627,13 @@ function App() {
       setShippingError('');
       try {
         const body = {
-          items: cartItems.map(ci => ({ id: ci.id, quantity: ci.quantity })),
-          countryCode: 'ZA', // store only shipping ZA currently
+          items: cartItems.map(ci => ({ 
+            cj_vid: ci.cj_vid,  // CJ variant ID required for freight calculation
+            quantity: ci.quantity 
+          })),
+          shippingCountry: 'ZA', // Default to South Africa
         };
-        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com'}/api/cj/shipping/quote`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com'}/api/shipping/quote`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -640,11 +643,11 @@ function App() {
           throw new Error(err.error || 'Quote request failed');
         }
         const data = await res.json();
-        const opts = data.options || [];
+        const opts = data.quotes || [];
         setShippingOptions(opts);
         // Auto-select cheapest option if none chosen yet
         if (!selectedShipping && opts.length > 0) {
-          const cheapest = [...opts].sort((a,b) => a.costZAR - b.costZAR)[0];
+          const cheapest = [...opts].sort((a,b) => a.priceZAR - b.priceZAR)[0];
           setSelectedShipping(cheapest);
         }
       } catch (e) {
@@ -782,7 +785,7 @@ function App() {
                             >
                               {shippingOptions.map(o => (
                                 <option key={o.logisticName} value={o.logisticName}>
-                                  {o.logisticName} — R{o.costZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
+                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
                                 </option>
                               ))}
                             </select>
@@ -981,7 +984,7 @@ function App() {
                           >
                             {shippingOptions.map(o => (
                               <option key={o.logisticName} value={o.logisticName}>
-                                {o.logisticName} — R{o.costZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
+                                {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
                               </option>
                             ))}
                           </select>
