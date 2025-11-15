@@ -2,9 +2,17 @@
 // Uses backend proxy at /api/cj to avoid exposing CJ credentials
 
 const DEFAULT_BASE = 'https://snuggleup-backend.onrender.com';
+const PROD_BASE = 'https://api.snuggleup.co.za';
+let resolvedBase = DEFAULT_BASE;
+try {
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  if (host && (host === 'snuggleup.co.za' || host === 'www.snuggleup.co.za')) {
+    resolvedBase = PROD_BASE;
+  }
+} catch {}
 const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE)
   ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-  : DEFAULT_BASE;
+  : resolvedBase;
 
 async function http(path, { method = 'GET', query = {}, body, headers = {} } = {}) {
   const qs = Object.entries(query)
