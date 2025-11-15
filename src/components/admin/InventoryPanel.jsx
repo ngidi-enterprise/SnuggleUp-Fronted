@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCuratedInventory, syncInventory } from '../../lib/cjApi';
+import { getCuratedInventory, syncInventory, getSyncHistory, getSyncStatus } from '../../lib/cjApi';
 import { useAuth } from '../../context/AuthContext';
 
 export default function InventoryPanel() {
@@ -10,6 +10,9 @@ export default function InventoryPanel() {
   const [syncResult, setSyncResult] = useState(null);
   const [expandedProducts, setExpandedProducts] = useState(new Set());
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [syncHistory, setSyncHistory] = useState([]);
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const { token } = useAuth();
 
   const loadInventory = async () => {
@@ -47,8 +50,8 @@ export default function InventoryPanel() {
     try {
       const result = await syncInventory(token);
       setSyncResult(result);
-      // Reload inventory after sync
-      await loadInventory();
+      // Reload inventory and sync status after sync
+      await Promise.all([loadInventory(), loadSyncStatus(), loadSyncHistory()]);
     } catch (err) {
       setError(err.message || 'Sync failed');
     } finally {
@@ -56,9 +59,33 @@ export default function InventoryPanel() {
     }
   };
 
-  const handleRefresh = async () => {
-    await loadInventory();
+  const loadSyncHistory = async () => {
+    try {
+      const data = await getSyncHistory(token, 10);
+      setSyncHistory(data.history || []);
+    } catch (err) {
+      console.error('Failed to load sync history:', err);
+    }
   };
+
+  const loadSyncStatus = async () => {
+    try {
+      const data = await getSyncStatus(token);
+      setSyncStatus(data);
+    } catch (err) {
+      console.error('Failed to load sync status:', err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    await Promise.all([loadInventory(), loadSyncStatus(), loadSyncHistory()]);
+  };
+
+  useEffect(() => {
+    loadInventory();
+    loadSyncStatus();
+    loadSyncHistory();
+  }, []);
 
   const toggleExpand = (productId) => {
     setExpandedProducts(prev => {
@@ -72,9 +99,11 @@ export default function InventoryPanel() {
     });
   };
 
-  useEffect(() => {
-    loadInventory();
-  }, []);
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'N/A';
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  };
 
   const getStockStatus = (quantity) => {
     if (quantity === 0) return { label: 'Out of Stock', color: '#e74c3c' };
@@ -156,6 +185,138 @@ export default function InventoryPanel() {
           <div style={{ fontSize: '13px', color: '#e74c3c', marginTop: '4px' }}>Out of Stock</div>
         </div>
       </div>
+
+      {/* Sync Status Panel */}
+      {syncStatus && (
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '8px', 
+          border: '1px solid #e0e0e0', 
+          padding: '16px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>🔄 Sync Status</h3>
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              style={{
+                padding: '6px 12px',
+                background: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              {showHistory ? 'Hide History' : 'Show History'}
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', fontSize: '13px' }}>
+            <div>
+              <div style={{ color: '#666', marginBottom: '4px' }}>Status:</div>
+              <div style={{ fontWeight: 'bold', color: syncStatus.isRunning ? '#f39c12' : '#27ae60' }}>
+                {syncStatus.isRunning ? '🔄 Running' : '✓ Idle'}
+              </div>
+            </div>
+            
+            {syncStatus.lastSync && (
+              <>
+                <div>
+                  <div style={{ color: '#666', marginBottom: '4px' }}>Last Sync:</div>
+                  <div style={{ fontWeight: '500' }}>
+                    {new Date(syncStatus.lastSync.started_at).toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: '#666', marginBottom: '4px' }}>Products Updated:</div>
+                  <div style={{ fontWeight: '500' }}>
+                    {syncStatus.lastSync.products_updated}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: '#666', marginBottom: '4px' }}>Type:</div>
+                  <div style={{ fontWeight: '500', textTransform: 'capitalize' }}>
+                    {syncStatus.lastSync.sync_type}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {syncStatus.nextScheduledSync && (
+              <div>
+                <div style={{ color: '#666', marginBottom: '4px' }}>Next Scheduled:</div>
+                <div style={{ fontWeight: '500' }}>
+                  {new Date(syncStatus.nextScheduledSync).toLocaleTimeString()}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sync History */}
+      {showHistory && syncHistory.length > 0 && (
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '8px', 
+          border: '1px solid #e0e0e0', 
+          marginBottom: '24px',
+          overflow: 'hidden'
+        }}>
+          <div style={{ padding: '16px', borderBottom: '1px solid #e0e0e0', background: '#f8f9fa' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>📋 Sync History</h3>
+          </div>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '13px' }}>
+              <thead style={{ position: 'sticky', top: 0, background: '#f8f9fa' }}>
+                <tr>
+                  <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Started</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>Type</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>Updated</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>Failed</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>Duration</th>
+                  <th style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {syncHistory.map((sync) => (
+                  <tr key={sync.id} style={{ borderBottom: '1px solid #e0e0e0' }}>
+                    <td style={{ padding: '10px' }}>
+                      {new Date(sync.started_at).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center', textTransform: 'capitalize' }}>
+                      {sync.sync_type}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#27ae60' }}>
+                      {sync.products_updated}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: sync.products_failed > 0 ? '#e74c3c' : '#666' }}>
+                      {sync.products_failed}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      {formatDuration(sync.duration_seconds)}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        background: sync.status === 'completed' ? '#d5f4e620' : sync.status === 'running' ? '#fef5e720' : '#fadbd820',
+                        color: sync.status === 'completed' ? '#27ae60' : sync.status === 'running' ? '#f39c12' : '#e74c3c'
+                      }}>
+                        {sync.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Sync Result */}
       {syncResult && (
