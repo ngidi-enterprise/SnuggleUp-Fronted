@@ -75,6 +75,19 @@ export async function syncInventory(token, limit) {
   });
 }
 
+export async function getSyncHistory(token, limit = 20) {
+  return http('/api/cj/inventory/sync-history', {
+    query: { limit },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  });
+}
+
+export async function getSyncStatus(token) {
+  return http('/api/cj/inventory/sync-status', {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  });
+}
+
 export async function createOrder(order) {
   return http('/api/cj/orders', { method: 'POST', body: order });
 }
