@@ -16,7 +16,8 @@ export default function InventoryPanel() {
     setError('');
     try {
       const data = await getCuratedInventory();
-      setInventory(data.products || []);
+      console.log('🔎 Inventory snapshot response:', data);
+      setInventory(Array.isArray(data.products) ? data.products : []);
     } catch (err) {
       setError(err.message || 'Failed to load inventory');
     } finally {
