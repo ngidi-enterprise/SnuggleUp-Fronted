@@ -164,7 +164,19 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
             </div>
 
             <div className="stock-info">
-              <span className="in-stock">✓ In stock</span>
+              {product.stock_quantity === 0 && (
+                <span className="out-of-stock" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                  ✕ Out of Stock
+                </span>
+              )}
+              {product.stock_quantity > 0 && product.stock_quantity < 10 && (
+                <span className="low-stock" style={{ color: '#f39c12', fontWeight: 'bold' }}>
+                  ⚡ Only {product.stock_quantity} left - order soon!
+                </span>
+              )}
+              {product.stock_quantity >= 10 && (
+                <span className="in-stock">✓ In stock</span>
+              )}
             </div>
 
             <div className="product-description">
@@ -194,8 +206,16 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
             </div>
 
             <div className="action-buttons">
-              <button className="add-to-cart-btn" onClick={handleAddToCart}>
-                🛒 Add to Cart
+              <button 
+                className="add-to-cart-btn" 
+                onClick={handleAddToCart}
+                disabled={product.stock_quantity === 0}
+                style={{
+                  opacity: product.stock_quantity === 0 ? 0.5 : 1,
+                  cursor: product.stock_quantity === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {product.stock_quantity === 0 ? '✕ Out of Stock' : '🛒 Add to Cart'}
               </button>
               <button className="add-to-wishlist-btn">
                 ♡ Add to List
