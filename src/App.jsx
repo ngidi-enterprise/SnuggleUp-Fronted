@@ -28,6 +28,9 @@ function App() {
   const [selectedShipping, setSelectedShipping] = useState(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState('');
+  const [shippingCountry, setShippingCountry] = useState('ZA');
+  const [insuranceSelected, setInsuranceSelected] = useState(false);
+  const [insuranceData, setInsuranceData] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
   const [showUserAccount, setShowUserAccount] = useState(false);
@@ -423,6 +426,33 @@ function App() {
     }
   };
 
+  // Calculate delivery date range from delivery days string (e.g., "15-25" or "5-7")
+  const getDeliveryDateRange = (deliveryDay) => {
+    if (!deliveryDay) return null;
+    const match = deliveryDay.match(/(\d+)-(\d+)/);
+    if (!match) return null;
+    
+    const minDays = parseInt(match[1]);
+    const maxDays = parseInt(match[2]);
+    const today = new Date();
+    
+    const minDate = new Date(today);
+    minDate.setDate(today.getDate() + minDays);
+    
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + maxDays);
+    
+    const formatDate = (date) => {
+      return date.toLocaleDateString('en-ZA', { month: 'short', day: 'numeric' });
+    };
+    
+    return {
+      min: formatDate(minDate),
+      max: formatDate(maxDate),
+      text: `${formatDate(minDate)} - ${formatDate(maxDate)}`
+    };
+  };
+
   const getSubtotal = () => {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
@@ -445,8 +475,15 @@ function App() {
     return appliedVoucher ? appliedVoucher.value : 0;
   };
 
+  const getInsuranceCost = () => {
+    if (insuranceSelected && insuranceData) {
+      return insuranceData.costZAR || 0;
+    }
+    return 0;
+  };
+
   const getTotalPrice = () => {
-    const total = getSubtotal() + getShippingCost() - getDiscount();
+    const total = getSubtotal() + getShippingCost() + getInsuranceCost() - getDiscount();
     return total > 0 ? total : 0;
   };
 
@@ -571,6 +608,17 @@ function App() {
     try {
       // Save cart to localStorage for recovery if payment fails
       localStorage.setItem('cart', JSON.stringify(cartItems));
+      
+      // Save insurance and shipping data for order creation
+      localStorage.setItem('checkoutData', JSON.stringify({
+        shippingCountry,
+        shippingMethod: selectedShipping?.logisticName || 'STANDARD',
+        insuranceSelected,
+        insuranceData: insuranceSelected ? insuranceData : null,
+        subtotal: getSubtotal(),
+        shipping: getShippingCost(),
+        discount: getDiscount()
+      }));
 
       const response = await fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
         method: 'POST',
@@ -586,7 +634,17 @@ function App() {
           shipping: getShippingCost(),
           discount: getDiscount(),
           shippingMethod: selectedShipping?.logisticName || 'STANDARD',
-          shippingQuoted: selectedShipping?.priceZAR || getShippingCost()
+          shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
+          shippingCountry: shippingCountry,
+          insurance: insuranceSelected ? {
+            selected: true,
+            cost: getInsuranceCost(),
+            coverage: insuranceData?.coverage || getSubtotal(),
+            percentage: insuranceData?.percentage || 3
+          } : {
+            selected: false,
+            cost: 0
+          }
         })
       });
 
@@ -631,7 +689,8 @@ function App() {
             cj_vid: ci.cj_vid,  // CJ variant ID required for freight calculation
             quantity: ci.quantity 
           })),
-          shippingCountry: 'ZA', // Default to South Africa
+          shippingCountry, // Use selected country
+          orderValue: getSubtotal() // For insurance calculation
         };
         const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com'}/api/shipping/quote`, {
           method: 'POST',
@@ -644,10 +703,19 @@ function App() {
         }
         const data = await res.json();
         const opts = data.quotes || [];
-        setShippingOptions(opts);
+        
+        // Add delivery date ranges to quotes
+        const quotesWithDates = opts.map(q => ({
+          ...q,
+          deliveryDates: getDeliveryDateRange(q.deliveryDay)
+        }));
+        
+        setShippingOptions(quotesWithDates);
+        setInsuranceData(data.insurance || null);
+        
         // Auto-select cheapest option if none chosen yet
-        if (!selectedShipping && opts.length > 0) {
-          const cheapest = [...opts].sort((a,b) => a.priceZAR - b.priceZAR)[0];
+        if (!selectedShipping && quotesWithDates.length > 0) {
+          const cheapest = [...quotesWithDates].sort((a,b) => a.priceZAR - b.priceZAR)[0];
           setSelectedShipping(cheapest);
         }
       } catch (e) {
@@ -657,7 +725,7 @@ function App() {
       }
     };
     fetchQuotes();
-  }, [showCart, cartItems]);
+  }, [showCart, cartItems, shippingCountry]);
 
   // If CJ route, render CJ catalog page (now that helpers are defined)
   if (currentPage === 'cj') {
@@ -765,6 +833,26 @@ function App() {
               {cartItems.length > 0 && (
                 <div className="cart-footer">
                   <div className="cart-total">
+                    {/* Country Selector */}
+                    <div style={{marginBottom: '12px'}}>
+                      <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
+                        📍 Ship to:
+                      </label>
+                      <select
+                        value={shippingCountry}
+                        onChange={(e) => setShippingCountry(e.target.value)}
+                        style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                      >
+                        <option value="ZA">🇿🇦 South Africa</option>
+                        <option value="US">🇺🇸 United States</option>
+                        <option value="GB">🇬🇧 United Kingdom</option>
+                        <option value="AU">🇦🇺 Australia</option>
+                        <option value="CA">🇨🇦 Canada</option>
+                        <option value="DE">🇩🇪 Germany</option>
+                        <option value="FR">🇫🇷 France</option>
+                      </select>
+                    </div>
+
                     {/* Real-time shipping options */}
                     <div style={{marginBottom: '8px'}}>
                       {shippingLoading ? (
@@ -773,28 +861,64 @@ function App() {
                         <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
                       ) : (
                         shippingOptions.length > 0 && (
-                          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-                            <label style={{fontSize:'0.9em'}}>Shipping method:</label>
-                            <select
-                              value={selectedShipping?.logisticName || ''}
-                              onChange={(e) => {
-                                const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                                setSelectedShipping(opt || null);
-                              }}
-                              style={{padding:'6px 8px'}}
-                            >
-                              {shippingOptions.map(o => (
-                                <option key={o.logisticName} value={o.logisticName}>
-                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <>
+                            <div style={{marginBottom:'8px'}}>
+                              <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
+                              <select
+                                value={selectedShipping?.logisticName || ''}
+                                onChange={(e) => {
+                                  const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                  setSelectedShipping(opt || null);
+                                }}
+                                style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
+                              >
+                                {shippingOptions.map(o => (
+                                  <option key={o.logisticName} value={o.logisticName}>
+                                    {o.logisticName} — R{o.priceZAR.toFixed(2)}
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedShipping?.deliveryDates && (
+                                <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                  📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Insurance Option */}
+                            {insuranceData && insuranceData.available && (
+                              <div style={{
+                                padding: '10px',
+                                background: '#f8f9fa',
+                                borderRadius: '6px',
+                                marginBottom: '8px',
+                                border: '1px solid #e0e0e0'
+                              }}>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                                  <input
+                                    type="checkbox"
+                                    checked={insuranceSelected}
+                                    onChange={(e) => setInsuranceSelected(e.target.checked)}
+                                    style={{width: '16px', height: '16px'}}
+                                  />
+                                  <span style={{fontSize: '0.9em', flex: 1}}>
+                                    🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
+                                  </span>
+                                </label>
+                                <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
+                                  Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )
                       )}
                     </div>
-                    <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal()}</p>
-                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost()}</p>
+                    <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
+                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                    {insuranceSelected && insuranceData && (
+                      <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
+                    )}
                     {appliedVoucher && (
                       <p style={{marginBottom: '8px', color: '#28a745'}}>
                         Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
@@ -964,6 +1088,26 @@ function App() {
             {cartItems.length > 0 && (
               <div className="cart-footer">
                 <div className="cart-total">
+                  {/* Country Selector */}
+                  <div style={{marginBottom: '12px'}}>
+                    <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
+                      📍 Ship to:
+                    </label>
+                    <select
+                      value={shippingCountry}
+                      onChange={(e) => setShippingCountry(e.target.value)}
+                      style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                    >
+                      <option value="ZA">🇿🇦 South Africa</option>
+                      <option value="US">🇺🇸 United States</option>
+                      <option value="GB">🇬🇧 United Kingdom</option>
+                      <option value="AU">🇦🇺 Australia</option>
+                      <option value="CA">🇨🇦 Canada</option>
+                      <option value="DE">🇩🇪 Germany</option>
+                      <option value="FR">🇫🇷 France</option>
+                    </select>
+                  </div>
+
                   {/* Real-time shipping options */}
                   <div style={{marginBottom: '8px'}}>
                     {shippingLoading ? (
@@ -972,28 +1116,64 @@ function App() {
                       <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
                     ) : (
                       shippingOptions.length > 0 && (
-                        <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-                          <label style={{fontSize:'0.9em'}}>Shipping method:</label>
-                          <select
-                            value={selectedShipping?.logisticName || ''}
-                            onChange={(e) => {
-                              const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                              setSelectedShipping(opt || null);
-                            }}
-                            style={{padding:'6px 8px'}}
-                          >
-                            {shippingOptions.map(o => (
-                              <option key={o.logisticName} value={o.logisticName}>
-                                {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.deliveryDay ? ` (~${o.deliveryDay} days)` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <>
+                          <div style={{marginBottom:'8px'}}>
+                            <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
+                            <select
+                              value={selectedShipping?.logisticName || ''}
+                              onChange={(e) => {
+                                const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                setSelectedShipping(opt || null);
+                              }}
+                              style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
+                            >
+                              {shippingOptions.map(o => (
+                                <option key={o.logisticName} value={o.logisticName}>
+                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                            {selectedShipping?.deliveryDates && (
+                              <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Insurance Option */}
+                          {insuranceData && insuranceData.available && (
+                            <div style={{
+                              padding: '10px',
+                              background: '#f8f9fa',
+                              borderRadius: '6px',
+                              marginBottom: '8px',
+                              border: '1px solid #e0e0e0'
+                            }}>
+                              <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                                <input
+                                  type="checkbox"
+                                  checked={insuranceSelected}
+                                  onChange={(e) => setInsuranceSelected(e.target.checked)}
+                                  style={{width: '16px', height: '16px'}}
+                                />
+                                <span style={{fontSize: '0.9em', flex: 1}}>
+                                  🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
+                                </span>
+                              </label>
+                              <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
+                                Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )
                     )}
                   </div>
-                  <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal()}</p>
-                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost()}</p>
+                  <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
+                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                  {insuranceSelected && insuranceData && (
+                    <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
+                  )}
                   {appliedVoucher && (
                     <p style={{marginBottom: '8px', color: '#28a745'}}>
                       Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
