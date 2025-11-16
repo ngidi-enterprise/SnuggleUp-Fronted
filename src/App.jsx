@@ -576,7 +576,7 @@ function App() {
         const productId = item.id.toString().replace('curated-', '');
         
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com'}/api/products/${productId}`);
+          const response = await fetch(`${API_BASE}/api/products/${productId}`);
           if (!response.ok) return { item, available: false, reason: 'Product not found' };
           
           const { product } = await response.json();
@@ -692,15 +692,27 @@ function App() {
       setShippingLoading(true);
       setShippingError('');
       try {
+        // Only include items that have a CJ variant id; older cart entries may lack it
+        const itemsWithVid = cartItems
+          .filter(ci => !!ci.cj_vid)
+          .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
+
+        if (itemsWithVid.length === 0) {
+          console.warn('Shipping quotes skipped: no items with cj_vid in cart. Re-add items from catalog.');
+          setShippingOptions([]);
+          setInsuranceData(null);
+          setSelectedShipping(null);
+          setShippingError('No shippable items in cart');
+          setShippingLoading(false);
+          return;
+        }
+
         const body = {
-          items: cartItems.map(ci => ({ 
-            cj_vid: ci.cj_vid,  // CJ variant ID required for freight calculation
-            quantity: ci.quantity 
-          })),
-          shippingCountry, // Use selected country
-          orderValue: getSubtotal() // For insurance calculation
+          items: itemsWithVid,
+          shippingCountry,
+          orderValue: getSubtotal()
         };
-        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com'}/api/shipping/quote`, {
+        const res = await fetch(`${API_BASE}/api/shipping/quote`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -866,7 +878,10 @@ function App() {
                       {shippingLoading ? (
                         <p>Getting shipping options…</p>
                       ) : shippingError ? (
-                        <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
+                        <div>
+                          <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
+                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                        </div>
                       ) : (
                         shippingOptions.length > 0 && (
                           <>
@@ -1134,7 +1149,10 @@ function App() {
                     {shippingLoading ? (
                       <p>Getting shipping options…</p>
                     ) : shippingError ? (
-                      <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
+                      <div>
+                        <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
+                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                      </div>
                     ) : (
                       shippingOptions.length > 0 && (
                         <>
