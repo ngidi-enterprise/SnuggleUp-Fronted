@@ -45,8 +45,8 @@ function App() {
   
   const { user, token, isAuthenticated } = useAuth();
 
-  // API base URL
-  const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.snuggleup.co.za';
+  // API base URL - use Render deployment since local backend isn't running
+  const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   // Save cart to backend (authenticated users only)
   const saveCartToBackend = async (items) => {
