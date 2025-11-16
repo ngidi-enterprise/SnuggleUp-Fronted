@@ -45,15 +45,42 @@ function App() {
   
   const { user, token, isAuthenticated } = useAuth();
 
-  // API base URL - use Render deployment since local backend isn't running
-  const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
+  // API base URLs with automatic fallback (custom domain -> Render)
+  const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE || '').trim();
+  const FALLBACK_API_BASE = 'https://snuggleup-backend.onrender.com';
+  const API_BASES = [...new Set([PRIMARY_API_BASE, FALLBACK_API_BASE].filter(Boolean))];
+  const [apiBaseInUse, setApiBaseInUse] = useState(API_BASES[0] || FALLBACK_API_BASE);
+
+  // Helper: fetch with fallback across API bases
+  const fetchApi = async (path, options) => {
+    let lastErr;
+    for (const base of API_BASES) {
+      try {
+        const res = await fetch(`${base}${path}`, options);
+        if (res.ok) {
+          if (apiBaseInUse !== base) setApiBaseInUse(base);
+          return res;
+        }
+        // gather error and try next base
+        try {
+          const errJson = await res.json();
+          lastErr = new Error(errJson.error || `HTTP ${res.status}`);
+        } catch {
+          lastErr = new Error(`HTTP ${res.status}`);
+        }
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('All API bases failed');
+  };
 
   // Save cart to backend (authenticated users only)
   const saveCartToBackend = async (items) => {
     if (!isAuthenticated || !token) return;
     
     try {
-      const response = await fetch(`${API_BASE}/api/cart`, {
+      const response = await fetchApi(`/api/cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +104,7 @@ function App() {
     if (!isAuthenticated || !token) return null;
     
     try {
-      const response = await fetch(`${API_BASE}/api/cart`, {
+      const response = await fetchApi(`/api/cart`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -265,8 +292,7 @@ function App() {
       }
 
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
-        const res = await fetch(`${API_BASE}/api/admin/analytics`, {
+        const res = await fetchApi(`/api/admin/analytics`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -576,7 +602,7 @@ function App() {
         const productId = item.id.toString().replace('curated-', '');
         
         try {
-          const response = await fetch(`${API_BASE}/api/products/${productId}`);
+          const response = await fetchApi(`/api/products/${productId}`);
           if (!response.ok) return { item, available: false, reason: 'Product not found' };
           
           const { product } = await response.json();
@@ -712,7 +738,7 @@ function App() {
           shippingCountry,
           orderValue: getSubtotal()
         };
-        const res = await fetch(`${API_BASE}/api/shipping/quote`, {
+        const res = await fetchApi(`/api/shipping/quote`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
