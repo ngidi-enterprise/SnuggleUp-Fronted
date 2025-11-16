@@ -466,12 +466,16 @@ export default function ProductCuration() {
                     <th>Cost Price</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
+                    <th>Link Status</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {curatedProducts.map((product) => (
+                  {curatedProducts.map((product) => {
+                    const isLinked = !!product.cj_vid;
+                    
+                    return (
                     <tr key={product.id}>
                       <td>
                         {product.product_image ? (
@@ -500,6 +504,26 @@ export default function ProductCuration() {
                         </span>
                       </td>
                       <td>
+                        <span style={{
+                          padding: '4px 12px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          background: isLinked ? '#d5f4e6' : '#fee2e2',
+                          color: isLinked ? '#27ae60' : '#dc3545',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          {isLinked ? '✅ Linked' : '❌ Not Linked'}
+                        </span>
+                        {isLinked && (
+                          <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
+                            VID: {product.cj_vid.substring(0, 12)}...
+                          </div>
+                        )}
+                      </td>
+                      <td>
                         <span
                           className={`status-badge ${product.is_active ? 'status-active' : 'status-inactive'}`}
                         >
@@ -513,6 +537,15 @@ export default function ProductCuration() {
                         >
                           Edit
                         </button>
+                        {!isLinked && (
+                          <button
+                            className="btn-small"
+                            style={{ background: '#3498db', color: 'white' }}
+                            onClick={() => openEditModal(product)}
+                          >
+                            🔗 Link to CJ
+                          </button>
+                        )}
                         <button
                           className="btn-small btn-toggle"
                           onClick={() => toggleActive(product.id, product.is_active)}
@@ -527,7 +560,8 @@ export default function ProductCuration() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )})}
+
                 </tbody>
               </table>
             )}
@@ -573,6 +607,166 @@ export default function ProductCuration() {
                   placeholder="Detailed description with keywords. E.g., 'Soft cotton baby romper perfect for newborns. Breathable fabric keeps baby comfortable all day...'"
                 />
                 <small>Include key features, benefits, and natural keywords for SEO</small>
+              </div>
+
+              {/* CJ Product Linking Section */}
+              <div style={{
+                marginTop: '24px',
+                padding: '20px',
+                background: editingProduct.cj_vid ? '#d5f4e6' : '#fff3cd',
+                borderRadius: '8px',
+                border: `2px solid ${editingProduct.cj_vid ? '#27ae60' : '#ffc107'}`
+              }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#2c3e50', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🔗 CJ Dropshipping Link
+                  {editingProduct.cj_vid ? (
+                    <span style={{ fontSize: '12px', color: '#27ae60', fontWeight: 'normal' }}>✅ Linked</span>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#f39c12', fontWeight: 'normal' }}>❌ Not Linked</span>
+                  )}
+                </h3>
+                
+                {editingProduct.cj_vid ? (
+                  <div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#27ae60' }}>✅ This product is linked to CJ Dropshipping</strong>
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                        <div><strong>CJ Product ID:</strong> {editingProduct.cj_pid}</div>
+                        <div><strong>CJ Variant ID:</strong> {editingProduct.cj_vid}</div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      padding: '12px', 
+                      background: 'white', 
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      color: '#666'
+                    }}>
+                      ℹ️ This product now supports:
+                      <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                        <li>Real-time shipping quotes with multiple carriers</li>
+                        <li>Accurate delivery date estimation</li>
+                        <li>Shipping insurance options</li>
+                        <li>Automatic stock sync from CJ</li>
+                      </ul>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to unlink this product from CJ? Shipping calculator will not work for this product.')) {
+                          // Add unlink logic here
+                          console.log('Unlink product from CJ');
+                        }
+                      }}
+                      style={{
+                        marginTop: '12px',
+                        padding: '8px 16px',
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🔓 Unlink from CJ
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ marginBottom: '16px', fontSize: '13px', color: '#666' }}>
+                      <strong>⚠️ This product needs to be linked to a CJ product to enable:</strong>
+                      <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                        <li>Real-time shipping quotes</li>
+                        <li>Delivery date estimates</li>
+                        <li>Shipping insurance</li>
+                        <li>Automatic fulfillment</li>
+                      </ul>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      background: 'white',
+                      borderRadius: '6px',
+                      border: '1px solid #dee2e6'
+                    }}>
+                      <div style={{ marginBottom: '12px', fontSize: '14px', fontWeight: '500' }}>
+                        Current product: <strong>{editingProduct.product_name}</strong>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                        Search for the matching CJ product below or use the existing CJ Product ID if you know it:
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                        <input
+                          type="text"
+                          placeholder="Enter CJ Product ID (pid) to quick-link..."
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            border: '1px solid #ced4da',
+                            borderRadius: '4px',
+                            fontSize: '13px'
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.target.value.trim()) {
+                              console.log('Quick link to CJ PID:', e.target.value.trim());
+                              // Add quick link logic here
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          style={{
+                            padding: '8px 16px',
+                            background: '#3498db',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Quick Link
+                        </button>
+                      </div>
+                      <div style={{ 
+                        textAlign: 'center', 
+                        color: '#999', 
+                        fontSize: '12px',
+                        margin: '12px 0'
+                      }}>
+                        OR
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Switch to search tab and auto-search for this product
+                          setActiveTab('search');
+                          setSearchQuery(editingProduct.product_name.split(' ').slice(0, 3).join(' '));
+                          setTimeout(() => searchCJProducts(), 100);
+                          closeEditModal();
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          background: '#27ae60',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        🔍 Search CJ Catalog for "{editingProduct.product_name.split(' ').slice(0, 3).join(' ')}"
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="form-row">
