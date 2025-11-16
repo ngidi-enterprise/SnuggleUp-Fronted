@@ -4,12 +4,23 @@ import { trackPurchase } from './lib/analytics';
 
 function CheckoutSuccess() {
   const [orderDetails, setOrderDetails] = useState(null);
+  const [checkoutData, setCheckoutData] = useState(null);
 
   useEffect(() => {
     // Get order details from URL parameters or localStorage
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('m_payment_id') || localStorage.getItem('lastOrderId');
     const paymentId = urlParams.get('pf_payment_id');
+    
+    // Get checkout data (insurance, shipping, etc)
+    const savedCheckoutData = localStorage.getItem('checkoutData');
+    if (savedCheckoutData) {
+      try {
+        setCheckoutData(JSON.parse(savedCheckoutData));
+      } catch (err) {
+        console.error('Failed to parse checkout data:', err);
+      }
+    }
     
     if (orderId) {
       setOrderDetails({
@@ -23,14 +34,24 @@ function CheckoutSuccess() {
       
       // Get cart items from localStorage before clearing
       const savedCart = localStorage.getItem('cart');
+      const savedCheckout = localStorage.getItem('checkoutData');
       if (savedCart) {
         try {
           const cartItems = JSON.parse(savedCart);
-          const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          const shipping = total >= 800 ? 0 : 99;
+          const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          let shipping = 0;
+          let insuranceCost = 0;
+          if (savedCheckout) {
+            try {
+              const cd = JSON.parse(savedCheckout);
+              shipping = cd.shipping ?? 0;
+              insuranceCost = cd.insuranceSelected ? (cd.insuranceData?.costZAR || 0) : 0;
+            } catch {}
+          }
+          const total = subtotal + shipping + insuranceCost;
           
           // Track purchase conversion
-          trackPurchase(orderId, cartItems, total + shipping, shipping);
+          trackPurchase(orderId, cartItems, total, shipping);
         } catch (err) {
           console.error('Failed to track purchase:', err);
         }
@@ -39,6 +60,7 @@ function CheckoutSuccess() {
       // Clear cart from localStorage
       localStorage.removeItem('cart');
       localStorage.removeItem('lastOrderId');
+      localStorage.removeItem('checkoutData');
       
       // Clear cart from backend (for authenticated users)
       const clearBackendCart = async () => {
@@ -97,7 +119,12 @@ function CheckoutSuccess() {
           <ul>
             <li>📧 You'll receive an email confirmation shortly</li>
             <li>📦 Your order will be processed within 24 hours</li>
-            <li>🚚 Free delivery for orders over R800</li>
+            {checkoutData?.shippingCountry && checkoutData.shippingCountry !== 'ZA' && (
+              <li>🌍 International delivery to {checkoutData.shippingCountry}</li>
+            )}
+            {checkoutData?.insuranceSelected && (
+              <li>🛡️ Your order is insured up to R{checkoutData.insuranceData?.coverage?.toFixed(2) || '0.00'}</li>
+            )}
             <li>📞 We'll contact you if there are any issues</li>
           </ul>
         </div>
