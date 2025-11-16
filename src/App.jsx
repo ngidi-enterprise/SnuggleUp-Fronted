@@ -718,17 +718,27 @@ function App() {
       setShippingLoading(true);
       setShippingError('');
       try {
+        // DEBUG: Log cart items to see what data we have
+        console.log('🛒 Cart items for shipping:', cartItems.map(ci => ({
+          id: ci.id,
+          name: ci.name,
+          cj_vid: ci.cj_vid,
+          has_cj_vid: !!ci.cj_vid
+        })));
+
         // Only include items that have a CJ variant id; older cart entries may lack it
         const itemsWithVid = cartItems
           .filter(ci => !!ci.cj_vid)
           .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
 
         if (itemsWithVid.length === 0) {
-          console.warn('Shipping quotes skipped: no items with cj_vid in cart. Re-add items from catalog.');
+          console.error('❌ NO ITEMS WITH cj_vid!');
+          console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
+          console.log('This means the product in the database is missing cj_vid.');
           setShippingOptions([]);
           setInsuranceData(null);
           setSelectedShipping(null);
-          setShippingError('No shippable items in cart');
+          setShippingError(`Cart items missing shipping data (${cartItems.length} items, 0 shippable)`);
           setShippingLoading(false);
           return;
         }
