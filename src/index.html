@@ -2,19 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="icon" type="image/png" href="/images/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SnuggleUp — Baby Essentials</title>
-    
-    <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX', {
-        send_page_view: false // We'll manually track SPAs
-      });
+    <meta name="description" content="SnuggleUp — curated baby essentials with fast shipping in South Africa." />
+    <meta property="og:title" content="SnuggleUp — Baby Essentials" />
+    <meta property="og:description" content="Curated baby products, safe checkout, reliable shipping." />
+    <meta property="og:url" content="https://snuggleup.co.za" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/images/logo.png" />
+
+    <!-- Analytics/Hotjar are initialized in src/lib/analytics.js using import.meta.env; inline placeholders removed for static hosting safety. -->
+
+    <!-- JSON-LD Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SnuggleUp",
+      "url": "https://snuggleup.co.za",
+      "logo": "https://snuggleup.co.za/images/logo.png",
+      "sameAs": [
+        "https://www.facebook.com/",
+        "https://www.instagram.com/"
+      ]
+    }
     </script>
   </head>
   <body>
