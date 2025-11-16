@@ -453,6 +453,14 @@ function App() {
     };
   };
 
+  // Derived flag: any cart item out of stock or quantity exceeds available
+  const hasStockIssues = useMemo(() => {
+    return cartItems.some((item) => {
+      const stockQty = typeof item.stock_quantity === 'number' ? item.stock_quantity : Number(item.stock_quantity || 0);
+      return stockQty === 0 || stockQty < (item.quantity || 0);
+    });
+  }, [cartItems]);
+
   const getSubtotal = () => {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
@@ -944,7 +952,20 @@ function App() {
                       {voucherError && (<p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>)}
                     </div>
                   )}
-                  <button className="proceed-checkout" onClick={handleCheckout}>Proceed to PayFast Checkout</button>
+                  <button 
+                    className="proceed-checkout" 
+                    onClick={handleCheckout}
+                    disabled={hasStockIssues}
+                    title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
+                    style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  >
+                    Proceed to PayFast Checkout
+                  </button>
+                  {hasStockIssues && (
+                    <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
+                      Please remove or adjust items marked "Out of stock" before continuing.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1214,9 +1235,20 @@ function App() {
                   </div>
                 )}
                 
-                <button className="proceed-checkout" onClick={handleCheckout}>
+                <button 
+                  className="proceed-checkout" 
+                  onClick={handleCheckout}
+                  disabled={hasStockIssues}
+                  title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
+                  style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                >
                   Proceed to PayFast Checkout
                 </button>
+                {hasStockIssues && (
+                  <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
+                    Please remove or adjust items marked "Out of stock" before continuing.
+                  </p>
+                )}
               </div>
             )}
           </div>
