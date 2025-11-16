@@ -84,6 +84,10 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       price: Number(price) || 0,
       image: selectedImage || images[0] || '',
       category: product.category || 'Store',
+      // Carry-through fields needed for shipping + stock in cart
+      cj_vid: product.cj_vid,
+      cj_pid: product.cj_pid,
+      stock_quantity: stockQuantity,
     };
     for (let i = 0; i < quantityToAdd; i++) onAddToCart?.(item);
     onClose?.();
