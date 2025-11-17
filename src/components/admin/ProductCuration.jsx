@@ -25,6 +25,8 @@ export default function ProductCuration() {
   const [suggestedPrice, setSuggestedPrice] = useState(null);
   const [targetMargin, setTargetMargin] = useState(100); // Default 100% margin (2x markup)
   const [addingProducts, setAddingProducts] = useState(new Set()); // Track which products are being added
+  const [quickLinkPid, setQuickLinkPid] = useState(''); // For manual PID entry
+  const [linking, setLinking] = useState(false); // Loading state for linking operation
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -278,6 +280,97 @@ export default function ProductCuration() {
   const applySuggestedPrice = () => {
     if (suggestedPrice) {
       setEditForm({...editForm, custom_price: suggestedPrice.toFixed(2)});
+    }
+  };
+
+  // Quick Link: Link product to CJ by Product ID
+  const handleQuickLink = async () => {
+    if (!quickLinkPid.trim() || !editingProduct) {
+      alert('Please enter a CJ Product ID');
+      return;
+    }
+
+    setLinking(true);
+    try {
+      // Fetch CJ product details to get the variant ID
+      const response = await fetch(
+        `${API_BASE}/api/admin/cj-products/search?q=${encodeURIComponent(quickLinkPid)}&pageSize=1`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch CJ product');
+      }
+
+      const data = await response.json();
+      const items = data.items || [];
+      
+      if (items.length === 0 || items[0].pid !== quickLinkPid) {
+        alert(`No CJ product found with ID: ${quickLinkPid}`);
+        return;
+      }
+
+      const cjProduct = items[0];
+      
+      // Update the curated product with CJ linking data
+      const updateResponse = await fetch(`${API_BASE}/api/admin/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cj_pid: cjProduct.pid,
+          cj_vid: cjProduct.vid || cjProduct.pid, // Use vid if available, otherwise pid
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to link product to CJ');
+      }
+
+      alert('✅ Product successfully linked to CJ!');
+      setQuickLinkPid('');
+      await fetchCuratedProducts();
+      closeEditModal();
+    } catch (error) {
+      alert('Error linking product: ' + error.message);
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  // Unlink product from CJ
+  const handleUnlink = async () => {
+    if (!editingProduct) return;
+    
+    if (!confirm('Are you sure you want to unlink this product from CJ? Shipping calculator will not work for this product.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cj_vid: null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to unlink product');
+      }
+
+      alert('Product unlinked from CJ');
+      await fetchCuratedProducts();
+      closeEditModal();
+    } catch (error) {
+      alert('Error unlinking product: ' + error.message);
     }
   };
 
@@ -652,12 +745,7 @@ export default function ProductCuration() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to unlink this product from CJ? Shipping calculator will not work for this product.')) {
-                          // Add unlink logic here
-                          console.log('Unlink product from CJ');
-                        }
-                      }}
+                      onClick={handleUnlink}
                       style={{
                         marginTop: '12px',
                         padding: '8px 16px',
@@ -699,6 +787,8 @@ export default function ProductCuration() {
                         <input
                           type="text"
                           placeholder="Enter CJ Product ID (pid) to quick-link..."
+                          value={quickLinkPid}
+                          onChange={(e) => setQuickLinkPid(e.target.value)}
                           style={{
                             flex: 1,
                             padding: '8px 12px',
@@ -707,26 +797,27 @@ export default function ProductCuration() {
                             fontSize: '13px'
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && e.target.value.trim()) {
-                              console.log('Quick link to CJ PID:', e.target.value.trim());
-                              // Add quick link logic here
+                            if (e.key === 'Enter' && quickLinkPid.trim()) {
+                              handleQuickLink();
                             }
                           }}
                         />
                         <button
                           type="button"
+                          onClick={handleQuickLink}
+                          disabled={linking || !quickLinkPid.trim()}
                           style={{
                             padding: '8px 16px',
-                            background: '#3498db',
+                            background: linking ? '#95a5a6' : '#3498db',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             fontSize: '13px',
-                            cursor: 'pointer',
+                            cursor: linking || !quickLinkPid.trim() ? 'not-allowed' : 'pointer',
                             whiteSpace: 'nowrap'
                           }}
                         >
-                          Quick Link
+                          {linking ? 'Linking...' : 'Quick Link'}
                         </button>
                       </div>
                       <div style={{ 
