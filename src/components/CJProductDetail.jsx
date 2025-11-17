@@ -89,6 +89,17 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       cj_pid: product.cj_pid,
       stock_quantity: stockQuantity,
     };
+    
+    // DEBUG: Log what we're adding to cart
+    console.log('➕ Adding to cart:', {
+      productId: product.id,
+      name: name.substring(0, 30),
+      has_cj_vid: !!product.cj_vid,
+      cj_vid: product.cj_vid,
+      cj_pid: product.cj_pid,
+      fullProduct: product
+    });
+    
     for (let i = 0; i < quantityToAdd; i++) onAddToCart?.(item);
     onClose?.();
   };
