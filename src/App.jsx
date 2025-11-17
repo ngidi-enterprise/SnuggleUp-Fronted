@@ -926,8 +926,20 @@ function App() {
                         <p>Getting shipping options…</p>
                       ) : shippingError ? (
                         <div>
-                          <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
-                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                          <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                            These products may not be available for shipping to your location. 
+                            We're using standard shipping rates (R99.00). 
+                            {shippingError && ` Error: ${String(shippingError)}`}
+                          </p>
+                        </div>
+                      ) : shippingOptions.length === 0 ? (
+                        <div>
+                          <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                            Our shipping provider doesn't have delivery methods for these products to {selectedCountry?.name || 'your location'}. 
+                            Try selecting different products or contact support. Using standard rate: R99.00
+                          </p>
                         </div>
                       ) : (
                         shippingOptions.length > 0 && (
@@ -1197,8 +1209,20 @@ function App() {
                       <p>Getting shipping options…</p>
                     ) : shippingError ? (
                       <div>
-                        <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
-                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                        <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                          These products may not be available for shipping to your location. 
+                          Using standard rate: R99.00
+                          {shippingError && ` Error: ${String(shippingError)}`}
+                        </p>
+                      </div>
+                    ) : shippingOptions.length === 0 ? (
+                      <div>
+                        <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                          Our shipping provider doesn't have delivery methods for these products to {selectedCountry?.name || 'your location'}. 
+                          Using standard rate: R99.00
+                        </p>
                       </div>
                     ) : (
                       shippingOptions.length > 0 && (
