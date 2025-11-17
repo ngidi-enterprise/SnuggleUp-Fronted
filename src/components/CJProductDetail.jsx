@@ -24,6 +24,17 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         
         const res = await response.json();
         const data = res.product;
+        
+        // DEBUG: Log full product data from database
+        console.log('📦 Product loaded from database:', {
+          id: data.id,
+          name: data.product_name,
+          cj_pid: data.cj_pid,
+          cj_vid: data.cj_vid,
+          has_cj_vid: !!data.cj_vid,
+          fullData: data
+        });
+        
         setProduct(data);
         
         // Track product view
