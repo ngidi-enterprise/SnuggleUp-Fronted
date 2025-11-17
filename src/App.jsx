@@ -937,7 +937,7 @@ function App() {
                         <div>
                           <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
                           <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                            Our shipping provider doesn't have delivery methods for these products to {selectedCountry?.name || 'your location'}. 
+                            Our shipping provider doesn't have delivery methods for these products to your selected destination. 
                             Try selecting different products or contact support. Using standard rate: R99.00
                           </p>
                         </div>
@@ -1220,7 +1220,7 @@ function App() {
                       <div>
                         <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
                         <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                          Our shipping provider doesn't have delivery methods for these products to {selectedCountry?.name || 'your location'}. 
+                          Our shipping provider doesn't have delivery methods for these products to your selected destination. 
                           Using standard rate: R99.00
                         </p>
                       </div>
