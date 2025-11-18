@@ -5,6 +5,8 @@ export default function ProductCuration() {
   const [searchQuery, setSearchQuery] = useState('baby');
   const [searchResults, setSearchResults] = useState([]);
   const [curatedProducts, setCuratedProducts] = useState([]);
+  const [curatedSearchQuery, setCuratedSearchQuery] = useState(''); // Search within curated products
+  const [filteredCuratedProducts, setFilteredCuratedProducts] = useState([]); // Filtered curated products
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'curated'
@@ -42,8 +44,28 @@ export default function ProductCuration() {
       });
       const data = await res.json();
       setCuratedProducts(data.products || []);
+      setFilteredCuratedProducts(data.products || []); // Initialize filtered list
     } catch (err) {
       console.error('Fetch curated products error:', err);
+    }
+  };
+
+  const searchCuratedProducts = async () => {
+    if (!curatedSearchQuery.trim()) {
+      setFilteredCuratedProducts(curatedProducts);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/admin/products/search?q=${encodeURIComponent(curatedSearchQuery)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setFilteredCuratedProducts(data.products || []);
+    } catch (err) {
+      console.error('Curated product search error:', err);
+      setFilteredCuratedProducts([]);
     }
   };
 
@@ -396,7 +418,7 @@ export default function ProductCuration() {
           <div className="search-bar">
             <input
               type="text"
-              placeholder="Search for baby products..."
+              placeholder="Search supplier products by name or paste CJ SKU/PID (e.g., CJYE206896609IR)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchCJProducts()}
@@ -405,6 +427,15 @@ export default function ProductCuration() {
               {loading ? 'Searching...' : 'Search'}
             </button>
           </div>
+          
+          <p style={{ 
+            fontSize: '13px', 
+            color: '#7f8c8d', 
+            marginTop: '8px',
+            marginBottom: '16px' 
+          }}>
+            💡 <strong>Tip:</strong> Search by product name (e.g., "baby bottle") or paste a CJ product SKU/PID directly (e.g., CJYE206896609IR)
+          </p>
 
           {error && <div className="admin-error">{error}</div>}
 
@@ -547,15 +578,54 @@ export default function ProductCuration() {
 
       {activeTab === 'curated' && (
         <div className="curated-section">
+          {/* Search bar for curated products */}
+          <div className="search-bar" style={{ marginBottom: '20px' }}>
+            <input
+              type="text"
+              placeholder="Search your products by name, database ID, or CJ PID..."
+              value={curatedSearchQuery}
+              onChange={(e) => setCuratedSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  searchCuratedProducts();
+                }
+              }}
+            />
+            <button onClick={searchCuratedProducts}>
+              Search
+            </button>
+            {curatedSearchQuery && (
+              <button 
+                onClick={() => {
+                  setCuratedSearchQuery('');
+                  setFilteredCuratedProducts(curatedProducts);
+                }}
+                style={{ background: '#95a5a6' }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          
+          <p style={{ 
+            fontSize: '13px', 
+            color: '#7f8c8d', 
+            marginBottom: '16px' 
+          }}>
+            💡 <strong>Tip:</strong> Search by product name, your database ID (e.g., "42"), or CJ PID (e.g., "CJYE206896609IR")
+          </p>
+          
           <div className="curated-list">
-            {curatedProducts.length === 0 ? (
-              <p>No curated products yet. Search and add products from the supplier catalog!</p>
+            {filteredCuratedProducts.length === 0 ? (
+              <p>{curatedSearchQuery ? 'No products found matching your search.' : 'No curated products yet. Search and add products from the supplier catalog!'}</p>
             ) : (
               <table className="curated-table">
                 <thead>
                   <tr>
+                    <th>ID</th>
                     <th>Image</th>
                     <th>Name</th>
+                    <th>CJ PID</th>
                     <th>Cost Price</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
@@ -565,11 +635,14 @@ export default function ProductCuration() {
                   </tr>
                 </thead>
                 <tbody>
-                  {curatedProducts.map((product) => {
+                  {filteredCuratedProducts.map((product) => {
                     const isLinked = !!product.cj_vid;
                     
                     return (
                     <tr key={product.id}>
+                      <td style={{ fontWeight: 'bold', color: '#3498db' }}>
+                        #{product.id}
+                      </td>
                       <td>
                         {product.product_image ? (
                           <img
@@ -582,6 +655,9 @@ export default function ProductCuration() {
                         )}
                       </td>
                       <td>{product.product_name}</td>
+                      <td style={{ fontSize: '11px', color: '#7f8c8d', fontFamily: 'monospace' }}>
+                        {product.cj_pid}
+                      </td>
                       <td>R {Number(product.cj_cost_price).toFixed(2)}</td>
                       <td>R {Number(product.custom_price || product.suggested_price).toFixed(2)}</td>
                       <td>
