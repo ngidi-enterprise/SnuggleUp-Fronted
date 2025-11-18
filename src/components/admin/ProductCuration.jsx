@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProductCuration() {
-  const [searchQuery, setSearchQuery] = useState('baby');
+  // Default to empty so it doesn't auto-fill after refresh
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [curatedProducts, setCuratedProducts] = useState([]);
   const [curatedSearchQuery, setCuratedSearchQuery] = useState(''); // Search within curated products
