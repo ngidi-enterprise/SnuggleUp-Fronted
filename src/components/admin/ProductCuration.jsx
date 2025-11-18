@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
+// CJ prices are in USD - convert to ZAR for display
+const USD_TO_ZAR = 18.90; // Update this periodically
+
 export default function ProductCuration() {
   // Default to empty so it doesn't auto-fill after refresh
   const [searchQuery, setSearchQuery] = useState('');
@@ -508,6 +511,10 @@ export default function ProductCuration() {
                   (cp) => cp.cj_pid === product.pid
                 );
                 const isAdding = addingProducts.has(product.pid);
+                
+                // Convert USD price to ZAR
+                const costZAR = Math.round(product.price * USD_TO_ZAR * 100) / 100;
+                const suggestedZAR = Math.round(costZAR * 2 * 100) / 100;
 
                 return (
                   <div key={product.pid} className="product-card">
@@ -521,10 +528,10 @@ export default function ProductCuration() {
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
                       <p className="product-card-price">
-                        Cost: R {Number(product.price || 0).toFixed(2)}
+                        Cost: R{costZAR.toFixed(2)} <span style={{fontSize: '0.85em', color: '#666'}}>(${product.price.toFixed(2)} USD)</span>
                       </p>
                       <p className="product-card-suggested">
-                        Suggested: R {(Number(product.price || 0) * 2).toFixed(2)}
+                        Suggested: R{suggestedZAR.toFixed(2)}
                       </p>
                       {isAlreadyCurated ? (
                         <button className="btn-secondary" disabled>
