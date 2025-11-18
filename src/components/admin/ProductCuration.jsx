@@ -174,12 +174,15 @@ export default function ProductCuration() {
     
     try {
       // Validate price before adding
-      const costPrice = Number(selectedProduct.price) || 0;
+      const priceUSD = Number(selectedProduct.price) || 0;
       
-      if (costPrice <= 0) {
+      if (priceUSD <= 0) {
         setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
         return;
       }
+
+      // Convert USD to ZAR here in frontend (backend expects ZAR)
+      const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
 
       // Mark product as being added (optimistic UI)
       setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
@@ -197,7 +200,7 @@ export default function ProductCuration() {
           seo_title: customTitle || selectedProduct.name,
           product_description: '',
           product_image: selectedProduct.image,
-          cj_cost_price: costPrice,
+          cj_cost_price: costZAR, // Send ZAR price (already converted)
           category: selectedProduct.category,
         }),
       });
