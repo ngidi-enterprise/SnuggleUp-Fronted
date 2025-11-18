@@ -512,8 +512,9 @@ export default function ProductCuration() {
                 );
                 const isAdding = addingProducts.has(product.pid);
                 
-                // Convert USD price to ZAR
-                const costZAR = Math.round(product.price * USD_TO_ZAR * 100) / 100;
+                // Convert USD price to ZAR (handle string/number types)
+                const priceUSD = Number(product.price) || 0;
+                const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
                 const suggestedZAR = Math.round(costZAR * 2 * 100) / 100;
 
                 return (
@@ -528,7 +529,7 @@ export default function ProductCuration() {
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
                       <p className="product-card-price">
-                        Cost: R{costZAR.toFixed(2)} <span style={{fontSize: '0.85em', color: '#666'}}>(${product.price.toFixed(2)} USD)</span>
+                        Cost: R{costZAR.toFixed(2)} <span style={{fontSize: '0.85em', color: '#666'}}>(${priceUSD.toFixed(2)} USD)</span>
                       </p>
                       <p className="product-card-suggested">
                         Suggested: R{suggestedZAR.toFixed(2)}
