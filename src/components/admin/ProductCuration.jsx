@@ -15,11 +15,18 @@ export default function ProductCuration() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState({
     product_name: '',
+    original_cj_title: '',
+    seo_title: '',
     product_description: '',
     custom_price: '',
     category: '',
     stock_quantity: 0
   });
+  const [seoSuggestions, setSeoSuggestions] = useState([]);
+  const [seoReasoning, setSeoReasoning] = useState('');
+  const [generatingSEO, setGeneratingSEO] = useState(false);
+  const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); // Product for AI SEO generation
   const [competitorPrices, setCompetitorPrices] = useState({
     competitor1: '',
     competitor2: ''
@@ -113,9 +120,56 @@ export default function ProductCuration() {
   };
 
   const addToCurated = async (product) => {
+    // Show SEO panel instead of immediately adding
+    setSelectedProduct(product);
+    setShowSEOPanel(true);
+    setSeoSuggestions([]);
+    setSeoReasoning('');
+  };
+
+  const generateSEOTitle = async () => {
+    if (!selectedProduct) return;
+    
+    setGeneratingSEO(true);
+    setError('');
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/generate-seo-title`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          originalTitle: selectedProduct.name,
+          category: selectedProduct.category,
+          price: Number(selectedProduct.price) * 2, // Retail price (2x markup)
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        setSeoSuggestions(data.suggestions || []);
+        setSeoReasoning(data.reasoning || '');
+      } else {
+        setError(data.error || 'Failed to generate SEO titles');
+      }
+    } catch (err) {
+      setError('AI service unavailable. Please add product with original title.');
+      // Still allow manual title editing
+      setSeoSuggestions([selectedProduct.name]);
+    } finally {
+      setGeneratingSEO(false);
+    }
+  };
+
+  const confirmAddToCurated = async (customTitle) => {
+    if (!selectedProduct) return;
+    
     try {
       // Validate price before adding
-      const costPrice = Number(product.price) || 0;
+      const costPrice = Number(selectedProduct.price) || 0;
       
       if (costPrice <= 0) {
         setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
@@ -123,7 +177,7 @@ export default function ProductCuration() {
       }
 
       // Mark product as being added (optimistic UI)
-      setAddingProducts(prev => new Set(prev).add(product.pid));
+      setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
 
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
@@ -132,22 +186,27 @@ export default function ProductCuration() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cj_pid: product.pid,
-          product_name: product.name,
+          cj_pid: selectedProduct.pid,
+          product_name: customTitle || selectedProduct.name, // Use custom/SEO title for display
+          original_cj_title: selectedProduct.name, // Always preserve original
+          seo_title: customTitle || selectedProduct.name,
           product_description: '',
-          product_image: product.image,
+          product_image: selectedProduct.image,
           cj_cost_price: costPrice,
-          category: product.category,
+          category: selectedProduct.category,
         }),
       });
 
       if (res.ok) {
         // Brief delay to show success state, then refresh and reset
         await fetchCuratedProducts();
+        setShowSEOPanel(false);
+        setSelectedProduct(null);
+        setSeoSuggestions([]);
         setTimeout(() => {
           setAddingProducts(prev => {
             const next = new Set(prev);
-            next.delete(product.pid);
+            next.delete(selectedProduct.pid);
             return next;
           });
         }, 1500);
@@ -1127,6 +1186,193 @@ export default function ProductCuration() {
                   Save Changes
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI SEO Title Generator Modal */}
+      {showSEOPanel && selectedProduct && (
+        <div className="modal-overlay" onClick={() => {
+          setShowSEOPanel(false);
+          setSelectedProduct(null);
+          setSeoSuggestions([]);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h2>🤖 AI SEO Title Optimizer</h2>
+              <button className="modal-close" onClick={() => {
+                setShowSEOPanel(false);
+                setSelectedProduct(null);
+                setSeoSuggestions([]);
+              }}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ marginBottom: '24px', padding: '16px', background: '#f8f9fa', borderRadius: '8px' }}>
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name}
+                  style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px' }}
+                />
+                <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '4px' }}>
+                  Original CJ Title:
+                </div>
+                <div style={{ fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                  {selectedProduct.name}
+                </div>
+                <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '8px' }}>
+                  Category: {selectedProduct.category} | Price: R {(Number(selectedProduct.price) * 2).toFixed(2)}
+                </div>
+              </div>
+
+              {!seoSuggestions.length ? (
+                <div style={{ textAlign: 'center', padding: '32px' }}>
+                  <button
+                    onClick={generateSEOTitle}
+                    disabled={generatingSEO}
+                    style={{
+                      padding: '16px 32px',
+                      background: generatingSEO ? '#95a5a6' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: generatingSEO ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseOver={(e) => !generatingSEO && (e.target.style.transform = 'scale(1.05)')}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    {generatingSEO ? '🔄 Generating with AI...' : '✨ Generate SEO Titles with AI'}
+                  </button>
+                  <div style={{ marginTop: '16px', fontSize: '13px', color: '#7f8c8d' }}>
+                    AI will create 3 optimized titles for better search ranking and sales
+                  </div>
+                  <button
+                    onClick={() => confirmAddToCurated(selectedProduct.name)}
+                    style={{
+                      marginTop: '24px',
+                      padding: '10px 20px',
+                      background: 'transparent',
+                      color: '#3498db',
+                      border: '2px solid #3498db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Skip AI - Use Original Title
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {seoReasoning && (
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: '#e3f2fd', 
+                      borderLeft: '4px solid #2196f3',
+                      borderRadius: '4px',
+                      marginBottom: '20px',
+                      fontSize: '13px',
+                      color: '#1565c0'
+                    }}>
+                      💡 {seoReasoning}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#2c3e50' }}>
+                    Select an optimized title or edit below:
+                  </div>
+
+                  {seoSuggestions.map((suggestion, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '16px',
+                        background: 'white',
+                        border: '2px solid #e1e8ed',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => confirmAddToCurated(suggestion)}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.background = '#f8f9fa';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = '#e1e8ed';
+                        e.currentTarget.style.background = 'white';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          minWidth: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: idx === 0 ? '#27ae60' : '#3498db',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
+                          {idx + 1}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', color: '#2c3e50', fontWeight: '500', lineHeight: '1.5' }}>
+                            {suggestion}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#95a5a6', marginTop: '4px' }}>
+                            {suggestion.length} characters {idx === 0 && '(Recommended)'}
+                          </div>
+                        </div>
+                        <div style={{
+                          padding: '6px 12px',
+                          background: '#3498db',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          Select
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#fff3cd', borderRadius: '6px', border: '1px solid #ffc107' }}>
+                    <div style={{ fontSize: '12px', color: '#856404', marginBottom: '8px' }}>
+                      💾 <strong>Note:</strong> Original CJ title "{selectedProduct.name}" will be preserved for reference
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSeoSuggestions([]);
+                      setSeoReasoning('');
+                    }}
+                    style={{
+                      marginTop: '16px',
+                      padding: '8px 16px',
+                      background: 'transparent',
+                      color: '#7f8c8d',
+                      border: '1px solid #e1e8ed',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ← Regenerate Titles
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
