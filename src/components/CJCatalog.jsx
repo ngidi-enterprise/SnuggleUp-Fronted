@@ -26,7 +26,8 @@ function useProductMapping(items) {
 }
 
 export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct, isAdmin }) {
-  const [q, setQ] = useState(query || 'baby');
+  // Default to no filter unless an explicit query is provided by parent
+  const [q, setQ] = useState(typeof query === 'string' ? query : '');
   const [pageNum, setPageNum] = useState(1);
   const [pageSize, setPageSize] = useState(48);
   const [minPrice, setMinPrice] = useState('');
