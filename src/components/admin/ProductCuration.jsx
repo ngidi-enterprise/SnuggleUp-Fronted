@@ -144,6 +144,7 @@ export default function ProductCuration() {
           originalTitle: selectedProduct.name,
           category: selectedProduct.category,
           price: Number(selectedProduct.price) * 2, // Retail price (2x markup)
+          pid: selectedProduct.pid,
         }),
       });
 
