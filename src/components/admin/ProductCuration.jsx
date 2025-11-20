@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-// CJ prices are in USD - convert to ZAR for display
-const USD_TO_ZAR = 18.90; // Update this periodically
-
 export default function ProductCuration() {
-  // Default to empty so it doesn't auto-fill after refresh
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('baby');
   const [searchResults, setSearchResults] = useState([]);
   const [curatedProducts, setCuratedProducts] = useState([]);
   const [curatedSearchQuery, setCuratedSearchQuery] = useState(''); // Search within curated products
@@ -19,19 +15,11 @@ export default function ProductCuration() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editForm, setEditForm] = useState({
     product_name: '',
-    original_cj_title: '',
-    seo_title: '',
     product_description: '',
     custom_price: '',
     category: '',
     stock_quantity: 0
   });
-  const [seoSuggestions, setSeoSuggestions] = useState([]);
-  const [seoReasoning, setSeoReasoning] = useState('');
-  const [generatingSEO, setGeneratingSEO] = useState(false);
-  const [showSEOPanel, setShowSEOPanel] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null); // Product for AI SEO generation
-  const [customMarkup, setCustomMarkup] = useState(2.0); // Custom markup for the product being added
   const [competitorPrices, setCompetitorPrices] = useState({
     competitor1: '',
     competitor2: ''
@@ -125,83 +113,17 @@ export default function ProductCuration() {
   };
 
   const addToCurated = async (product) => {
-    // Show SEO panel instead of immediately adding
-    setSelectedProduct(product);
-    setShowSEOPanel(true);
-    setSeoSuggestions([]);
-    setSeoReasoning('');
-    
-    // Auto-suggest competitive markup based on category
-    const categoryLower = (product.category || '').toLowerCase();
-    let suggestedMarkup = 2.0;
-    
-    if (/furniture|easel|chair/.test(categoryLower)) {
-      suggestedMarkup = 1.3; // Lower markup for expensive items
-    } else if (/toy|plush/.test(categoryLower)) {
-      suggestedMarkup = 1.5;
-    } else if (/stroller|pram/.test(categoryLower)) {
-      suggestedMarkup = 1.4;
-    }
-    
-    setCustomMarkup(suggestedMarkup);
-  };
-
-  const generateSEOTitle = async () => {
-    if (!selectedProduct) return;
-    
-    setGeneratingSEO(true);
-    setError('');
-    
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/products/generate-seo-title`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          originalTitle: selectedProduct.name,
-          category: selectedProduct.category,
-          price: Number(selectedProduct.price) * 2, // Retail price (2x markup)
-          pid: selectedProduct.pid,
-        }),
-      });
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setSeoSuggestions(data.suggestions || []);
-        setSeoReasoning(data.reasoning || '');
-      } else {
-        setError(data.error || 'Failed to generate SEO titles');
-      }
-    } catch (err) {
-      setError('AI service unavailable. Please add product with original title.');
-      // Still allow manual title editing
-      setSeoSuggestions([selectedProduct.name]);
-    } finally {
-      setGeneratingSEO(false);
-    }
-  };
-
-  const confirmAddToCurated = async (customTitle) => {
-    if (!selectedProduct) return;
-    
     try {
       // Validate price before adding
-      const priceUSD = Number(selectedProduct.price) || 0;
+      const costPrice = Number(product.price) || 0;
       
-      if (priceUSD <= 0) {
+      if (costPrice <= 0) {
         setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
         return;
       }
 
-      // Convert USD to ZAR here in frontend (backend expects ZAR)
-      const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
-      const customSuggestedPrice = Math.round(costZAR * customMarkup * 100) / 100;
-
       // Mark product as being added (optimistic UI)
-      setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
+      setAddingProducts(prev => new Set(prev).add(product.pid));
 
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
@@ -210,28 +132,22 @@ export default function ProductCuration() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cj_pid: selectedProduct.pid,
-          product_name: customTitle || selectedProduct.name, // Use custom/SEO title for display
-          original_cj_title: selectedProduct.name, // Always preserve original
-          seo_title: customTitle || selectedProduct.name,
+          cj_pid: product.pid,
+          product_name: product.name,
           product_description: '',
-          product_image: selectedProduct.image,
-          cj_cost_price: costZAR, // Send ZAR price (already converted)
-          custom_suggested_price: customSuggestedPrice, // Custom markup applied
-          category: selectedProduct.category,
+          product_image: product.image,
+          cj_cost_price: costPrice,
+          category: product.category,
         }),
       });
 
       if (res.ok) {
         // Brief delay to show success state, then refresh and reset
         await fetchCuratedProducts();
-        setShowSEOPanel(false);
-        setSelectedProduct(null);
-        setSeoSuggestions([]);
         setTimeout(() => {
           setAddingProducts(prev => {
             const next = new Set(prev);
-            next.delete(selectedProduct.pid);
+            next.delete(product.pid);
             return next;
           });
         }, 1500);
@@ -502,7 +418,7 @@ export default function ProductCuration() {
           <div className="search-bar">
             <input
               type="text"
-              placeholder="Search supplier products by name or paste CJ SKU/PID (e.g., CJYE206896609IR)"
+              placeholder="Search for baby products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchCJProducts()}
@@ -511,15 +427,6 @@ export default function ProductCuration() {
               {loading ? 'Searching...' : 'Search'}
             </button>
           </div>
-          
-          <p style={{ 
-            fontSize: '13px', 
-            color: '#7f8c8d', 
-            marginTop: '8px',
-            marginBottom: '16px' 
-          }}>
-            💡 <strong>Tip:</strong> Search by product name (e.g., "baby bottle") or paste a CJ product SKU/PID directly (e.g., CJYE206896609IR)
-          </p>
 
           {error && <div className="admin-error">{error}</div>}
 
@@ -531,50 +438,9 @@ export default function ProductCuration() {
                   (cp) => cp.cj_pid === product.pid
                 );
                 const isAdding = addingProducts.has(product.pid);
-                
-                // Convert USD price to ZAR (handle string/number types)
-                const priceUSD = Number(product.price) || 0;
-                const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
-                const suggestedZAR = Math.round(costZAR * 2 * 100) / 100;
-
-                // Competitiveness check: typical SA retail ranges by category
-                const categoryLower = (product.category || '').toLowerCase();
-                let competitiveMax = 500; // Default max for baby items
-                let warningThreshold = 1.5; // Warn if >1.5x typical max
-                
-                if (/toy|plush|rattle/.test(categoryLower)) {
-                  competitiveMax = 300;
-                } else if (/furniture|easel|chair/.test(categoryLower)) {
-                  competitiveMax = 700;
-                } else if (/feeding|bottle|pacifier/.test(categoryLower)) {
-                  competitiveMax = 200;
-                } else if (/stroller|pram/.test(categoryLower)) {
-                  competitiveMax = 3000;
-                }
-                
-                const isExpensive = suggestedZAR > (competitiveMax * warningThreshold);
 
                 return (
-                  <div key={product.pid} className="product-card" style={{
-                    border: isExpensive ? '2px solid #e74c3c' : undefined,
-                    position: 'relative'
-                  }}>
-                    {isExpensive && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        background: '#e74c3c',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        ⚠️ HIGH PRICE
-                      </div>
-                    )}
+                  <div key={product.pid} className="product-card">
                     <div className="product-card-image">
                       {product.image ? (
                         <img src={product.image} alt={product.name} />
@@ -585,17 +451,10 @@ export default function ProductCuration() {
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
                       <p className="product-card-price">
-                        Cost: R{costZAR.toFixed(2)}
-                        <span style={{fontSize: '0.85em', color: '#666'}}> (USD ${priceUSD.toFixed(2)})</span>
+                        Cost: R {Number(product.price || 0).toFixed(2)}
                       </p>
-                      <p className="product-card-suggested" style={{
-                        color: isExpensive ? '#e74c3c' : undefined,
-                        fontWeight: isExpensive ? 'bold' : undefined
-                      }}>
-                        Suggested: R{suggestedZAR.toFixed(2)}
-                        {isExpensive && <span style={{fontSize: '0.85em', display: 'block', marginTop: '4px'}}>
-                          (Typical SA range: R50-{competitiveMax})
-                        </span>}
+                      <p className="product-card-suggested">
+                        Suggested: R {(Number(product.price || 0) * 2).toFixed(2)}
                       </p>
                       {isAlreadyCurated ? (
                         <button className="btn-secondary" disabled>
@@ -710,54 +569,15 @@ export default function ProductCuration() {
 
       {activeTab === 'curated' && (
         <div className="curated-section">
-          {/* Search bar for curated products */}
-          <div className="search-bar" style={{ marginBottom: '20px' }}>
-            <input
-              type="text"
-              placeholder="Search your products by name, database ID, or CJ PID..."
-              value={curatedSearchQuery}
-              onChange={(e) => setCuratedSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  searchCuratedProducts();
-                }
-              }}
-            />
-            <button onClick={searchCuratedProducts}>
-              Search
-            </button>
-            {curatedSearchQuery && (
-              <button 
-                onClick={() => {
-                  setCuratedSearchQuery('');
-                  setFilteredCuratedProducts(curatedProducts);
-                }}
-                style={{ background: '#95a5a6' }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          
-          <p style={{ 
-            fontSize: '13px', 
-            color: '#7f8c8d', 
-            marginBottom: '16px' 
-          }}>
-            💡 <strong>Tip:</strong> Search by product name, your database ID (e.g., "42"), or CJ PID (e.g., "CJYE206896609IR")
-          </p>
-          
           <div className="curated-list">
-            {filteredCuratedProducts.length === 0 ? (
-              <p>{curatedSearchQuery ? 'No products found matching your search.' : 'No curated products yet. Search and add products from the supplier catalog!'}</p>
+            {curatedProducts.length === 0 ? (
+              <p>No curated products yet. Search and add products from the supplier catalog!</p>
             ) : (
               <table className="curated-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>Image</th>
                     <th>Name</th>
-                    <th>CJ PID</th>
                     <th>Cost Price</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
@@ -767,14 +587,11 @@ export default function ProductCuration() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCuratedProducts.map((product) => {
+                  {curatedProducts.map((product) => {
                     const isLinked = !!product.cj_vid;
                     
                     return (
                     <tr key={product.id}>
-                      <td style={{ fontWeight: 'bold', color: '#3498db' }}>
-                        #{product.id}
-                      </td>
                       <td>
                         {product.product_image ? (
                           <img
@@ -787,9 +604,6 @@ export default function ProductCuration() {
                         )}
                       </td>
                       <td>{product.product_name}</td>
-                      <td style={{ fontSize: '11px', color: '#7f8c8d', fontFamily: 'monospace' }}>
-                        {product.cj_pid}
-                      </td>
                       <td>R {Number(product.cj_cost_price).toFixed(2)}</td>
                       <td>R {Number(product.custom_price || product.suggested_price).toFixed(2)}</td>
                       <td>
