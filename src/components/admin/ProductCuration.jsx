@@ -531,12 +531,13 @@ export default function ProductCuration() {
                           fontSize: '12px', 
                           color: '#666', 
                           margin: '8px 0',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineHeight: '1.4'
+                          lineHeight: '1.5',
+                          maxHeight: '120px',
+                          overflow: 'auto',
+                          padding: '8px',
+                          background: '#f8f9fa',
+                          borderRadius: '4px',
+                          border: '1px solid #e1e8ed'
                         }}>
                           {product.description}
                         </p>
