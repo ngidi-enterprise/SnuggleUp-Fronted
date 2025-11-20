@@ -585,7 +585,8 @@ export default function ProductCuration() {
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
                       <p className="product-card-price">
-                        Cost: R{costZAR.toFixed(2)} <span style={{fontSize: '0.85em', color: '#666'}}>(${priceUSD.toFixed(2)} USD)</span>
+                        Cost: R{costZAR.toFixed(2)}
+                        <span style={{fontSize: '0.85em', color: '#666'}}> (USD ${priceUSD.toFixed(2)})</span>
                       </p>
                       <p className="product-card-suggested" style={{
                         color: isExpensive ? '#e74c3c' : undefined,
