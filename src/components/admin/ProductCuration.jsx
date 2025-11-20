@@ -192,7 +192,7 @@ export default function ProductCuration() {
           cj_pid: selectedProduct.pid,
           product_name: chosenTitle,
           original_cj_title: selectedProduct.name, // Preserve original
-          product_description: '',
+          product_description: selectedProduct.description || '',
           product_image: selectedProduct.image,
           cj_cost_price: costPrice,
           category: selectedProduct.category,
@@ -526,6 +526,21 @@ export default function ProductCuration() {
                     </div>
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
+                      {product.description && (
+                        <p style={{ 
+                          fontSize: '12px', 
+                          color: '#666', 
+                          margin: '8px 0',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          lineHeight: '1.4'
+                        }}>
+                          {product.description}
+                        </p>
+                      )}
                       <p className="product-card-price">
                         Cost: R {Number(product.price || 0).toFixed(2)}
                       </p>
