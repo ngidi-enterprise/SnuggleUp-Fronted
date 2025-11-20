@@ -31,6 +31,7 @@ export default function ProductCuration() {
   const [generatingSEO, setGeneratingSEO] = useState(false);
   const [showSEOPanel, setShowSEOPanel] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null); // Product for AI SEO generation
+  const [customMarkup, setCustomMarkup] = useState(2.0); // Custom markup for the product being added
   const [competitorPrices, setCompetitorPrices] = useState({
     competitor1: '',
     competitor2: ''
@@ -129,6 +130,20 @@ export default function ProductCuration() {
     setShowSEOPanel(true);
     setSeoSuggestions([]);
     setSeoReasoning('');
+    
+    // Auto-suggest competitive markup based on category
+    const categoryLower = (product.category || '').toLowerCase();
+    let suggestedMarkup = 2.0;
+    
+    if (/furniture|easel|chair/.test(categoryLower)) {
+      suggestedMarkup = 1.3; // Lower markup for expensive items
+    } else if (/toy|plush/.test(categoryLower)) {
+      suggestedMarkup = 1.5;
+    } else if (/stroller|pram/.test(categoryLower)) {
+      suggestedMarkup = 1.4;
+    }
+    
+    setCustomMarkup(suggestedMarkup);
   };
 
   const generateSEOTitle = async () => {
@@ -183,6 +198,7 @@ export default function ProductCuration() {
 
       // Convert USD to ZAR here in frontend (backend expects ZAR)
       const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
+      const customSuggestedPrice = Math.round(costZAR * customMarkup * 100) / 100;
 
       // Mark product as being added (optimistic UI)
       setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
@@ -201,6 +217,7 @@ export default function ProductCuration() {
           product_description: '',
           product_image: selectedProduct.image,
           cj_cost_price: costZAR, // Send ZAR price (already converted)
+          custom_suggested_price: customSuggestedPrice, // Custom markup applied
           category: selectedProduct.category,
         }),
       });
@@ -520,8 +537,44 @@ export default function ProductCuration() {
                 const costZAR = Math.round(priceUSD * USD_TO_ZAR * 100) / 100;
                 const suggestedZAR = Math.round(costZAR * 2 * 100) / 100;
 
+                // Competitiveness check: typical SA retail ranges by category
+                const categoryLower = (product.category || '').toLowerCase();
+                let competitiveMax = 500; // Default max for baby items
+                let warningThreshold = 1.5; // Warn if >1.5x typical max
+                
+                if (/toy|plush|rattle/.test(categoryLower)) {
+                  competitiveMax = 300;
+                } else if (/furniture|easel|chair/.test(categoryLower)) {
+                  competitiveMax = 700;
+                } else if (/feeding|bottle|pacifier/.test(categoryLower)) {
+                  competitiveMax = 200;
+                } else if (/stroller|pram/.test(categoryLower)) {
+                  competitiveMax = 3000;
+                }
+                
+                const isExpensive = suggestedZAR > (competitiveMax * warningThreshold);
+
                 return (
-                  <div key={product.pid} className="product-card">
+                  <div key={product.pid} className="product-card" style={{
+                    border: isExpensive ? '2px solid #e74c3c' : undefined,
+                    position: 'relative'
+                  }}>
+                    {isExpensive && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        background: '#e74c3c',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        ⚠️ HIGH PRICE
+                      </div>
+                    )}
                     <div className="product-card-image">
                       {product.image ? (
                         <img src={product.image} alt={product.name} />
@@ -534,8 +587,14 @@ export default function ProductCuration() {
                       <p className="product-card-price">
                         Cost: R{costZAR.toFixed(2)} <span style={{fontSize: '0.85em', color: '#666'}}>(${priceUSD.toFixed(2)} USD)</span>
                       </p>
-                      <p className="product-card-suggested">
+                      <p className="product-card-suggested" style={{
+                        color: isExpensive ? '#e74c3c' : undefined,
+                        fontWeight: isExpensive ? 'bold' : undefined
+                      }}>
                         Suggested: R{suggestedZAR.toFixed(2)}
+                        {isExpensive && <span style={{fontSize: '0.85em', display: 'block', marginTop: '4px'}}>
+                          (Typical SA range: R50-{competitiveMax})
+                        </span>}
                       </p>
                       {isAlreadyCurated ? (
                         <button className="btn-secondary" disabled>
@@ -1235,7 +1294,53 @@ export default function ProductCuration() {
                   {selectedProduct.name}
                 </div>
                 <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '8px' }}>
-                  Category: {selectedProduct.category} | Price: R {(Number(selectedProduct.price) * 2).toFixed(2)}
+                  Category: {selectedProduct.category} | Cost: ${Number(selectedProduct.price).toFixed(2)} USD (R{(Number(selectedProduct.price) * USD_TO_ZAR).toFixed(2)})
+                </div>
+              </div>
+
+              {/* Markup Controller */}
+              <div style={{ marginBottom: '24px', padding: '16px', background: 'white', border: '2px solid #3498db', borderRadius: '8px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#2c3e50' }}>
+                  💰 Pricing Strategy
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '12px', color: '#7f8c8d', display: 'block', marginBottom: '8px' }}>
+                      Markup: {customMarkup.toFixed(1)}x {customMarkup < 1.5 ? '(Aggressive)' : customMarkup < 2.0 ? '(Competitive)' : '(Standard)'}
+                    </label>
+                    <input
+                      type="range"
+                      min="1.1"
+                      max="3.0"
+                      step="0.1"
+                      value={customMarkup}
+                      onChange={(e) => setCustomMarkup(Number(e.target.value))}
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#95a5a6', marginTop: '4px' }}>
+                      <span>1.1x (Low)</span>
+                      <span>2.0x (Default)</span>
+                      <span>3.0x (High)</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '12px', background: '#f8f9fa', borderRadius: '6px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#7f8c8d', marginBottom: '4px' }}>Your Cost</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c' }}>R{(Number(selectedProduct.price) * USD_TO_ZAR).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#7f8c8d', marginBottom: '4px' }}>Retail Price</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>R{(Number(selectedProduct.price) * USD_TO_ZAR * customMarkup).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#7f8c8d', marginBottom: '4px' }}>Profit per Sale</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#3498db' }}>R{((Number(selectedProduct.price) * USD_TO_ZAR * customMarkup) - (Number(selectedProduct.price) * USD_TO_ZAR)).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#7f8c8d', marginBottom: '4px' }}>Margin</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#9b59b6' }}>{((customMarkup - 1) * 100).toFixed(0)}%</div>
+                  </div>
                 </div>
               </div>
 
