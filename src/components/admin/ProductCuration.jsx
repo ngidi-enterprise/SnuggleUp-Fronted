@@ -32,6 +32,14 @@ export default function ProductCuration() {
   const [addingProducts, setAddingProducts] = useState(new Set()); // Track which products are being added
   const [quickLinkPid, setQuickLinkPid] = useState(''); // For manual PID entry
   const [linking, setLinking] = useState(false); // Loading state for linking operation
+  
+  // AI SEO Title Generator states
+  const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [seoSuggestions, setSeoSuggestions] = useState([]);
+  const [seoReasoning, setSeoReasoning] = useState('');
+  const [generatingSEO, setGeneratingSEO] = useState(false);
+  
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -115,18 +123,64 @@ export default function ProductCuration() {
     }
   };
 
-  const addToCurated = async (product) => {
+  // Open SEO panel when adding a product
+  const addToCurated = (product) => {
+    const costPrice = Number(product.price) || 0;
+    
+    if (costPrice <= 0) {
+      setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
+      return;
+    }
+    
+    setSelectedProduct(product);
+    setShowSEOPanel(true);
+    setSeoSuggestions([]);
+    setSeoReasoning('');
+  };
+  
+  // Generate AI SEO titles
+  const generateSEOTitle = async () => {
+    if (!selectedProduct) return;
+    
+    setGeneratingSEO(true);
     try {
-      // Validate price before adding
-      const costPrice = Number(product.price) || 0;
+      const res = await fetch(`${API_BASE}/api/admin/products/generate-seo-title`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          originalTitle: selectedProduct.name,
+          category: selectedProduct.category || 'Baby/Kids',
+          price: Number(selectedProduct.price) || 0,
+          pid: selectedProduct.pid
+        }),
+      });
       
-      if (costPrice <= 0) {
-        setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
-        return;
+      if (res.ok) {
+        const data = await res.json();
+        setSeoSuggestions(data.suggestions || []);
+        setSeoReasoning(data.reasoning || '');
+      } else {
+        setError('Failed to generate SEO titles');
       }
-
-      // Mark product as being added (optimistic UI)
-      setAddingProducts(prev => new Set(prev).add(product.pid));
+    } catch (err) {
+      setError('Error generating SEO titles: ' + err.message);
+    } finally {
+      setGeneratingSEO(false);
+    }
+  };
+  
+  // Confirm and add product with chosen title
+  const confirmAddToCurated = async (chosenTitle) => {
+    if (!selectedProduct) return;
+    
+    try {
+      const costPrice = Number(selectedProduct.price) || 0;
+      
+      // Mark product as being added
+      setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
 
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
@@ -135,22 +189,30 @@ export default function ProductCuration() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cj_pid: product.pid,
-          product_name: product.name,
+          cj_pid: selectedProduct.pid,
+          product_name: chosenTitle,
+          original_cj_title: selectedProduct.name, // Preserve original
           product_description: '',
-          product_image: product.image,
+          product_image: selectedProduct.image,
           cj_cost_price: costPrice,
-          category: product.category,
+          category: selectedProduct.category,
         }),
       });
 
       if (res.ok) {
-        // Brief delay to show success state, then refresh and reset
+        // Close SEO panel
+        setShowSEOPanel(false);
+        setSelectedProduct(null);
+        setSeoSuggestions([]);
+        
+        // Refresh product list
         await fetchCuratedProducts();
+        
+        // Brief delay to show success state
         setTimeout(() => {
           setAddingProducts(prev => {
             const next = new Set(prev);
-            next.delete(product.pid);
+            next.delete(selectedProduct.pid);
             return next;
           });
         }, 1500);
@@ -159,17 +221,19 @@ export default function ProductCuration() {
         setError(data.error || 'Failed to add product');
         setAddingProducts(prev => {
           const next = new Set(prev);
-          next.delete(product.pid);
+          next.delete(selectedProduct.pid);
           return next;
         });
       }
     } catch (err) {
       setError('Error adding product: ' + err.message);
-      setAddingProducts(prev => {
-        const next = new Set(prev);
-        next.delete(product.pid);
-        return next;
-      });
+      if (selectedProduct) {
+        setAddingProducts(prev => {
+          const next = new Set(prev);
+          next.delete(selectedProduct.pid);
+          return next;
+        });
+      }
     }
   };
 
@@ -1130,6 +1194,193 @@ export default function ProductCuration() {
                   Save Changes
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI SEO Title Generator Modal */}
+      {showSEOPanel && selectedProduct && (
+        <div className="modal-overlay" onClick={() => {
+          setShowSEOPanel(false);
+          setSelectedProduct(null);
+          setSeoSuggestions([]);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h2>🤖 AI SEO Title Optimizer</h2>
+              <button className="modal-close" onClick={() => {
+                setShowSEOPanel(false);
+                setSelectedProduct(null);
+                setSeoSuggestions([]);
+              }}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ marginBottom: '24px', padding: '16px', background: '#f8f9fa', borderRadius: '8px' }}>
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name}
+                  style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px' }}
+                />
+                <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '4px' }}>
+                  Original Supplier Title:
+                </div>
+                <div style={{ fontSize: '14px', color: '#2c3e50', fontWeight: '500' }}>
+                  {selectedProduct.name}
+                </div>
+                <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '8px' }}>
+                  Category: {selectedProduct.category} | Cost: R{Number(selectedProduct.price || 0).toFixed(2)}
+                </div>
+              </div>
+
+              {!seoSuggestions.length ? (
+                <div style={{ textAlign: 'center', padding: '32px' }}>
+                  <button
+                    onClick={generateSEOTitle}
+                    disabled={generatingSEO}
+                    style={{
+                      padding: '16px 32px',
+                      background: generatingSEO ? '#95a5a6' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: generatingSEO ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseOver={(e) => !generatingSEO && (e.target.style.transform = 'scale(1.05)')}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    {generatingSEO ? '🔄 Generating with AI...' : '✨ Generate SEO Titles with AI'}
+                  </button>
+                  <div style={{ marginTop: '16px', fontSize: '13px', color: '#7f8c8d' }}>
+                    AI will create 3 optimized titles for better search ranking and sales
+                  </div>
+                  <button
+                    onClick={() => confirmAddToCurated(selectedProduct.name)}
+                    style={{
+                      marginTop: '24px',
+                      padding: '10px 20px',
+                      background: 'transparent',
+                      color: '#3498db',
+                      border: '2px solid #3498db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Skip AI - Use Original Title
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {seoReasoning && (
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: '#e3f2fd', 
+                      borderLeft: '4px solid #2196f3',
+                      borderRadius: '4px',
+                      marginBottom: '20px',
+                      fontSize: '13px',
+                      color: '#1565c0'
+                    }}>
+                      💡 {seoReasoning}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#2c3e50' }}>
+                    Select an optimized title or edit below:
+                  </div>
+
+                  {seoSuggestions.map((suggestion, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '16px',
+                        background: 'white',
+                        border: '2px solid #e1e8ed',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => confirmAddToCurated(suggestion)}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.background = '#f8f9fa';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = '#e1e8ed';
+                        e.currentTarget.style.background = 'white';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          minWidth: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: idx === 0 ? '#27ae60' : '#3498db',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
+                          {idx + 1}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', color: '#2c3e50', fontWeight: '500', lineHeight: '1.5' }}>
+                            {suggestion}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#95a5a6', marginTop: '4px' }}>
+                            {suggestion.length} characters {idx === 0 && '(Recommended)'}
+                          </div>
+                        </div>
+                        <div style={{
+                          padding: '6px 12px',
+                          background: '#3498db',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          Select
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#fff3cd', borderRadius: '6px', border: '1px solid #ffc107' }}>
+                    <div style={{ fontSize: '12px', color: '#856404', marginBottom: '8px' }}>
+                      💾 <strong>Note:</strong> Original supplier title "{selectedProduct.name}" will be preserved for reference
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSeoSuggestions([]);
+                      setSeoReasoning('');
+                    }}
+                    style={{
+                      marginTop: '16px',
+                      padding: '8px 16px',
+                      background: 'transparent',
+                      color: '#7f8c8d',
+                      border: '1px solid #e1e8ed',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ← Regenerate Titles
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
