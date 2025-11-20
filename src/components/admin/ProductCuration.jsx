@@ -183,6 +183,21 @@ export default function ProductCuration() {
       // Mark product as being added
       setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
 
+      // Fetch full product details to get real description
+      let fullDescription = selectedProduct.description || selectedProduct.name;
+      try {
+        const detailsRes = await fetch(
+          `${API_BASE}/api/admin/cj-products/${selectedProduct.pid}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (detailsRes.ok) {
+          const details = await detailsRes.json();
+          fullDescription = details.description || details.productDescription || selectedProduct.name;
+        }
+      } catch (err) {
+        console.log('Could not fetch product details, using fallback description');
+      }
+
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
         headers: {
@@ -193,7 +208,7 @@ export default function ProductCuration() {
           cj_pid: selectedProduct.pid,
           product_name: chosenTitle,
           original_cj_title: selectedProduct.name, // Preserve original
-          product_description: selectedProduct.description || '',
+          product_description: fullDescription,
           product_image: selectedProduct.image,
           cj_cost_price: costPrice,
           category: selectedProduct.category,
@@ -527,21 +542,20 @@ export default function ProductCuration() {
                     </div>
                     <div className="product-card-info">
                       <h4>{product.name}</h4>
-                      {product.description && (
-                        <p style={{ 
-                          fontSize: '12px', 
-                          color: '#666', 
-                          margin: '8px 0',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineHeight: '1.4'
-                        }}>
-                          {product.description}
-                        </p>
-                      )}
+                      <p style={{ 
+                        fontSize: '12px', 
+                        color: '#999', 
+                        margin: '8px 0',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        lineHeight: '1.4',
+                        fontStyle: 'italic'
+                      }}>
+                        {product.name}
+                      </p>
                       <p className="product-card-price">
                         Cost: R {Number(product.price || 0).toFixed(2)}
                       </p>
