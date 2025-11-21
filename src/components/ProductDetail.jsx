@@ -310,7 +310,7 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
                         
                         return (
                           <div key={idx} style={{ 
-                            marginBottom: '8px',
+                            marginBottom: '4px',
                             paddingLeft: isNumbered ? '0' : '0'
                           }}>
                             {trimmed}
@@ -341,7 +341,7 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
                         const trimmed = item.trim();
                         if (!trimmed) return null;
                         return (
-                          <div key={idx} style={{ marginBottom: '6px' }}>
+                          <div key={idx} style={{ marginBottom: '4px' }}>
                             {trimmed}
                           </div>
                         );
