@@ -24,13 +24,27 @@ function UserAccount({ onClose }) {
         }
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.error || 'Failed to fetch orders');
       }
 
-      setOrders(data.orders);
+      const data = await response.json();
+      
+      // Parse items field if it's a JSON string
+      const ordersWithParsedItems = (data.orders || []).map(order => {
+        try {
+          return {
+            ...order,
+            items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items
+          };
+        } catch (e) {
+          console.error('Error parsing order items:', e);
+          return { ...order, items: [] };
+        }
+      });
+      
+      setOrders(ordersWithParsedItems);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -125,15 +139,7 @@ function UserAccount({ onClose }) {
             
             {!loading && !error && orders.length > 0 && (
               <div className="orders-list">
-                {orders.map(order => {
-                  // Parse items if they're a JSON string
-                  const items = typeof order.items === 'string' 
-                    ? JSON.parse(order.items) 
-                    : Array.isArray(order.items) 
-                      ? order.items 
-                      : [];
-                  
-                  return (
+                {orders.map(order => (
                   <div key={order.id} className="order-card">
                     <div className="order-header">
                       <div>
@@ -155,7 +161,7 @@ function UserAccount({ onClose }) {
                     </div>
                     
                     <div className="order-items">
-                      {items.map((item, idx) => (
+                      {(order.items || []).map((item, idx) => (
                         <div key={idx} className="order-item">
                           {item.image && (
                             <img 
@@ -202,7 +208,7 @@ function UserAccount({ onClose }) {
                       </div>
                     </div>
                   </div>
-                )})}
+                ))}
               </div>
             )}
           </div>
