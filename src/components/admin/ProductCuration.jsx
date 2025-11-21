@@ -183,8 +183,16 @@ export default function ProductCuration() {
       // Mark product as being added
       setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
 
-      // Fetch full product details to get real description
-      let fullDescription = selectedProduct.description || selectedProduct.name;
+      // Fetch full product details to get rich CJ data
+      let productDetails = {
+        description: selectedProduct.description || selectedProduct.name,
+        material: '',
+        productFeatures: '',
+        packageSize: '',
+        packingList: '',
+        weight: ''
+      };
+      
       try {
         const detailsRes = await fetch(
           `${API_BASE}/api/admin/cj-products/${selectedProduct.pid}`,
@@ -192,10 +200,18 @@ export default function ProductCuration() {
         );
         if (detailsRes.ok) {
           const details = await detailsRes.json();
-          fullDescription = details.description || details.productDescription || selectedProduct.name;
+          productDetails = {
+            description: details.description || details.productDescription || selectedProduct.name,
+            material: details.material || '',
+            productFeatures: details.productFeatures || '',
+            packageSize: details.packageSize || '',
+            packingList: details.packingList || '',
+            weight: details.weight || ''
+          };
+          console.log('📦 Fetched full CJ product details:', productDetails);
         }
       } catch (err) {
-        console.log('Could not fetch product details, using fallback description');
+        console.log('Could not fetch product details, using fallback');
       }
 
       const res = await fetch(`${API_BASE}/api/admin/products`, {
@@ -207,8 +223,13 @@ export default function ProductCuration() {
         body: JSON.stringify({
           cj_pid: selectedProduct.pid,
           product_name: chosenTitle,
-          original_cj_title: selectedProduct.name, // Preserve original
-          product_description: fullDescription,
+          original_cj_title: selectedProduct.name,
+          product_description: productDetails.description,
+          product_material: productDetails.material,
+          product_features: productDetails.productFeatures,
+          package_size: productDetails.packageSize,
+          packing_list: productDetails.packingList,
+          product_weight: productDetails.weight,
           product_image: selectedProduct.image,
           cj_cost_price: costPrice,
           category: selectedProduct.category,
