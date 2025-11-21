@@ -825,10 +825,12 @@ function App() {
             <button className="login-btn" onClick={() => { window.location.hash = ''; }}>
               Home
             </button>
-            <button className="checkout-btn" onClick={() => setShowCart(true)}>
-              Checkout
-              <div className="cart-count">{cartCount}</div>
-            </button>
+            {!isAdmin && (
+              <button className="checkout-btn" onClick={() => setShowCart(true)}>
+                Checkout
+                <div className="cart-count">{cartCount}</div>
+              </button>
+            )}
           </div>
         </header>
 
