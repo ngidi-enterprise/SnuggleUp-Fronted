@@ -1081,10 +1081,12 @@ function App() {
               Login
             </button>
           )}
-          <button className="checkout-btn" onClick={toggleCart}>
-            Checkout
-            <div className="cart-count">{cartCount}</div>
-          </button>
+          {!isAdmin && (
+            <button className="checkout-btn" onClick={toggleCart}>
+              Checkout
+              <div className="cart-count">{cartCount}</div>
+            </button>
+          )}
         </div>
       </header>
 
