@@ -189,6 +189,66 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
               )}
             </div>
 
+            {/* Rich Product Details from CJ */}
+            {(product.product_material || product.product_features || product.package_size || product.packing_list || product.product_weight) && (
+              <div className="product-specifications" style={{
+                marginTop: '24px',
+                padding: '16px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e1e8ed'
+              }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#2c3e50' }}>
+                  Product Specifications
+                </h3>
+                
+                {product.product_material && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ fontSize: '14px', color: '#555' }}>Material:</strong>
+                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      {product.product_material}
+                    </div>
+                  </div>
+                )}
+                
+                {product.product_weight && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ fontSize: '14px', color: '#555' }}>Weight:</strong>
+                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666' }}>
+                      {product.product_weight}
+                    </div>
+                  </div>
+                )}
+                
+                {product.package_size && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ fontSize: '14px', color: '#555' }}>Package Size:</strong>
+                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      {product.package_size}
+                    </div>
+                  </div>
+                )}
+                
+                {product.packing_list && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ fontSize: '14px', color: '#555' }}>What's Included:</strong>
+                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                      {product.packing_list}
+                    </div>
+                  </div>
+                )}
+                
+                {product.product_features && (
+                  <div>
+                    <strong style={{ fontSize: '14px', color: '#555' }}>Product Features:</strong>
+                    <div style={{ marginTop: '8px', fontSize: '14px', color: '#666', lineHeight: '1.8', whiteSpace: 'pre-line' }}>
+                      {product.product_features}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="product-features">
               <ul>
                 <li>✓ 6-Month Limited Warranty</li>
