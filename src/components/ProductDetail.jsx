@@ -189,60 +189,163 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
               )}
             </div>
 
-            {/* Rich Product Details from CJ */}
+            {/* Rich Product Details from CJ - Formatted like image 2 */}
             {(product.product_material || product.product_features || product.package_size || product.packing_list || product.product_weight) && (
               <div className="product-specifications" style={{
                 marginTop: '24px',
-                padding: '16px',
-                background: '#f8f9fa',
+                padding: '20px',
+                background: '#ffffff',
                 borderRadius: '8px',
                 border: '1px solid #e1e8ed'
               }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#2c3e50' }}>
+                <h3 style={{ 
+                  margin: '0 0 20px 0', 
+                  fontSize: '18px', 
+                  fontWeight: '700', 
+                  color: '#2c3e50',
+                  borderBottom: '2px solid #3498db',
+                  paddingBottom: '10px'
+                }}>
                   Product Specifications
                 </h3>
                 
-                {product.product_material && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ fontSize: '14px', color: '#555' }}>Material:</strong>
-                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                      {product.product_material}
-                    </div>
-                  </div>
-                )}
+                {/* Table format like CJ website */}
+                <table style={{ 
+                  width: '100%', 
+                  borderCollapse: 'collapse',
+                  marginBottom: '20px'
+                }}>
+                  <tbody>
+                    {product.product_material && (
+                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ 
+                          padding: '12px 16px', 
+                          width: '30%',
+                          background: '#f8f9fa',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          color: '#2c3e50'
+                        }}>
+                          Material
+                        </td>
+                        <td style={{ 
+                          padding: '12px 16px', 
+                          fontSize: '14px', 
+                          color: '#555',
+                          lineHeight: '1.6'
+                        }}>
+                          {product.product_material}
+                        </td>
+                      </tr>
+                    )}
+                    
+                    {product.product_weight && (
+                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ 
+                          padding: '12px 16px',
+                          background: '#f8f9fa',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          color: '#2c3e50'
+                        }}>
+                          Product Weight
+                        </td>
+                        <td style={{ 
+                          padding: '12px 16px', 
+                          fontSize: '14px', 
+                          color: '#555'
+                        }}>
+                          {product.product_weight}
+                        </td>
+                      </tr>
+                    )}
+                    
+                    {product.package_size && (
+                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ 
+                          padding: '12px 16px',
+                          background: '#f8f9fa',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          color: '#2c3e50'
+                        }}>
+                          Package Size
+                        </td>
+                        <td style={{ 
+                          padding: '12px 16px', 
+                          fontSize: '14px', 
+                          color: '#555',
+                          lineHeight: '1.6'
+                        }}>
+                          {product.package_size}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
                 
-                {product.product_weight && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ fontSize: '14px', color: '#555' }}>Weight:</strong>
-                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666' }}>
-                      {product.product_weight}
-                    </div>
-                  </div>
-                )}
-                
-                {product.package_size && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ fontSize: '14px', color: '#555' }}>Package Size:</strong>
-                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                      {product.package_size}
-                    </div>
-                  </div>
-                )}
-                
-                {product.packing_list && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ fontSize: '14px', color: '#555' }}>What's Included:</strong>
-                    <div style={{ marginTop: '4px', fontSize: '14px', color: '#666', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
-                      {product.packing_list}
-                    </div>
-                  </div>
-                )}
-                
+                {/* Product Features - Formatted list */}
                 {product.product_features && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4 style={{ 
+                      margin: '0 0 12px 0', 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#2c3e50'
+                    }}>
+                      Product features:
+                    </h4>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#555', 
+                      lineHeight: '1.8',
+                      paddingLeft: '0'
+                    }}>
+                      {product.product_features.split('\n').map((line, idx) => {
+                        const trimmed = line.trim();
+                        if (!trimmed) return null;
+                        
+                        // Check if line starts with number (1. 2. 3.)
+                        const isNumbered = /^\d+\./.test(trimmed);
+                        
+                        return (
+                          <div key={idx} style={{ 
+                            marginBottom: '8px',
+                            paddingLeft: isNumbered ? '0' : '0'
+                          }}>
+                            {trimmed}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Packing List - Formatted list */}
+                {product.packing_list && (
                   <div>
-                    <strong style={{ fontSize: '14px', color: '#555' }}>Product Features:</strong>
-                    <div style={{ marginTop: '8px', fontSize: '14px', color: '#666', lineHeight: '1.8', whiteSpace: 'pre-line' }}>
-                      {product.product_features}
+                    <h4 style={{ 
+                      margin: '0 0 12px 0', 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#2c3e50'
+                    }}>
+                      Packing list:
+                    </h4>
+                    <div style={{ 
+                      fontSize: '14px', 
+                      color: '#555', 
+                      lineHeight: '1.8'
+                    }}>
+                      {product.packing_list.split('\n').map((item, idx) => {
+                        const trimmed = item.trim();
+                        if (!trimmed) return null;
+                        return (
+                          <div key={idx} style={{ marginBottom: '6px' }}>
+                            {trimmed}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
