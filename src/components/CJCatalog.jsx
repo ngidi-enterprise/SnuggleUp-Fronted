@@ -163,8 +163,23 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
         </div>
       )}
 
+      {/* Loading skeletons */}
+      {loading && (
+        <div className="cj-grid" aria-busy="true">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={`skel-${i}`} className="cj-skeleton-card">
+              <div className="cj-skel-thumb" />
+              <div className="cj-skel-body">
+                <div className="cj-skel-line" style={{ width: '80%' }} />
+                <div className="cj-skel-line" style={{ width: '60%' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="cj-grid" aria-busy={opening ? 'true' : 'false'}>
-        {sortedProducts.map((p) => {
+        {!loading && sortedProducts.map((p) => {
           const stock = p.raw.stock_quantity || 0;
           const isOutOfStock = stock === 0;
           const isLowStock = stock > 0 && stock < 10;
