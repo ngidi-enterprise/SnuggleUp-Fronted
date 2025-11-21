@@ -125,7 +125,15 @@ function UserAccount({ onClose }) {
             
             {!loading && !error && orders.length > 0 && (
               <div className="orders-list">
-                {orders.map(order => (
+                {orders.map(order => {
+                  // Parse items if they're a JSON string
+                  const items = typeof order.items === 'string' 
+                    ? JSON.parse(order.items) 
+                    : Array.isArray(order.items) 
+                      ? order.items 
+                      : [];
+                  
+                  return (
                   <div key={order.id} className="order-card">
                     <div className="order-header">
                       <div>
@@ -147,7 +155,7 @@ function UserAccount({ onClose }) {
                     </div>
                     
                     <div className="order-items">
-                      {order.items.map((item, idx) => (
+                      {items.map((item, idx) => (
                         <div key={idx} className="order-item">
                           {item.image && (
                             <img 
@@ -194,7 +202,7 @@ function UserAccount({ onClose }) {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
