@@ -808,13 +808,16 @@ function App() {
       setCartCount((c) => c + 1);
     };
 
+    // Brand logo source with env fallback
+    const brandLogoSrc = (import.meta.env.VITE_BRAND_LOGO || '/images/snuggleup-logo.png');
+
     return (
       <div className="app">
         {/* Header (light) */}
         <header className="header">
           <div className="logo-section">
             <div className="logo">
-              <img src="https://i.postimg.cc/WpCQvsq5/Snuggle-Up-Logo.png" alt="SnuggleUp Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+              <img src={brandLogoSrc} alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
             </div>
             <div className="brand-info">
               <h1>SnuggleUp</h1>
@@ -1057,7 +1060,7 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img src="https://i.postimg.cc/WpCQvsq5/Snuggle-Up-Logo.png" alt="SnuggleUp Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+            <img src={import.meta.env.VITE_BRAND_LOGO || '/images/snuggleup-logo.png'} alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
