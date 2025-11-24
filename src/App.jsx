@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
+// Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
+const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
 import CheckoutSuccess from './CheckoutSuccess';
 import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
@@ -814,17 +816,7 @@ function App() {
         <header className="header">
           <div className="logo-section">
             <div className="logo">
-              <img 
-                src={brandLogoSrc} 
-                alt="SnuggleUp" 
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = '🧸';
-                  e.target.parentElement.style.fontSize = '24px';
-                  e.target.parentElement.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
-                  e.target.parentElement.style.color = 'white';
-                }}
-              />
+              <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
             </div>
             <div className="brand-info">
               <h1>SnuggleUp</h1>
@@ -1065,17 +1057,7 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img 
-              src="/images/snuggleup-logo-new.png" 
-              alt="SnuggleUp" 
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '🧸';
-                e.target.parentElement.style.fontSize = '24px';
-                e.target.parentElement.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
-                e.target.parentElement.style.color = 'white';
-              }}
-            />
+            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
