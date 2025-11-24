@@ -12,6 +12,7 @@ import CJCatalog from './components/CJCatalog';
 import CJProductDetail from './components/CJProductDetail';
 import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
+import TrustBadges from './components/TrustBadges';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -493,16 +494,12 @@ function App() {
 
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
-    // If we have a selected real-time shipping option use it
+    // Only use selected real-time shipping option
     if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
-      // Free shipping promotion still applies over R800 (optional)
-      const subtotal = getSubtotal();
-      if (subtotal >= 800) return 0;
       return selectedShipping.priceZAR;
     }
-    // Fallback flat policy
-    const subtotal = getSubtotal();
-    return subtotal >= 800 ? 0 : 99;
+    // No fallback rate - must have quote
+    return 0;
   };
 
   const getDiscount = () => {
@@ -808,13 +805,16 @@ function App() {
       setCartCount((c) => c + 1);
     };
 
+    // Fixed brand logo path (no env override)
+    const brandLogoSrc = '/images/snuggleup-logo.png';
+
     return (
       <div className="app">
         {/* Header (light) */}
         <header className="header">
           <div className="logo-section">
             <div className="logo">
-              <img src="https://i.postimg.cc/WpCQvsq5/Snuggle-Up-Logo.png" alt="SnuggleUp Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+              <img src={brandLogoSrc} alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
             </div>
             <div className="brand-info">
               <h1>SnuggleUp</h1>
@@ -825,10 +825,12 @@ function App() {
             <button className="login-btn" onClick={() => { window.location.hash = ''; }}>
               Home
             </button>
-            <button className="checkout-btn" onClick={() => setShowCart(true)}>
-              Checkout
-              <div className="cart-count">{cartCount}</div>
-            </button>
+            {!isAdmin && (
+              <button className="checkout-btn" onClick={() => setShowCart(true)}>
+                Checkout
+                <div className="cart-count">{cartCount}</div>
+              </button>
+            )}
           </div>
         </header>
 
@@ -926,8 +928,20 @@ function App() {
                         <p>Getting shipping options…</p>
                       ) : shippingError ? (
                         <div>
-                          <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
-                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                          <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                            These products may not be available for shipping to your location. 
+                            We're using standard shipping rates (R99.00). 
+                            {shippingError && ` Error: ${String(shippingError)}`}
+                          </p>
+                        </div>
+                      ) : shippingOptions.length === 0 ? (
+                        <div>
+                          <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                            Our shipping provider doesn't have delivery methods for these products to your selected destination. 
+                            Try selecting different products or contact support. Using standard rate: R99.00
+                          </p>
                         </div>
                       ) : (
                         shippingOptions.length > 0 && (
@@ -1000,11 +1014,6 @@ function App() {
                         </button>
                       </p>
                     )}
-                    {getSubtotal() >= 700 && getSubtotal() < 800 && (
-                      <p style={{color: '#ff6600', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em'}}>
-                        🎉 Add R{(800 - getSubtotal()).toFixed(2)} more and get FREE shipping!
-                      </p>
-                    )}
                     <strong>Total: R{getTotalPrice()}</strong>
                   </div>
                   {!appliedVoucher && (
@@ -1043,7 +1052,7 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img src="https://i.postimg.cc/WpCQvsq5/Snuggle-Up-Logo.png" alt="SnuggleUp Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+            <img src="/images/snuggleup-logo.png" alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
@@ -1067,10 +1076,12 @@ function App() {
               Login
             </button>
           )}
-          <button className="checkout-btn" onClick={toggleCart}>
-            Checkout
-            <div className="cart-count">{cartCount}</div>
-          </button>
+          {!isAdmin && (
+            <button className="checkout-btn" onClick={toggleCart}>
+              Checkout
+              <div className="cart-count">{cartCount}</div>
+            </button>
+          )}
         </div>
       </header>
 
@@ -1197,8 +1208,20 @@ function App() {
                       <p>Getting shipping options…</p>
                     ) : shippingError ? (
                       <div>
-                        <p style={{color:'#dc3545'}}>Shipping quote unavailable — using standard policy.</p>
-                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>{String(shippingError)}</p>
+                        <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                          These products may not be available for shipping to your location. 
+                          Using standard rate: R99.00
+                          {shippingError && ` Error: ${String(shippingError)}`}
+                        </p>
+                      </div>
+                    ) : shippingOptions.length === 0 ? (
+                      <div>
+                        <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                          Our shipping provider doesn't have delivery methods for these products to your selected destination. 
+                          Using standard rate: R99.00
+                        </p>
                       </div>
                     ) : (
                       shippingOptions.length > 0 && (
@@ -1269,11 +1292,6 @@ function App() {
                       >
                         ✕
                       </button>
-                    </p>
-                  )}
-                  {getSubtotal() >= 700 && getSubtotal() < 800 && (
-                    <p style={{color: '#ff6600', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em'}}>
-                      🎉 Add R{(800 - getSubtotal()).toFixed(2)} more and get FREE shipping!
                     </p>
                   )}
                   <strong>Total: R{getTotalPrice()}</strong>
@@ -1364,9 +1382,12 @@ function App() {
 
       {/* Footer */}
       <footer className="footer" style={{ flexShrink: 0 }}>
-        <p>© 2025 SnuggleUp</p>
-        <p>Made with <span className="heart">❤️</span> for all parents. Free local delivery over R800.</p>
-        <p>Contact: support@snuggleup.co.za </p>
+        <TrustBadges />
+        <div style={{ marginTop: '1.5rem' }}>
+          <p>© 2025 SnuggleUp</p>
+          <p>Made with <span className="heart">❤️</span> for all parents.</p>
+          <p>Contact: support@snuggleup.co.za </p>
+        </div>
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
           <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
