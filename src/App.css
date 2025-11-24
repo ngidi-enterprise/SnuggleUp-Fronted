@@ -111,15 +111,15 @@ body {
 }
 
 .login-btn {
-  background: white;
-  color: #ff6600;
-  border: 2px solid #ff6600;
+  background: var(--brand-contrast);
+  color: var(--brand);
+  border: 2px solid var(--brand);
   border-radius: 25px;
   padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   min-height: 44px; /* Touch-friendly minimum */
   display: inline-flex;
   align-items: center;
@@ -127,8 +127,9 @@ body {
 }
 
 .login-btn:hover {
-  background: #ff6600;
-  color: white;
+  background: var(--brand);
+  color: var(--brand-contrast);
+  transform: translateY(-1px);
 }
 
 .login-btn:active {
@@ -160,22 +161,24 @@ body {
 }
 
 .checkout-btn {
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
-  color: white;
+  background: var(--brand-gradient);
+  color: var(--brand-contrast);
   border: none;
   padding: 12px 24px;
   border-radius: 25px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
-  transition: transform 0.2s;
+  font-size: var(--text-base);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-card);
 }
 
 .checkout-btn:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
 }
 
 .cart-count {
@@ -217,19 +220,21 @@ body {
 }
 
 .cta-button {
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
-  color: white;
+  background: var(--brand-gradient);
+  color: var(--brand-contrast);
   border: none;
   padding: 16px 32px;
   border-radius: 30px;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-card);
 }
 
 .cta-button:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
 }
 
 /* Product Sections */
@@ -325,20 +330,22 @@ body {
 }
 
 .add-to-cart {
-  background: linear-gradient(135deg, #ff69b4, #ff1493);
-  color: white;
+  background: var(--brand-gradient);
+  color: var(--brand-contrast);
   border: none;
   padding: 12px 24px;
   border-radius: 25px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   width: 100%;
-  font-size: 16px;
-  transition: transform 0.2s;
+  font-size: var(--text-base);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-card);
 }
 
 .add-to-cart:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
 }
 
 /* Forgot/Reset Password Pages */
