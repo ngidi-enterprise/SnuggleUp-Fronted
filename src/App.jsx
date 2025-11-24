@@ -814,7 +814,17 @@ function App() {
         <header className="header">
           <div className="logo-section">
             <div className="logo">
-              <img src={brandLogoSrc} alt="SnuggleUp" />
+              <img 
+                src={brandLogoSrc} 
+                alt="SnuggleUp" 
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = '🧸';
+                  e.target.parentElement.style.fontSize = '24px';
+                  e.target.parentElement.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
+                  e.target.parentElement.style.color = 'white';
+                }}
+              />
             </div>
             <div className="brand-info">
               <h1>SnuggleUp</h1>
@@ -1055,7 +1065,17 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img src="/images/snuggleup-logo-new.png" alt="SnuggleUp" />
+            <img 
+              src="/images/snuggleup-logo-new.png" 
+              alt="SnuggleUp" 
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '🧸';
+                e.target.parentElement.style.fontSize = '24px';
+                e.target.parentElement.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
+                e.target.parentElement.style.color = 'white';
+              }}
+            />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
