@@ -98,58 +98,13 @@
   margin-top: 20px;
 }
 
-/* Left Side - Gallery (Stacked Scrollable) */
+/* Left Side - Gallery */
 .product-gallery {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 600px;
-  overflow-y: auto;
-  padding-right: 8px;
-  scrollbar-width: thin;
-  scrollbar-color: #ccc #f5f5f5;
+  gap: 16px;
 }
 
-.product-gallery::-webkit-scrollbar {
-  width: 6px;
-}
-
-.product-gallery::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-radius: 3px;
-}
-
-.product-gallery::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
-
-.product-gallery::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-.product-gallery img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.product-gallery img:hover {
-  border-color: #ff6600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.product-gallery img.active {
-  border-color: #ff6600;
-  border-width: 2px;
-  box-shadow: 0 4px 16px rgba(255, 102, 0, 0.2);
-}
-
-/* Legacy styles - kept for backwards compatibility */
 .main-image {
   width: 100%;
   aspect-ratio: 1;
@@ -172,11 +127,33 @@
   display: flex;
   gap: 12px;
   overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f5f5f5;
+}
+
+.thumbnail-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.thumbnail-gallery::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 3px;
+}
+
+.thumbnail-gallery::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.thumbnail-gallery::-webkit-scrollbar-thumb:hover {
+  background: #999;
 }
 
 .thumbnail-gallery img {
   width: 80px;
   height: 80px;
+  min-width: 80px;
   object-fit: cover;
   border: 2px solid #e0e0e0;
   border-radius: 6px;
@@ -186,10 +163,13 @@
 
 .thumbnail-gallery img:hover {
   border-color: #ff6600;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .thumbnail-gallery img.active {
   border-color: #ff6600;
+  box-shadow: 0 2px 8px rgba(255, 102, 0, 0.3);
 }
 
 /* Right Side - Product Info */
