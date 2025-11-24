@@ -12,6 +12,7 @@ import CJCatalog from './components/CJCatalog';
 import CJProductDetail from './components/CJProductDetail';
 import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
+import TrustBadges from './components/TrustBadges';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -841,6 +842,7 @@ function App() {
           console.log('🔍 Rendering CJCatalog on CJ route with isAdmin:', isAdmin, 'user:', user?.email);
           return null;
         })()}
+        <TrustBadges />
         <CJCatalog 
           onBack={() => { window.location.hash = ''; }}
           onOpenProduct={(pid) => setSelectedCjPid(pid)}
@@ -1121,6 +1123,7 @@ function App() {
               console.log('🔍 Rendering CJCatalog on main route with isAdmin:', isAdmin, 'user:', user?.email);
               return null;
             })()}
+            <TrustBadges />
             <CJCatalog 
               query={cjQuery}
               onQueryChange={setCjQuery}
