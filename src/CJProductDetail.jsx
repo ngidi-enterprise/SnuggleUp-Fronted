@@ -137,20 +137,63 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     <div className="product-detail-page">
       <button className="back-button" onClick={onClose}>← Back to Products</button>
       <div className="product-detail-grid">
-          <div className="product-gallery">
-            <div className="main-image">
-              {selectedImage ? <img src={selectedImage} alt={product?.product_name || 'Product'} /> : <div style={{height: 320, display:'flex', alignItems:'center', justifyContent:'center'}}>🍼</div>}
+        <div className="product-gallery" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          maxHeight: '600px',
+          overflowY: 'auto',
+          paddingRight: '8px'
+        }}>
+          {images.length > 0 ? (
+            images.map((img, idx) => (
+              <img 
+                key={img} 
+                src={img} 
+                alt={`${product?.product_name || 'Product'} - Image ${idx + 1}`}
+                style={{
+                  width: '100%',
+                  aspectRatio: '1',
+                  objectFit: 'cover',
+                  border: selectedImage === img ? '2px solid #ff6600' : '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: selectedImage === img ? '0 4px 16px rgba(255, 102, 0, 0.2)' : 'none'
+                }}
+                onClick={() => setSelectedImage(img)}
+                onMouseEnter={(e) => {
+                  if (selectedImage !== img) {
+                    e.target.style.borderColor = '#ff6600';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedImage !== img) {
+                    e.target.style.borderColor = '#e0e0e0';
+                    e.target.style.boxShadow = 'none';
+                  }
+                }}
+              />
+            ))
+          ) : (
+            <div style={{
+              width: '100%',
+              aspectRatio: '1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f9f9f9',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: '48px'
+            }}>
+              🍼
             </div>
-            {images.length > 1 && (
-              <div className="thumbnail-gallery">
-                {images.map((img) => (
-                  <img key={img} src={img} className={selectedImage === img ? 'active' : ''} onClick={() => setSelectedImage(img)} />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="product-info">
+        <div className="product-info">
             <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
             <h1 className="product-title">{product?.product_name || 'Product'}</h1>
             
@@ -242,7 +285,6 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
               </div>
             )}
           </div>
-        </div>
       </div>
     </div>
   );
