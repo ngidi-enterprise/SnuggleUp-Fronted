@@ -94,6 +94,37 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     return Array.from(imageSet);
   }, [product]);
 
+  // Sanitize description: remove images and media so we don't duplicate the gallery
+  const sanitizedDescription = useMemo(() => {
+    const raw = product?.product_description;
+    if (!raw) return '';
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = String(raw);
+      // Remove media elements that create the vertical stack
+      wrapper.querySelectorAll('img, picture, figure, svg, video, source').forEach((el) => el.remove());
+      // Drop empty anchors that previously wrapped images
+      wrapper.querySelectorAll('a').forEach((a) => {
+        const hasText = (a.textContent || '').trim().length > 0;
+        const hasChildren = a.children && a.children.length > 0;
+        if (!hasText && !hasChildren) a.remove();
+      });
+      // Remove inline styles to keep typography consistent
+      wrapper.querySelectorAll('[style]').forEach((el) => el.removeAttribute('style'));
+      let html = wrapper.innerHTML;
+      // Normalize line breaks and paragraphs similar to previous behavior
+      html = html
+        .replace(/\n/g, '\n')
+        .replace(/\r/g, '')
+        .replace(/\n/g, '<br/>')
+        .replace(/(<br\/>\s*){2,}/gi, '</p><p>');
+      return html;
+    } catch (e) {
+      // Fallback: regex-strip <img> tags if DOM operations fail
+      return String(raw).replace(/<img[\s\S]*?>/gi, '');
+    }
+  }, [product?.product_description]);
+
   // Curated products have a single fixed price (no variants in simplified model)
   const price = product?.custom_price || product?.suggested_price || 0;
   const stockQuantity = product?.stock_quantity || 0;
@@ -261,12 +292,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                     fontSize: '14px',
                     color: '#555'
                   }}
-                  dangerouslySetInnerHTML={{ 
-                    __html: String(product.product_description)
-                      .replace(/\\n/g, '\n')
-                      .replace(/\n/g, '<br/>')
-                      .replace(/<br\/><br\/>/g, '</p><p>')
-                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                 />
               </div>
             )}
