@@ -16,7 +16,7 @@
 /* Full page product detail view */
 .product-detail-page {
   background: white;
-  min-height: 100vh;
+  min-height: calc(100vh - 88px);
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
