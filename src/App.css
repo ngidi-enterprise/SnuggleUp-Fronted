@@ -8,8 +8,6 @@
 html {
   /* Smooth scrolling */
   scroll-behavior: smooth;
-  /* Prevent horizontal scroll on mobile */
-  overflow-x: hidden;
 }
 
 body {
@@ -17,8 +15,6 @@ body {
   background-color: #fdf5f3;
   color: #333;
   line-height: 1.6;
-  /* Prevent horizontal scroll on mobile */
-  overflow-x: hidden;
   /* Better font rendering on mobile */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -33,6 +29,7 @@ body {
 
 /* Header Styling */
 .header {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 1000;
