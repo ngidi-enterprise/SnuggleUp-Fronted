@@ -494,16 +494,12 @@ function App() {
 
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
-    // If we have a selected real-time shipping option use it
+    // Only use selected real-time shipping option
     if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
-      // Free shipping promotion still applies over R800 (optional)
-      const subtotal = getSubtotal();
-      if (subtotal >= 800) return 0;
       return selectedShipping.priceZAR;
     }
-    // Fallback flat policy
-    const subtotal = getSubtotal();
-    return subtotal >= 800 ? 0 : 99;
+    // No fallback rate - must have quote
+    return 0;
   };
 
   const getDiscount = () => {
@@ -1018,11 +1014,6 @@ function App() {
                         </button>
                       </p>
                     )}
-                    {getSubtotal() >= 700 && getSubtotal() < 800 && (
-                      <p style={{color: '#ff6600', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em'}}>
-                        🎉 Add R{(800 - getSubtotal()).toFixed(2)} more and get FREE shipping!
-                      </p>
-                    )}
                     <strong>Total: R{getTotalPrice()}</strong>
                   </div>
                   {!appliedVoucher && (
@@ -1303,11 +1294,6 @@ function App() {
                       </button>
                     </p>
                   )}
-                  {getSubtotal() >= 700 && getSubtotal() < 800 && (
-                    <p style={{color: '#ff6600', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em'}}>
-                      🎉 Add R{(800 - getSubtotal()).toFixed(2)} more and get FREE shipping!
-                    </p>
-                  )}
                   <strong>Total: R{getTotalPrice()}</strong>
                 </div>
                 
@@ -1399,7 +1385,7 @@ function App() {
         <TrustBadges />
         <div style={{ marginTop: '1.5rem' }}>
           <p>© 2025 SnuggleUp</p>
-          <p>Made with <span className="heart">❤️</span> for all parents. Free local delivery over R800.</p>
+          <p>Made with <span className="heart">❤️</span> for all parents.</p>
           <p>Contact: support@snuggleup.co.za </p>
         </div>
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
