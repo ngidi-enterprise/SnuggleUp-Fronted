@@ -56,12 +56,21 @@ body {
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  background: white;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .logo img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  display: block;
+}
+
+.logo img[alt]:after {
+  content: '🧸';
+  font-size: 24px;
 }
 
 .brand-info h1 {
