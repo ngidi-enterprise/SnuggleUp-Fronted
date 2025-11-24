@@ -838,11 +838,14 @@ function App() {
           console.log('🔍 Rendering CJCatalog on CJ route with isAdmin:', isAdmin, 'user:', user?.email);
           return null;
         })()}
-        <CJCatalog 
-          onBack={() => { window.location.hash = ''; }}
-          onOpenProduct={(pid) => setSelectedCjPid(pid)}
-          isAdmin={isAdmin}
-        />
+        
+        {!selectedCjPid && (
+          <CJCatalog 
+            onBack={() => { window.location.hash = ''; }}
+            onOpenProduct={(pid) => setSelectedCjPid(pid)}
+            isAdmin={isAdmin}
+          />
+        )}
 
         {selectedCjPid && (
           <CJProductDetail
@@ -1113,13 +1116,16 @@ function App() {
               console.log('🔍 Rendering CJCatalog on main route with isAdmin:', isAdmin, 'user:', user?.email);
               return null;
             })()}
-            <CJCatalog 
-              query={cjQuery}
-              onQueryChange={setCjQuery}
-              onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              onOpenProduct={(pid) => setSelectedCjPid(pid)}
-              isAdmin={isAdmin}
-            />
+            
+            {!selectedCjPid && (
+              <CJCatalog 
+                query={cjQuery}
+                onQueryChange={setCjQuery}
+                onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                onOpenProduct={(pid) => setSelectedCjPid(pid)}
+                isAdmin={isAdmin}
+              />
+            )}
 
             {selectedCjPid && (
               <CJProductDetail
