@@ -107,16 +107,14 @@
 
 .main-image {
   width: 100%;
-  max-width: 520px;
   height: 520px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto;
 }
 
 .main-image img {
