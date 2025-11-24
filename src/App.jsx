@@ -806,7 +806,7 @@ function App() {
     };
 
     // Fixed brand logo path (no env override)
-    const brandLogoSrc = '/images/snuggleup-logo.png';
+    const brandLogoSrc = '/images/snuggleup-logo-new.png';
 
     return (
       <div className="app">
@@ -814,7 +814,7 @@ function App() {
         <header className="header">
           <div className="logo-section">
             <div className="logo">
-              <img src={brandLogoSrc} alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+              <img src={brandLogoSrc} alt="SnuggleUp" />
             </div>
             <div className="brand-info">
               <h1>SnuggleUp</h1>
@@ -1055,7 +1055,7 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img src="/images/snuggleup-logo.png" alt="SnuggleUp Baby Store Logo" style={{ width: 50, height: 50, objectFit: 'contain', borderRadius: 12 }} />
+            <img src="/images/snuggleup-logo-new.png" alt="SnuggleUp" />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
