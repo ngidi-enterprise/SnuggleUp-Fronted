@@ -13,6 +13,37 @@
   overflow-y: auto;
 }
 
+/* Full page product detail view */
+.product-detail-page {
+  background: white;
+  min-height: 100vh;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.back-button {
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-button:hover {
+  background: #f5f5f5;
+  border-color: #999;
+  transform: translateX(-2px);
+}
+
 .product-detail-content {
   background: white;
   border-radius: 8px;
