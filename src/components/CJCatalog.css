@@ -8,8 +8,8 @@
 .cj-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .cj-error { background: #ffe2e2; color: #a30000; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
 .cj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.cj-card { background: #fff; border: 1px solid #eee; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: box-shadow .2s ease; }
-.cj-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.cj-card { background: #fff; border: 1px solid #eee; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.cj-card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 .cj-thumb { height: 160px; display: flex; align-items: center; justify-content: center; background: #fafafa; }
 .cj-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .cj-thumb-fallback { font-size: 40px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #bbb; }
