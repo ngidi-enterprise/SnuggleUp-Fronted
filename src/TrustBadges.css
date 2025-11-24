@@ -5,7 +5,7 @@
   gap: 3rem;
   padding: 2rem 1rem;
   background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #555;
   flex-wrap: wrap;
 }
 
@@ -14,14 +14,14 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: #444;
   border-radius: 12px;
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .trust-badge:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.08);
+  background: #555;
 }
 
 .badge-icon {
