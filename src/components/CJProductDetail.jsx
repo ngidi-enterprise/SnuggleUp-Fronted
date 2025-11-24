@@ -138,14 +138,29 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       <button className="back-button" onClick={onClose}>← Back to Products</button>
       <div className="product-detail-grid">
         <div className="product-gallery">
-          <div className="main-image">
-            {selectedImage ? <img src={selectedImage} alt={product?.product_name || 'Product'} /> : <div style={{height: 320, display:'flex', alignItems:'center', justifyContent:'center'}}>🍼</div>}
-          </div>
-          {images.length > 1 && (
-            <div className="thumbnail-gallery">
-              {images.map((img) => (
-                <img key={img} src={img} className={selectedImage === img ? 'active' : ''} onClick={() => setSelectedImage(img)} />
-              ))}
+          {images.length > 0 ? (
+            images.map((img, idx) => (
+              <img 
+                key={img} 
+                src={img} 
+                alt={`${product?.product_name || 'Product'} - Image ${idx + 1}`}
+                className={selectedImage === img ? 'active' : ''}
+                onClick={() => setSelectedImage(img)}
+              />
+            ))
+          ) : (
+            <div style={{
+              width: '100%',
+              aspectRatio: '1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f9f9f9',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              fontSize: '48px'
+            }}>
+              🍼
             </div>
           )}
         </div>
