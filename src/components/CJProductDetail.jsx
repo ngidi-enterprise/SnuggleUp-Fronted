@@ -72,8 +72,26 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
       return s;
     };
+    
+    const imageSet = new Set();
+    
+    // Add main product image
     const main = normalizeUrl(product?.product_image);
-    return main ? [main] : [];
+    if (main) imageSet.add(main);
+    
+    // Extract images from product description HTML
+    if (product?.product_description) {
+      const desc = String(product.product_description);
+      // Match all img src attributes
+      const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+      let match;
+      while ((match = imgRegex.exec(desc)) !== null) {
+        const imgUrl = normalizeUrl(match[1]);
+        if (imgUrl) imageSet.add(imgUrl);
+      }
+    }
+    
+    return Array.from(imageSet);
   }, [product]);
 
   // Curated products have a single fixed price (no variants in simplified model)
@@ -145,6 +163,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
               <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
           </div>
+          {/* Show thumbnail gallery when we have multiple images */}
           {images.length > 1 && (
             <div className="thumbnail-gallery">
               {images.map((img, idx) => (
