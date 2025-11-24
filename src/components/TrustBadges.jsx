@@ -15,7 +15,6 @@ export default function TrustBadges() {
         <div className="badge-icon">🚚</div>
         <div className="badge-text">
           <strong>Reliable Shipping</strong>
-          <span>Free over R800</span>
         </div>
       </div>
       <div className="trust-badge">
