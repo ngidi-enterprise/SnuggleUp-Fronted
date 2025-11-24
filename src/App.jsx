@@ -842,7 +842,6 @@ function App() {
           console.log('🔍 Rendering CJCatalog on CJ route with isAdmin:', isAdmin, 'user:', user?.email);
           return null;
         })()}
-        <TrustBadges />
         <CJCatalog 
           onBack={() => { window.location.hash = ''; }}
           onOpenProduct={(pid) => setSelectedCjPid(pid)}
@@ -1123,7 +1122,6 @@ function App() {
               console.log('🔍 Rendering CJCatalog on main route with isAdmin:', isAdmin, 'user:', user?.email);
               return null;
             })()}
-            <TrustBadges />
             <CJCatalog 
               query={cjQuery}
               onQueryChange={setCjQuery}
@@ -1398,9 +1396,12 @@ function App() {
 
       {/* Footer */}
       <footer className="footer" style={{ flexShrink: 0 }}>
-        <p>© 2025 SnuggleUp</p>
-        <p>Made with <span className="heart">❤️</span> for all parents. Free local delivery over R800.</p>
-        <p>Contact: support@snuggleup.co.za </p>
+        <TrustBadges />
+        <div style={{ marginTop: '1.5rem' }}>
+          <p>© 2025 SnuggleUp</p>
+          <p>Made with <span className="heart">❤️</span> for all parents. Free local delivery over R800.</p>
+          <p>Contact: support@snuggleup.co.za </p>
+        </div>
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
           <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
