@@ -1,11 +1,11 @@
 /* Admin Dashboard Layout */
 .admin-dashboard {
   display: flex;
-  min-height: calc(100vh - 88px);
+  min-height: calc(100vh - var(--header-height));
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   margin-top: 0;
   position: fixed;
-  top: 88px;
+  top: var(--header-height);
   left: 0;
   right: 0;
   bottom: 0;
@@ -19,9 +19,9 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  height: calc(100vh - 88px);
+  height: calc(100vh - var(--header-height));
   overflow-y: auto;
-  top: 88px;
+  top: var(--header-height);
 }
 
 .admin-sidebar-header {
@@ -116,7 +116,7 @@
 
 .admin-content-body {
   padding: 32px;
-  height: calc(100vh - 88px - 90px); /* Full height minus header and content header */
+  height: calc(100vh - var(--header-height) - 90px); /* Full height minus header and content header */
   overflow-y: auto;
 }
 
