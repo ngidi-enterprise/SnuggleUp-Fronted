@@ -818,18 +818,16 @@ function App() {
             <div 
               className="logo"
               onClick={() => { 
-                window.location.hash = ''; 
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.location.href = 'https://snuggleup.co.za';
               }}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                  window.location.hash = '';
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  window.location.href = 'https://snuggleup.co.za';
                 }
               }}
-              aria-label="Return to home page"
+              aria-label="Go to SnuggleUp home page"
             >
               <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
             </div>
@@ -1074,18 +1072,16 @@ function App() {
           <div 
             className="logo" 
             onClick={() => { 
-              window.location.hash = ''; 
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.location.href = 'https://snuggleup.co.za';
             }}
             role="button"
             tabIndex={0}
             onKeyPress={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                window.location.hash = '';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.location.href = 'https://snuggleup.co.za';
               }
             }}
-            aria-label="Return to home page"
+            aria-label="Go to SnuggleUp home page"
           >
             <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ width: '150px', height: 'auto', display: 'block' }} loading="eager" />
           </div>
