@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
-const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
+const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.svg';
 import CheckoutSuccess from './CheckoutSuccess';
 import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
@@ -1057,7 +1057,7 @@ function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo">
-            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
+            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ width: '150px', height: 'auto', display: 'block' }} loading="eager" />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
