@@ -12,7 +12,7 @@ html {
 
 :root {
   /* Centralized header height for layout offsets (admin dashboard, sticky regions) */
-  --header-height: 120px; /* Increased for 2.5rem padding */
+  --header-height: 85px; /* Adjusted for 1.25rem padding */
 }
 
 body {
@@ -39,7 +39,7 @@ body {
   top: 0;
   z-index: 1000;
   background: white;
-  padding: 1rem 2rem;
+  padding: 1.25rem 2rem;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   display: flex;
   justify-content: space-between;
@@ -864,5 +864,3 @@ body {
     font-size: 1.5rem;
   }
 }
-
-
