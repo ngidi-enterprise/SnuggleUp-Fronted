@@ -59,6 +59,17 @@ body {
   padding: 0;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.logo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(122, 199, 178, 0.2);
+}
+
+.logo:active {
+  transform: translateY(0);
 }
 
 
@@ -68,6 +79,7 @@ body {
   display: block;
   object-fit: contain;
   border-radius: 12px;
+  pointer-events: none;
 }
 
 .brand-info h1 {
@@ -335,6 +347,12 @@ body {
   margin-bottom: 1rem;
 }
 
+/* Breathing animation for add-to-cart buttons */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
 .add-to-cart {
   background: var(--brand-gradient);
   color: var(--brand-contrast);
@@ -347,11 +365,20 @@ body {
   font-size: var(--text-base);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: var(--shadow-card);
+  animation: breathe 3s ease-in-out infinite;
 }
 
 .add-to-cart:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow: var(--shadow-hover);
+  animation: none;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .add-to-cart {
+    animation: none;
+  }
 }
 
 /* Forgot/Reset Password Pages */
