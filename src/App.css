@@ -12,7 +12,7 @@ html {
 
 :root {
   /* Centralized header height for layout offsets (admin dashboard, sticky regions) */
-  --header-height: 72px; /* Adjust if header content changes */
+  --header-height: 120px; /* Increased for 2.5rem padding */
 }
 
 body {
@@ -44,7 +44,6 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: var(--header-height);
 }
 
 .logo-section {
@@ -865,5 +864,3 @@ body {
     font-size: 1.5rem;
   }
 }
-
-
