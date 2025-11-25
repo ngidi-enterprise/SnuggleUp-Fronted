@@ -47,22 +47,27 @@ body {
   gap: 1rem;
 }
 
+
 .logo {
-  width: 150px; /* Wider to accommodate horizontal logo */
+  width: 150px;
+  min-width: 120px;
+  max-width: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  overflow: visible;
   background: transparent;
   padding: 0;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
+
 
 .logo img {
   width: 100%;
   height: auto;
   display: block;
   object-fit: contain;
+  border-radius: 12px;
 }
 
 .brand-info h1 {
