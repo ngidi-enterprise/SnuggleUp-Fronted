@@ -815,7 +815,22 @@ function App() {
         {/* Header (light) */}
         <header className="header">
           <div className="logo-section">
-            <div className="logo">
+            <div 
+              className="logo"
+              onClick={() => { 
+                window.location.hash = ''; 
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  window.location.hash = '';
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              aria-label="Return to home page"
+            >
               <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
             </div>
             <div className="brand-info">
@@ -1056,7 +1071,22 @@ function App() {
       {/* Header */}
       <header className="header">
         <div className="logo-section">
-          <div className="logo">
+          <div 
+            className="logo" 
+            onClick={() => { 
+              window.location.hash = ''; 
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                window.location.hash = '';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            aria-label="Return to home page"
+          >
             <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ width: '150px', height: 'auto', display: 'block' }} loading="eager" />
           </div>
           <div className="brand-info">
