@@ -104,8 +104,7 @@
   padding: 24px 32px;
   border-bottom: 1px solid #e1e8ed;
   position: sticky;
-  /* Ensure the sticky section header sits below the main site header */
-  top: var(--header-height);
+  top: 0;
   z-index: 10;
 }
 
