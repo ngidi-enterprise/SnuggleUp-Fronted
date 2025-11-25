@@ -274,7 +274,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                 style={{
                   opacity: isOutOfStock ? 0.8 : 1,
                   cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                  background: isOutOfStock ? '#95a5a6' : ''
+                  background: isOutOfStock ? '#95a5a6' : undefined,
+                  animation: isOutOfStock ? 'none' : undefined
                 }}
               >
                 {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
