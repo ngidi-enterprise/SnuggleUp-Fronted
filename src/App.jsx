@@ -51,6 +51,14 @@ function App() {
   
   const { user, token, isAuthenticated } = useAuth();
 
+  // Prefill shipping name from user profile when available (editable by user)
+  const defaultCustomerName = (
+    user?.name ||
+    user?._sb?.user_metadata?.full_name ||
+    user?._sb?.user_metadata?.name ||
+    (user?.email ? user.email.split('@')[0] : '')
+  ) || '';
+
   // API base URLs with automatic fallback (custom domain -> Render)
   const PRIMARY_API_BASE = (import.meta.env.VITE_API_BASE || '').trim();
   const FALLBACK_API_BASE = 'https://snuggleup-backend.onrender.com';
@@ -1472,7 +1480,8 @@ function App() {
             setShowShippingForm(false);
             setShowCart(true);
           }}
-          initialData={shippingFormData || {}}
+          // Prefill with user's name; previously entered values override
+          initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
         />
       )}
     </div>
