@@ -1472,7 +1472,7 @@ function App() {
             setShowShippingForm(false);
             setShowCart(true);
           }}
-          initialData={shippingFormData}
+          initialData={shippingFormData || {}}
         />
       )}
     </div>
