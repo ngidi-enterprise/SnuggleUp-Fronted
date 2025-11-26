@@ -891,13 +891,13 @@ function App() {
           />
         )}
 
-        {/* Shopping Cart Modal (reuse) */}
+        {/* Shopping Cart Full Page */}
         {showCart && (
-          <div className="cart-overlay" onClick={() => setShowCart(false)}>
-            <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="cart-page">
+            <div className="cart-content">
               <div className="cart-header">
                 <h3>Shopping Cart ({cartCount} items)</h3>
-                <button className="close-cart" onClick={() => setShowCart(false)}>✕</button>
+                <button className="close-cart" onClick={() => setShowCart(false)}>← Back to Shop</button>
               </div>
               <div className="cart-items">
                 {cartItems.length === 0 ? (
@@ -1187,13 +1187,13 @@ function App() {
         </div>
       )}
 
-      {/* Shopping Cart Modal */}
+      {/* Shopping Cart Full Page */}
       {showCart && (
-        <div className="cart-overlay" onClick={toggleCart}>
-          <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cart-page">
+          <div className="cart-content">
             <div className="cart-header">
               <h3>Shopping Cart ({cartCount} items)</h3>
-              <button className="close-cart" onClick={toggleCart}>✕</button>
+              <button className="close-cart" onClick={toggleCart}>← Back to Shop</button>
             </div>
             <div className="cart-items">
               {cartItems.length === 0 ? (
