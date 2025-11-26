@@ -7,6 +7,7 @@ export default function OrderManagement() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [submittingOrderId, setSubmittingOrderId] = useState(null);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -64,6 +65,36 @@ export default function OrderManagement() {
     setSelectedOrder(null);
   };
 
+  const submitToCJ = async (orderId) => {
+    if (!confirm('Submit this order to CJ Dropshipping for fulfillment?')) {
+      return;
+    }
+
+    setSubmittingOrderId(orderId);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/submit-to-cj`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`✓ Order submitted to CJ successfully!\nCJ Order ID: ${data.cjOrderId}\nCJ Order #: ${data.cjOrderNumber}`);
+        fetchOrders(); // Refresh orders to show updated CJ status
+      } else {
+        alert(`Failed to submit order to CJ:\n${data.error}\n${data.details || ''}`);
+      }
+    } catch (err) {
+      alert('Error submitting order to CJ: ' + err.message);
+    } finally {
+      setSubmittingOrderId(null);
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading orders...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -92,6 +123,7 @@ export default function OrderManagement() {
               <th>Items</th>
               <th>Total</th>
               <th>Status</th>
+              <th>CJ Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -117,12 +149,37 @@ export default function OrderManagement() {
                     </span>
                   </td>
                   <td>
+                    {order.cj_order_id ? (
+                      <div className="cj-status">
+                        <span className={`status-badge status-cj-${(order.cj_status || 'submitted').toLowerCase()}`}>
+                          {order.cj_status || 'SUBMITTED'}
+                        </span>
+                        {order.cj_tracking_number && (
+                          <div className="cj-tracking">
+                            <small>Track: {order.cj_tracking_number}</small>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="cj-status-none">Not submitted</span>
+                    )}
+                  </td>
+                  <td>
                     <button
                       className="btn-small btn-primary"
                       onClick={() => viewOrderDetails(order)}
                     >
                       View
                     </button>
+                    {order.status === 'paid' && !order.cj_order_id && (
+                      <button
+                        className="btn-small btn-success"
+                        onClick={() => submitToCJ(order.id)}
+                        disabled={submittingOrderId === order.id}
+                      >
+                        {submittingOrderId === order.id ? 'Submitting...' : 'Submit to CJ'}
+                      </button>
+                    )}
                     {order.status === 'pending' && (
                       <select
                         className="status-select"
@@ -167,6 +224,40 @@ export default function OrderManagement() {
                   {selectedOrder.status}
                 </span>
               </p>
+              {selectedOrder.cj_order_id && (
+                <>
+                  <p>
+                    <strong>CJ Order ID:</strong> {selectedOrder.cj_order_id}
+                  </p>
+                  <p>
+                    <strong>CJ Order Number:</strong> {selectedOrder.cj_order_number}
+                  </p>
+                  <p>
+                    <strong>CJ Status:</strong>{' '}
+                    <span className={`status-badge status-cj-${(selectedOrder.cj_status || 'submitted').toLowerCase()}`}>
+                      {selectedOrder.cj_status || 'SUBMITTED'}
+                    </span>
+                  </p>
+                  {selectedOrder.cj_tracking_number && (
+                    <>
+                      <p>
+                        <strong>Tracking Number:</strong> {selectedOrder.cj_tracking_number}
+                      </p>
+                      {selectedOrder.cj_tracking_url && (
+                        <p>
+                          <strong>Track Shipment:</strong>{' '}
+                          <a href={selectedOrder.cj_tracking_url} target="_blank" rel="noopener noreferrer">
+                            View Tracking
+                          </a>
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <p>
+                    <strong>Submitted to CJ:</strong> {new Date(selectedOrder.cj_submitted_at).toLocaleString()}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="order-details-section">
