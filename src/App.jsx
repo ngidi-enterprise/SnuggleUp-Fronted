@@ -15,6 +15,7 @@ import CJProductDetail from './components/CJProductDetail';
 import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
 import TrustBadges from './components/TrustBadges';
+import ShippingForm from './components/ShippingForm';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -45,6 +46,8 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
   const [cartLoaded, setCartLoaded] = useState(false);
+  const [showShippingForm, setShowShippingForm] = useState(false);
+  const [shippingFormData, setShippingFormData] = useState(null);
   
   const { user, token, isAuthenticated } = useAuth();
 
@@ -638,6 +641,15 @@ function App() {
     // Track begin checkout event
     trackBeginCheckout(cartItems, getTotalPrice());
 
+    // Show shipping form before payment
+    setShowCart(false);
+    setShowShippingForm(true);
+  };
+
+  const handleShippingFormSubmit = async (shippingDetails) => {
+    setShippingFormData(shippingDetails);
+    setShowShippingForm(false);
+
     try {
       // Save cart to localStorage for recovery if payment fails
       localStorage.setItem('cart', JSON.stringify(cartItems));
@@ -669,6 +681,7 @@ function App() {
           shippingMethod: selectedShipping?.logisticName || 'STANDARD',
           shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
           shippingCountry: shippingCountry,
+          shippingDetails: shippingDetails,
           insurance: insuranceSelected ? {
             selected: true,
             cost: getInsuranceCost(),
@@ -1450,6 +1463,18 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Shipping Form Modal */}
+      {showShippingForm && (
+        <ShippingForm
+          onSubmit={handleShippingFormSubmit}
+          onCancel={() => {
+            setShowShippingForm(false);
+            setShowCart(true);
+          }}
+          initialData={shippingFormData}
+        />
+      )}
     </div>
   );
 }
