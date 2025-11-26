@@ -1042,7 +1042,7 @@ function App() {
                       )}
                     </div>
                     <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                     {insuranceSelected && insuranceData && (
                       <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                     )}
@@ -1306,6 +1306,11 @@ function App() {
                                 📅 Estimated delivery: {selectedShipping.deliveryDates.text}
                               </p>
                             )}
+                            {selectedShipping?.isFallback && (
+                              <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                ℹ️ Estimated rate applied (no live quote available)
+                              </p>
+                            )}
                           </div>
 
                           {/* Insurance Option */}
@@ -1338,7 +1343,7 @@ function App() {
                     )}
                   </div>
                   <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                   {insuranceSelected && insuranceData && (
                     <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                   )}
