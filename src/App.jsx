@@ -875,7 +875,7 @@ function App() {
           return null;
         })()}
         
-        {!selectedCjPid && (
+        {!showCart && !selectedCjPid && (
           <CJCatalog 
             onBack={() => { window.location.hash = ''; }}
             onOpenProduct={(pid) => setSelectedCjPid(pid)}
@@ -883,7 +883,7 @@ function App() {
           />
         )}
 
-        {selectedCjPid && (
+        {!showCart && selectedCjPid && (
           <CJProductDetail
             pid={selectedCjPid}
             onClose={() => setSelectedCjPid(null)}
@@ -1150,7 +1150,7 @@ function App() {
       )}
 
       {/* Show store content ONLY when admin dashboard is showing store preview OR admin is completely closed */}
-      {(!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
+      {!showCart && (!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
         <div style={{
           marginLeft: showAdminDashboard && isStorePreviewActive ? '260px' : '0',
           minHeight: 'calc(100vh - 88px)',
