@@ -1409,7 +1409,7 @@ function App() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.45)',
+            background: 'rgba(0,0,0,0.75)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1421,11 +1421,7 @@ function App() {
             style={{
               width: 'min(560px, 92vw)',
               maxHeight: '90vh',
-              overflowY: 'auto',
-              borderRadius: '10px',
-              background: '#fff',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
-              padding: '20px'
+              overflowY: 'auto'
             }}
           >
             {authView === 'login' ? (
