@@ -94,7 +94,7 @@ export default function PricingManager() {
               <th>Product</th>
               <th>Cost Price (USD)</th>
               <th>Cost Price (ZAR)</th>
-              <th>Suggested Price (2x)</th>
+              <th>Suggested Price (1.5x)</th>
               <th>Current Retail Price</th>
               <th>Margin %</th>
               <th>Markup %</th>
@@ -193,7 +193,7 @@ export default function PricingManager() {
             <strong>Good margin:</strong> 50% or higher (green badge).
           </li>
           <li>
-            <strong>Suggested price:</strong> Automatically calculated as 2x the supplier cost price.
+            <strong>Suggested price:</strong> Automatically calculated as 1.5x the ZAR cost price (50% markup).
           </li>
         </ul>
       </div>
