@@ -3,6 +3,9 @@ import './CJCatalog.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
+// USD to ZAR conversion rate
+const USD_TO_ZAR = 19.0;
+
 // Maps curated product to UI-friendly shape
 function useProductMapping(items) {
   const normalizeUrl = (u) => {
@@ -17,7 +20,8 @@ function useProductMapping(items) {
     const pid = p.id; // Use database ID for product detail lookup
     const name = p.product_name || 'Product';
     const image = normalizeUrl(p.product_image);
-    const minPrice = Number(p.custom_price || p.suggested_price || 0);
+    const priceUSD = Number(p.custom_price || p.suggested_price || 0);
+    const minPrice = priceUSD * USD_TO_ZAR; // Convert USD to ZAR
     const maxPrice = minPrice; // Curated products have fixed pricing
     const category = p.category || 'general';
     const isValidPrice = !isNaN(minPrice) && minPrice > 0;
@@ -237,7 +241,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 <div className="cj-name" title={p.name}>{p.name}</div>
                 <div className="cj-price">
                   {p.isValidPrice ? (
-                    <>From R {Number(p.minPrice).toFixed(2)}</>
+                    <>From R{Number(p.minPrice).toFixed(2)}</>
                   ) : (
                     <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
                       Price pending
