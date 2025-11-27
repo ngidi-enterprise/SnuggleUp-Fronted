@@ -92,7 +92,8 @@ export default function PricingManager() {
           <thead>
             <tr>
               <th>Product</th>
-              <th>Cost Price (Supplier)</th>
+              <th>Cost Price (USD)</th>
+              <th>Cost Price (ZAR)</th>
               <th>Suggested Price (2x)</th>
               <th>Current Retail Price</th>
               <th>Margin %</th>
@@ -128,6 +129,7 @@ export default function PricingManager() {
                     </div>
                   </td>
                   <td>${costPriceUSD.toFixed(2)}</td>
+                  <td>R {costPriceZAR.toFixed(2)}</td>
                   <td>R {suggestedPrice.toFixed(2)}</td>
                   <td>
                     {isEditing ? (
