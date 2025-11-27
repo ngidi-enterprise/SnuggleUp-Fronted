@@ -1403,8 +1403,31 @@ function App() {
 
       {/* Auth Modal */}
       {showAuthModal && (
-        <div className="cart-overlay" onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}>
-          <div onClick={(e) => e.stopPropagation()}>
+        <div
+          className="auth-overlay"
+          onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(560px, 92vw)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              borderRadius: '10px',
+              background: '#fff',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+              padding: '20px'
+            }}
+          >
             {authView === 'login' ? (
               <Login 
                 onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
