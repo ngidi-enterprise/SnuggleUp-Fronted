@@ -747,7 +747,8 @@ export default function ProductCuration() {
                     <th>Image</th>
                     <th>Name</th>
                     <th>CJ PID</th>
-                    <th>Cost Price</th>
+                    <th>Cost Price (USD)</th>
+                    <th>Cost Price (ZAR)</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
                     <th>Link Status</th>
@@ -779,7 +780,8 @@ export default function ProductCuration() {
                       <td style={{ fontSize: '11px', color: '#7f8c8d', fontFamily: 'monospace' }}>
                         {product.cj_pid}
                       </td>
-                      <td>R {Number(product.cj_cost_price).toFixed(2)}</td>
+                      <td>${Number(product.cj_cost_price).toFixed(2)}</td>
+                      <td>R {(Number(product.cj_cost_price) * USD_TO_ZAR).toFixed(2)}</td>
                       <td>R {Number(product.custom_price || product.suggested_price).toFixed(2)}</td>
                       <td>
                         <span style={{
