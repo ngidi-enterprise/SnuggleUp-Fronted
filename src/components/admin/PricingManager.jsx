@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
+// USD to ZAR conversion rate
+const USD_TO_ZAR = 19.0;
+
 export default function PricingManager() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +102,8 @@ export default function PricingManager() {
           </thead>
           <tbody>
             {products.map((product) => {
-              const costPrice = Number(product.cj_cost_price);
+              const costPriceUSD = Number(product.cj_cost_price);
+              const costPriceZAR = costPriceUSD * USD_TO_ZAR;
               const suggestedPrice = Number(product.suggested_price);
               const retailPrice = Number(product.custom_price || product.suggested_price);
               const isEditing = editingId === product.id;
@@ -123,7 +127,7 @@ export default function PricingManager() {
                       </div>
                     </div>
                   </td>
-                  <td>R {costPrice.toFixed(2)}</td>
+                  <td>${costPriceUSD.toFixed(2)}</td>
                   <td>R {suggestedPrice.toFixed(2)}</td>
                   <td>
                     {isEditing ? (
@@ -142,15 +146,15 @@ export default function PricingManager() {
                   <td>
                     <span
                       className={`margin-badge ${
-                        calculateMargin(costPrice, isEditing ? Number(editPrice) : retailPrice) >= 50
+                        calculateMargin(costPriceZAR, isEditing ? Number(editPrice) : retailPrice) >= 50
                           ? 'margin-good'
                           : 'margin-low'
                       }`}
                     >
-                      {calculateMargin(costPrice, isEditing ? Number(editPrice) : retailPrice)}%
+                      {calculateMargin(costPriceZAR, isEditing ? Number(editPrice) : retailPrice)}%
                     </span>
                   </td>
-                  <td>{calculateMarkup(costPrice, isEditing ? Number(editPrice) : retailPrice)}%</td>
+                  <td>{calculateMarkup(costPriceZAR, isEditing ? Number(editPrice) : retailPrice)}%</td>
                   <td>
                     {isEditing ? (
                       <div className="action-buttons">
