@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
+// USD to ZAR conversion rate
+const USD_TO_ZAR = 19.0;
+
 export default function ProductCuration() {
   // Default to empty so it doesn't auto-fill after refresh
   const [searchQuery, setSearchQuery] = useState('');
@@ -578,10 +581,10 @@ export default function ProductCuration() {
                         {product.name}
                       </p>
                       <p className="product-card-price">
-                        Cost: R {Number(product.price || 0).toFixed(2)}
+                        Cost: ${Number(product.price || 0).toFixed(2)}
                       </p>
                       <p className="product-card-suggested">
-                        Suggested: R {(Number(product.price || 0) * 2).toFixed(2)}
+                        Suggested: R {(Number(product.price || 0) * USD_TO_ZAR * 2).toFixed(2)}
                       </p>
                       {isAlreadyCurated ? (
                         <button className="btn-secondary" disabled>
