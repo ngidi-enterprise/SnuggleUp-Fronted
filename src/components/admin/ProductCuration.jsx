@@ -123,10 +123,11 @@ export default function ProductCuration() {
       (data.items || []).slice(0,10).forEach((p, i) => {
         console.log(`Product[${i}] location:`, p.location, 'warehouse:', p.warehouse);
       });
-      // Only allow products from China: location contains 'cn' (case-insensitive, substring) OR warehouse contains 'china'
+      // If both location and warehouse are missing, show all products
       const filtered = (data.items || []).filter(p => {
-        const loc = (p.location || '').trim().toLowerCase();
-        const wh = (p.warehouse || '').trim().toLowerCase();
+        const loc = typeof p.location === 'string' ? p.location.trim().toLowerCase() : '';
+        const wh = typeof p.warehouse === 'string' ? p.warehouse.trim().toLowerCase() : '';
+        if (!loc && !wh) return true; // Show if both missing
         return loc.includes('cn') || wh.includes('china');
       });
       console.log('CJ Search Results Sample:', filtered?.[0]); // Debug: see what fields we get
