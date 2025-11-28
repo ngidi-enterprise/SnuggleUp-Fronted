@@ -98,7 +98,8 @@ export default function PricingManager() {
         alert(`✓ Successfully recalculated ${data.updated} product prices!`);
         fetchProducts(); // Refresh the list
       } else {
-        alert('Failed to recalculate prices: ' + (data.error || 'Unknown error'));
+        console.warn('Recalculate suggested prices failed', { status: res.status, data });
+        alert('Failed to recalculate prices: ' + (data.error || `HTTP ${res.status}`));
       }
     } catch (err) {
       alert('Error: ' + err.message);
@@ -144,8 +145,12 @@ export default function PricingManager() {
             {products.map((product) => {
               const costPriceUSD = Number(product.cj_cost_price);
               const costPriceZAR = costPriceUSD * USD_TO_ZAR;
-              const suggestedPrice = Number(product.suggested_price);
-              const retailPrice = Number(product.custom_price || product.suggested_price);
+              const storedSuggested = Number(product.suggested_price);
+              // Correct formula should be costPriceZAR * 1.5. Detect old incorrect stored values (USD*1.5) and override.
+              const calculatedSuggested = Math.round(costPriceZAR * 1.5 * 100) / 100;
+              const usingFallback = storedSuggested < costPriceZAR; // Indicates it's still the old USD*1.5 value
+              const suggestedPrice = usingFallback ? calculatedSuggested : storedSuggested;
+              const retailPrice = Number(product.custom_price || suggestedPrice);
               const isEditing = editingId === product.id;
 
               return (
@@ -169,7 +174,14 @@ export default function PricingManager() {
                   </td>
                   <td>${costPriceUSD.toFixed(2)}</td>
                   <td>R {costPriceZAR.toFixed(2)}</td>
-                  <td>R {suggestedPrice.toFixed(2)}</td>
+                  <td>
+                    R {suggestedPrice.toFixed(2)}
+                    {usingFallback && (
+                      <span style={{ marginLeft: 6, fontSize: '11px', color: '#b36b00' }} title="Stored value was outdated (USD-based). Displaying recalculated ZAR-based suggested price.">
+                        (recalc)
+                      </span>
+                    )}
+                  </td>
                   <td>
                     {isEditing ? (
                       <input
