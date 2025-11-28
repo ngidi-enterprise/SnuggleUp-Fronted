@@ -88,20 +88,20 @@ export default function ProductCuration() {
     setLoading(true);
     setError('');
     setCurrentPage(1); // Reset to page 1 on new search
-    
+
     console.log('CJ Search Debug:', {
       token: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
       apiBase: API_BASE,
       hasToken: !!token,
       searchQuery
     });
-    
+
     if (!token) {
       setError('No authentication token. Please refresh the page and log in again.');
       setLoading(false);
       return;
     }
-    
+
     try {
       const res = await fetch(
         `${API_BASE}/api/admin/cj-products/search?q=${encodeURIComponent(searchQuery)}&pageSize=200`,
@@ -119,8 +119,14 @@ export default function ProductCuration() {
       }
 
       const data = await res.json();
-      console.log('CJ Search Results Sample:', data.items?.[0]); // Debug: see what fields we get
-      setSearchResults(data.items || []);
+      // Only allow products from China: location must contain 'CN' OR warehouse must contain 'china'
+      const filtered = (data.items || []).filter(p => {
+        const loc = (p.location || '').toLowerCase();
+        const wh = (p.warehouse || '').toLowerCase();
+        return loc.includes('cn') || wh.includes('china');
+      });
+      console.log('CJ Search Results Sample:', filtered?.[0]); // Debug: see what fields we get
+      setSearchResults(filtered);
     } catch (err) {
       setError(err.message);
     } finally {
