@@ -10,6 +10,7 @@ export default function PricingManager() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editPrice, setEditPrice] = useState('');
+  const [recalculating, setRecalculating] = useState(false);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -76,6 +77,36 @@ export default function PricingManager() {
     return markup.toFixed(1);
   };
 
+  const recalculateSuggestedPrices = async () => {
+    if (!confirm('Recalculate suggested prices for ALL products using the current formula (USD × 19.0 × 1.5)? This will update the database.')) {
+      return;
+    }
+
+    setRecalculating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/recalculate-suggested-prices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✓ Successfully recalculated ${data.updated} product prices!`);
+        fetchProducts(); // Refresh the list
+      } else {
+        alert('Failed to recalculate prices: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading products...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -83,6 +114,14 @@ export default function PricingManager() {
     <div className="pricing-manager-container">
       <div className="pricing-header">
         <p>Manage retail prices for your products. Adjust prices based on your target margins.</p>
+        <button 
+          className="btn-primary" 
+          onClick={recalculateSuggestedPrices}
+          disabled={recalculating}
+          style={{ marginTop: '10px' }}
+        >
+          {recalculating ? 'Recalculating...' : '🔄 Recalculate All Suggested Prices'}
+        </button>
       </div>
 
       {products.length === 0 ? (
