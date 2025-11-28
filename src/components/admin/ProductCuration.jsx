@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 // USD to ZAR conversion rate
-const USD_TO_ZAR = 19.0;
+const USD_TO_ZAR = 18.0;
 
 export default function ProductCuration() {
   // Default to empty so it doesn't auto-fill after refresh
