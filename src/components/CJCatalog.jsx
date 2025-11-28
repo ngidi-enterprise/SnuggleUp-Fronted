@@ -17,7 +17,7 @@ function useProductMapping(items) {
   };
   return useMemo(() => (items || []).map((p) => {
     // Map curated_products table fields
-    const pid = p.id; // Use database ID for product detail lookup
+    const pid = p.id;
     const name = p.product_name || 'Product';
     const image = normalizeUrl(p.product_image);
     let priceZAR = 0;
@@ -27,7 +27,6 @@ function useProductMapping(items) {
     } else if (p.suggested_price) {
       priceZAR = Number(p.suggested_price);
     } else if (p.cj_cost_price) {
-      // Fallback: calculate suggested price from USD
       priceZAR = Math.round(Number(p.cj_cost_price) * USD_TO_ZAR * 1.4 * 100) / 100;
       isFallback = true;
     }
@@ -35,7 +34,11 @@ function useProductMapping(items) {
     const maxPrice = minPrice;
     const category = p.category || 'general';
     const isValidPrice = !isNaN(minPrice) && minPrice > 0;
-    return { pid, name, image, minPrice, maxPrice, category, raw: p, isValidPrice, isFallback };
+    // Expose warehouses and country info
+    const warehouses = Array.isArray(p.warehouses) ? p.warehouses : [];
+    // Find if any warehouse is in China
+    const isFromChina = warehouses.some(w => w.country_code === 'CN');
+    return { pid, name, image, minPrice, maxPrice, category, raw: p, isValidPrice, isFallback, warehouses, isFromChina };
   }), [items]);
 }
 
@@ -52,16 +55,24 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   const [data, setData] = useState({ list: [], total: 0 });
   const [opening, setOpening] = useState(false);
 
+  const [chinaOnly, setChinaOnly] = useState(false);
   const products = useProductMapping(data?.list);
-  const sortedProducts = useMemo(() => {
-    if (sortBy === 'price_asc') {
-      return [...products].sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
-    }
-    if (sortBy === 'price_desc') {
-      return [...products].sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+  // Filter for China if enabled
+  const filteredProducts = useMemo(() => {
+    if (chinaOnly) {
+      return products.filter(p => p.isFromChina);
     }
     return products;
-  }, [products, sortBy]);
+  }, [products, chinaOnly]);
+  const sortedProducts = useMemo(() => {
+    if (sortBy === 'price_asc') {
+      return [...filteredProducts].sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+    }
+    if (sortBy === 'price_desc') {
+      return [...filteredProducts].sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+    }
+    return filteredProducts;
+  }, [filteredProducts, sortBy]);
   const total = data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -148,6 +159,10 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
         <button className="cj-btn" onClick={() => runSearch(1)} disabled={loading}>
           {loading ? 'Searching…' : 'Search'}
         </button>
+        <label style={{marginLeft:12, fontSize:'14px'}}>
+          <input type="checkbox" checked={chinaOnly} onChange={e => setChinaOnly(e.target.checked)} style={{marginRight:6}} />
+          Only show products from China
+        </label>
         <select className="cj-input cj-input-small" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
           <option value="relevance">Sort: Relevance</option>
           <option value="price_asc">Price: Low to High</option>
