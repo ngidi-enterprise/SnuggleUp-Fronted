@@ -119,12 +119,9 @@ export default function ProductCuration() {
       }
 
       const data = await res.json();
-      // Debug: log first 10 products' location/warehouse
-      (data.items || []).slice(0,10).forEach((p, i) => {
-        console.log(`Product[${i}] location:`, p.location, 'warehouse:', p.warehouse);
-      });
-      // Show all products (no country filter, since location/warehouse are always undefined)
-      const filtered = data.items || [];
+      // Strictly keep only China-origin items
+      const filtered = (data.items || []).filter(p => p.originCountry === 'CN');
+      // Debug: sample
       console.log('CJ Search Results Sample:', filtered?.[0]); // Debug: see what fields we get
       setSearchResults(filtered);
     } catch (err) {
