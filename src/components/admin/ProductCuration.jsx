@@ -119,15 +119,15 @@ export default function ProductCuration() {
       }
 
       const data = await res.json();
-      // Debug: log first 3 products' location/warehouse
-      (data.items || []).slice(0,3).forEach((p, i) => {
+      // Debug: log first 10 products' location/warehouse
+      (data.items || []).slice(0,10).forEach((p, i) => {
         console.log(`Product[${i}] location:`, p.location, 'warehouse:', p.warehouse);
       });
-      // Only allow products from China: location must be exactly 'CN' (case-insensitive, trimmed) OR warehouse contains 'china'
+      // Only allow products from China: location contains 'cn' (case-insensitive, substring) OR warehouse contains 'china'
       const filtered = (data.items || []).filter(p => {
         const loc = (p.location || '').trim().toLowerCase();
         const wh = (p.warehouse || '').trim().toLowerCase();
-        return loc === 'cn' || wh.includes('china');
+        return loc.includes('cn') || wh.includes('china');
       });
       console.log('CJ Search Results Sample:', filtered?.[0]); // Debug: see what fields we get
       setSearchResults(filtered);
