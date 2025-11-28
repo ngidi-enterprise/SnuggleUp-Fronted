@@ -749,6 +749,7 @@ export default function ProductCuration() {
                     <th>CJ PID</th>
                     <th>Cost Price (USD)</th>
                     <th>Cost Price (ZAR)</th>
+                    <th>Suggested Price (1.5x)</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
                     <th>Link Status</th>
@@ -782,7 +783,36 @@ export default function ProductCuration() {
                       </td>
                       <td>${Number(product.cj_cost_price).toFixed(2)}</td>
                       <td>R {(Number(product.cj_cost_price) * USD_TO_ZAR).toFixed(2)}</td>
-                      <td>R {Number(product.custom_price || product.suggested_price).toFixed(2)}</td>
+                      <td>
+                        {(() => {
+                          const costUSD = Number(product.cj_cost_price);
+                          const costZAR = costUSD * USD_TO_ZAR;
+                          const storedSuggested = Number(product.suggested_price);
+                          const calculatedSuggested = Math.round(costZAR * 1.5 * 100) / 100;
+                          const usingFallback = storedSuggested < costZAR;
+                          const suggested = usingFallback ? calculatedSuggested : storedSuggested;
+                          return (
+                            <>
+                              R {suggested.toFixed(2)}
+                              {usingFallback && (
+                                <span style={{ marginLeft: 6, fontSize: '11px', color: '#b36b00' }} title="Stored value was outdated (USD-based). Displaying recalculated ZAR-based suggested price.">(recalc)</span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+                      <td>
+                        {(() => {
+                          const costUSD = Number(product.cj_cost_price);
+                          const costZAR = costUSD * USD_TO_ZAR;
+                          const storedSuggested = Number(product.suggested_price);
+                          const calculatedSuggested = Math.round(costZAR * 1.5 * 100) / 100;
+                          const usingFallback = storedSuggested < costZAR;
+                          const suggested = usingFallback ? calculatedSuggested : storedSuggested;
+                          const retail = Number(product.custom_price || suggested);
+                          return <>R {retail.toFixed(2)}</>;
+                        })()}
+                      </td>
                       <td>
                         <span style={{
                           padding: '4px 8px',
