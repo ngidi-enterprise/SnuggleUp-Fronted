@@ -20,13 +20,22 @@ function useProductMapping(items) {
     const pid = p.id; // Use database ID for product detail lookup
     const name = p.product_name || 'Product';
     const image = normalizeUrl(p.product_image);
-    // custom_price and suggested_price are stored in ZAR in our DB
-    const priceZAR = Number(p.custom_price || p.suggested_price || 0);
-    const minPrice = priceZAR; // Already ZAR
-    const maxPrice = minPrice; // Curated products have fixed pricing
+    let priceZAR = 0;
+    let isFallback = false;
+    if (p.custom_price) {
+      priceZAR = Number(p.custom_price);
+    } else if (p.suggested_price) {
+      priceZAR = Number(p.suggested_price);
+    } else if (p.cj_cost_price) {
+      // Fallback: calculate suggested price from USD
+      priceZAR = Math.round(Number(p.cj_cost_price) * USD_TO_ZAR * 1.4 * 100) / 100;
+      isFallback = true;
+    }
+    const minPrice = priceZAR;
+    const maxPrice = minPrice;
     const category = p.category || 'general';
     const isValidPrice = !isNaN(minPrice) && minPrice > 0;
-    return { pid, name, image, minPrice, maxPrice, category, raw: p, isValidPrice };
+    return { pid, name, image, minPrice, maxPrice, category, raw: p, isValidPrice, isFallback };
   }), [items]);
 }
 
@@ -242,7 +251,22 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 <div className="cj-name" title={p.name}>{p.name}</div>
                 <div className="cj-price">
                   {p.isValidPrice ? (
-                    <>From R{Number(p.minPrice).toFixed(2)}</>
+                    <>
+                      From R{Number(p.minPrice).toFixed(2)}
+                      {p.isFallback && (
+                        <span style={{
+                          marginLeft: 6,
+                          fontSize: '11px',
+                          color: '#b36b00',
+                          background: '#fff3cd',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          fontWeight: 500
+                        }} title="Calculated from supplier USD × 18 × 1.4">
+                          (auto)
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
                       Price pending
