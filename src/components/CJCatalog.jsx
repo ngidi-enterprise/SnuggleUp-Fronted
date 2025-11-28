@@ -4,7 +4,7 @@ import './CJCatalog.css';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
 // USD to ZAR conversion rate
-const USD_TO_ZAR = 19.0;
+const USD_TO_ZAR = 18.0;
 
 // Maps curated product to UI-friendly shape
 function useProductMapping(items) {
@@ -20,8 +20,9 @@ function useProductMapping(items) {
     const pid = p.id; // Use database ID for product detail lookup
     const name = p.product_name || 'Product';
     const image = normalizeUrl(p.product_image);
-    const priceUSD = Number(p.custom_price || p.suggested_price || 0);
-    const minPrice = priceUSD * USD_TO_ZAR; // Convert USD to ZAR
+    // custom_price and suggested_price are stored in ZAR in our DB
+    const priceZAR = Number(p.custom_price || p.suggested_price || 0);
+    const minPrice = priceZAR; // Already ZAR
     const maxPrice = minPrice; // Curated products have fixed pricing
     const category = p.category || 'general';
     const isValidPrice = !isNaN(minPrice) && minPrice > 0;
