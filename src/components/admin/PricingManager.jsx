@@ -79,7 +79,7 @@ export default function PricingManager() {
   };
 
   const recalculateSuggestedPrices = async () => {
-    if (!confirm('Recalculate suggested prices for ALL products using the current formula (USD × 19.0 × 1.5)? This will update the database.')) {
+    if (!confirm('Recalculate suggested prices for ALL products using the current formula (USD × 18.0 × 1.4)? This will update the database.')) {
       return;
     }
 
@@ -110,7 +110,7 @@ export default function PricingManager() {
   };
 
   const syncRetailToSuggested = async () => {
-    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 19 × 1.5)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
+    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 18 × 1.4)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
       return;
     }
 
@@ -175,7 +175,7 @@ export default function PricingManager() {
               <th>Product</th>
               <th>Cost Price (USD)</th>
               <th>Cost Price (ZAR)</th>
-              <th>Suggested Price (1.5x)</th>
+              <th>Suggested Price (1.4x)</th>
               <th>Current Retail Price</th>
               <th>Profit value</th>
               <th>Margin %</th>
@@ -188,8 +188,8 @@ export default function PricingManager() {
               const costPriceUSD = Number(product.cj_cost_price);
               const costPriceZAR = costPriceUSD * USD_TO_ZAR;
               const storedSuggested = Number(product.suggested_price);
-              // Correct formula should be costPriceZAR * 1.5. Detect old incorrect stored values (USD*1.5) and override.
-              const calculatedSuggested = Math.round(costPriceZAR * 1.5 * 100) / 100;
+              // Correct formula should be costPriceZAR * 1.4. Detect old incorrect stored values (USD*1.5) and override.
+              const calculatedSuggested = Math.round(costPriceZAR * 1.4 * 100) / 100;
               const usingFallback = storedSuggested < costPriceZAR; // Indicates it's still the old USD*1.5 value
               const suggestedPrice = usingFallback ? calculatedSuggested : storedSuggested;
               const retailPrice = Number(product.custom_price || suggestedPrice);
@@ -294,7 +294,10 @@ export default function PricingManager() {
             <strong>Good margin:</strong> 50% or higher (green badge).
           </li>
           <li>
-            <strong>Suggested price:</strong> Automatically calculated as 1.5x the ZAR cost price (50% markup).
+            <strong>Suggested price:</strong> Automatically calculated as 1.4x the ZAR cost price (40% markup).
+          </li>
+          <li>
+            <strong>Profit value:</strong> Retail − Cost (ZAR). Green = profit, red = loss.
           </li>
         </ul>
       </div>
