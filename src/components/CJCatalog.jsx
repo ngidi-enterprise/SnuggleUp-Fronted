@@ -94,6 +94,13 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
       
       // Filter by search query on client side (simple name matching)
       let productsList = res.products || [];
+      // Only allow products from China
+      productsList = productsList.filter(p => {
+        const loc = (p.location || '').toLowerCase();
+        const wh = (p.warehouse || '').toLowerCase();
+        // Accept if location or warehouse contains 'china'
+        return loc.includes('china') || wh.includes('china');
+      });
       if (q && q.trim()) {
         const searchLower = q.toLowerCase();
         productsList = productsList.filter(p => 
@@ -101,7 +108,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
           (p.category || '').toLowerCase().includes(searchLower)
         );
       }
-      
+
       setData({ list: productsList, total: productsList.length });
       setPageNum(page);
     } catch (e) {
