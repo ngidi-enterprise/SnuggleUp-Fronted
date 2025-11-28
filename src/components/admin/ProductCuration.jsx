@@ -35,6 +35,7 @@ export default function ProductCuration() {
   const [addingProducts, setAddingProducts] = useState(new Set()); // Track which products are being added
   const [quickLinkPid, setQuickLinkPid] = useState(''); // For manual PID entry
   const [linking, setLinking] = useState(false); // Loading state for linking operation
+  const [syncing, setSyncing] = useState(false); // Loading state for bulk sync
   
   // AI SEO Title Generator states
   const [showSEOPanel, setShowSEOPanel] = useState(false);
@@ -503,6 +504,38 @@ export default function ProductCuration() {
     }
   };
 
+  // Sync all retail prices to suggested prices
+  const syncRetailToSuggested = async () => {
+    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 19 × 1.5)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/sync-retail-to-suggested`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✓ Successfully synced ${data.updated} product retail prices!`);
+        await fetchCuratedProducts(); // Refresh the list
+      } else {
+        console.warn('Sync retail to suggested failed', { status: res.status, data });
+        alert('Failed to sync prices: ' + (data.error || `HTTP ${res.status}`));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="product-curation-container">
       <div className="product-curation-tabs">
@@ -735,6 +768,28 @@ export default function ProductCuration() {
           }}>
             💡 <strong>Tip:</strong> Search by product name, your database ID (e.g., "42"), or CJ PID (e.g., "CJYE206896609IR")
           </p>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <button 
+              onClick={syncRetailToSuggested}
+              disabled={syncing}
+              style={{
+                padding: '12px 24px',
+                background: syncing ? '#95a5a6' : '#27ae60',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: syncing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {syncing ? 'Syncing...' : '🔗 Sync All Retail → Suggested Prices'}
+            </button>
+            <span style={{ marginLeft: '12px', fontSize: '13px', color: '#7f8c8d' }}>
+              Update all retail prices to match corrected suggested prices (ZAR cost × 1.5)
+            </span>
+          </div>
           
           <div className="curated-list">
             {filteredCuratedProducts.length === 0 ? (
