@@ -11,6 +11,7 @@ export default function PricingManager() {
   const [editingId, setEditingId] = useState(null);
   const [editPrice, setEditPrice] = useState('');
   const [recalculating, setRecalculating] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -108,6 +109,37 @@ export default function PricingManager() {
     }
   };
 
+  const syncRetailToSuggested = async () => {
+    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 19 × 1.5)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/sync-retail-to-suggested`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✓ Successfully synced ${data.updated} product retail prices to suggested prices!`);
+        fetchProducts(); // Refresh the list
+      } else {
+        console.warn('Sync retail to suggested failed', { status: res.status, data });
+        alert('Failed to sync prices: ' + (data.error || `HTTP ${res.status}`));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading products...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -115,14 +147,23 @@ export default function PricingManager() {
     <div className="pricing-manager-container">
       <div className="pricing-header">
         <p>Manage retail prices for your products. Adjust prices based on your target margins.</p>
-        <button 
-          className="btn-primary" 
-          onClick={recalculateSuggestedPrices}
-          disabled={recalculating}
-          style={{ marginTop: '10px' }}
-        >
-          {recalculating ? 'Recalculating...' : '🔄 Recalculate All Suggested Prices'}
-        </button>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button 
+            className="btn-primary" 
+            onClick={recalculateSuggestedPrices}
+            disabled={recalculating}
+          >
+            {recalculating ? 'Recalculating...' : '🔄 Recalculate All Suggested Prices'}
+          </button>
+          <button 
+            className="btn-primary" 
+            onClick={syncRetailToSuggested}
+            disabled={syncing}
+            style={{ background: syncing ? '#95a5a6' : '#27ae60' }}
+          >
+            {syncing ? 'Syncing...' : '🔗 Sync All Retail → Suggested'}
+          </button>
+        </div>
       </div>
 
       {products.length === 0 ? (
