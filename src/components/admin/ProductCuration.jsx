@@ -81,7 +81,7 @@ export default function ProductCuration() {
 
   // Helper to compute suggested retail from supplier USD
   const computeSuggestedRetail = (costUSD) => {
-    const usd = Number(costUSD) || 0;
+    const usd = parseFloat(String(costUSD).replace(/[^0-9.]/g, '')) || 0;
     if (usd <= 0) return 0;
     return Math.round(usd * pricing.usdToZar * pricing.markup * 100) / 100;
   };
@@ -652,10 +652,10 @@ export default function ProductCuration() {
                         {product.name}
                       </p>
                       <p className="product-card-price">
-                        Cost: ${Number(product.price || 0).toFixed(2)}
+                        {(() => { const usd = parseFloat(String(product.price).replace(/[^0-9.]/g,'')) || 0; return `Cost: $${usd.toFixed(2)}`; })()}
                       </p>
                       <p className="product-card-suggested">
-                        Suggested: R {computeSuggestedRetail(product.price).toFixed(2)}
+                        Suggested: R {(product.suggestedRetailZAR ? Number(product.suggestedRetailZAR) : computeSuggestedRetail(product.price)).toFixed(2)}
                         {!pricing.loaded && <span style={{ marginLeft:6, fontSize:'11px', color:'#888' }}>…</span>}
                       </p>
                       {isAlreadyCurated ? (
@@ -1181,7 +1181,7 @@ export default function ProductCuration() {
                     onChange={(e) => setEditForm({...editForm, custom_price: e.target.value})}
                     placeholder="E.g., 299.99"
                   />
-                  <small>Cost: R{(Number(editingProduct.cj_cost_price) * 2).toFixed(2)} (Supplier Price × 2)</small>
+                  <small>Cost: R{(Number(editingProduct.cj_cost_price) * pricing.usdToZar).toFixed(2)} (USD × rate)</small>
                 </div>
               </div>
 
