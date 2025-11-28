@@ -506,7 +506,7 @@ export default function ProductCuration() {
 
   // Sync all retail prices to suggested prices
   const syncRetailToSuggested = async () => {
-    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 19 × 1.5)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
+    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 18 × 1.4)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
       return;
     }
 
@@ -782,7 +782,7 @@ export default function ProductCuration() {
                     <th>CJ PID</th>
                     <th>Cost Price (USD)</th>
                     <th>Cost Price (ZAR)</th>
-                    <th>Suggested Price (1.5x)</th>
+                    <th>Suggested Price (1.4x)</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
                     <th>Link Status</th>
@@ -821,7 +821,7 @@ export default function ProductCuration() {
                           const costUSD = Number(product.cj_cost_price);
                           const costZAR = costUSD * USD_TO_ZAR;
                           const storedSuggested = Number(product.suggested_price);
-                          const calculatedSuggested = Math.round(costZAR * 1.5 * 100) / 100;
+                          const calculatedSuggested = Math.round(costZAR * 1.4 * 100) / 100;
                           const usingFallback = storedSuggested < costZAR;
                           const suggested = usingFallback ? calculatedSuggested : storedSuggested;
                           return (
@@ -839,7 +839,7 @@ export default function ProductCuration() {
                           const costUSD = Number(product.cj_cost_price);
                           const costZAR = costUSD * USD_TO_ZAR;
                           const storedSuggested = Number(product.suggested_price);
-                          const calculatedSuggested = Math.round(costZAR * 1.5 * 100) / 100;
+                          const calculatedSuggested = Math.round(costZAR * 1.4 * 100) / 100;
                           const usingFallback = storedSuggested < costZAR;
                           const suggested = usingFallback ? calculatedSuggested : storedSuggested;
                           const retail = Number(product.custom_price || suggested);
