@@ -94,12 +94,11 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
       
       // Filter by search query on client side (simple name matching)
       let productsList = res.products || [];
-      // Only allow products from China
+      // Only allow products from China: location must contain 'CN' OR warehouse must contain 'china'
       productsList = productsList.filter(p => {
         const loc = (p.location || '').toLowerCase();
         const wh = (p.warehouse || '').toLowerCase();
-        // Accept if location or warehouse contains 'china'
-        return loc.includes('china') || wh.includes('china');
+        return loc.includes('cn') || wh.includes('china');
       });
       if (q && q.trim()) {
         const searchLower = q.toLowerCase();
