@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-// USD to ZAR conversion rate
-const USD_TO_ZAR = 18.0;
+// Fallback pricing (will be replaced by /api/admin/pricing-config)
+const FALLBACK_USD_TO_ZAR = 18.0;
+const FALLBACK_MARKUP = 1.4; // Match pricing tab logic
 
 export default function ProductCuration() {
   // Default to empty so it doesn't auto-fill after refresh
@@ -46,11 +47,44 @@ export default function ProductCuration() {
   
   const { token } = useAuth();
 
+  // Dynamic pricing config state
+  const [pricing, setPricing] = useState({ usdToZar: FALLBACK_USD_TO_ZAR, markup: FALLBACK_MARKUP, loaded: false });
+
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   useEffect(() => {
     fetchCuratedProducts();
   }, []);
+
+  // Fetch pricing config so suggested price matches pricing tab
+  useEffect(() => {
+    const fetchPricingConfig = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pricing-config`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+            setPricing({
+              usdToZar: Number(data.usdToZar) || FALLBACK_USD_TO_ZAR,
+              markup: Number(data.priceMarkup) || FALLBACK_MARKUP,
+              loaded: true
+            });
+        } else {
+          setPricing(p => ({ ...p, loaded: true }));
+        }
+      } catch {
+        setPricing(p => ({ ...p, loaded: true }));
+      }
+    };
+    fetchPricingConfig();
+  }, [token, API_BASE]);
+
+  // Helper to compute suggested retail from supplier USD
+  const computeSuggestedRetail = (costUSD) => {
+    const usd = Number(costUSD) || 0;
+    if (usd <= 0) return 0;
+    return Math.round(usd * pricing.usdToZar * pricing.markup * 100) / 100;
+  };
 
   const fetchCuratedProducts = async () => {
     try {
@@ -378,7 +412,8 @@ export default function ProductCuration() {
   };
 
   const calculateSmartPrice = () => {
-    const costPrice = Number(editingProduct.cj_cost_price) * 2; // Double supplier price for cost
+    // Base cost in ZAR from supplier USD
+    const costPrice = Number(editingProduct.cj_cost_price) * pricing.usdToZar;
     const comp1 = Number(competitorPrices.competitor1) || 0;
     const comp2 = Number(competitorPrices.competitor2) || 0;
     const margin = targetMargin / 100; // Convert percentage to decimal
@@ -620,7 +655,8 @@ export default function ProductCuration() {
                         Cost: ${Number(product.price || 0).toFixed(2)}
                       </p>
                       <p className="product-card-suggested">
-                        Suggested: R {(Number(product.price || 0) * USD_TO_ZAR * 2).toFixed(2)}
+                        Suggested: R {computeSuggestedRetail(product.price).toFixed(2)}
+                        {!pricing.loaded && <span style={{ marginLeft:6, fontSize:'11px', color:'#888' }}>…</span>}
                       </p>
                       {isAlreadyCurated ? (
                         <button className="btn-secondary" disabled>
@@ -818,13 +854,13 @@ export default function ProductCuration() {
                         {product.cj_pid}
                       </td>
                       <td>${Number(product.cj_cost_price).toFixed(2)}</td>
-                      <td>R {(Number(product.cj_cost_price) * USD_TO_ZAR).toFixed(2)}</td>
+                      <td>R {(Number(product.cj_cost_price) * pricing.usdToZar).toFixed(2)}</td>
                       <td>
                         {(() => {
                           const costUSD = Number(product.cj_cost_price);
-                          const costZAR = costUSD * USD_TO_ZAR;
+                          const costZAR = costUSD * pricing.usdToZar;
                           const storedSuggested = Number(product.suggested_price);
-                          const calculatedSuggested = Math.round(costZAR * 1.4 * 100) / 100;
+                          const calculatedSuggested = Math.round(costZAR * pricing.markup * 100) / 100;
                           const usingFallback = storedSuggested < costZAR;
                           const suggested = usingFallback ? calculatedSuggested : storedSuggested;
                           return (
@@ -840,9 +876,9 @@ export default function ProductCuration() {
                       <td>
                         {(() => {
                           const costUSD = Number(product.cj_cost_price);
-                          const costZAR = costUSD * USD_TO_ZAR;
+                          const costZAR = costUSD * pricing.usdToZar;
                           const storedSuggested = Number(product.suggested_price);
-                          const calculatedSuggested = Math.round(costZAR * 1.4 * 100) / 100;
+                          const calculatedSuggested = Math.round(costZAR * pricing.markup * 100) / 100;
                           const usingFallback = storedSuggested < costZAR;
                           const suggested = usingFallback ? calculatedSuggested : storedSuggested;
                           const retail = Number(product.custom_price || suggested);
@@ -1283,7 +1319,7 @@ export default function ProductCuration() {
                           R {suggestedPrice.toFixed(2)}
                         </div>
                         <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '4px' }}>
-                          Margin: {(((suggestedPrice - (Number(editingProduct.cj_cost_price) * 2)) / (Number(editingProduct.cj_cost_price) * 2)) * 100).toFixed(1)}%
+                          Margin: {(((suggestedPrice - (Number(editingProduct.cj_cost_price) * pricing.usdToZar)) / (Number(editingProduct.cj_cost_price) * pricing.usdToZar)) * 100).toFixed(1)}%
                           {competitorPrices.competitor1 && ` | vs Comp1: ${((suggestedPrice / Number(competitorPrices.competitor1) - 1) * 100).toFixed(1)}%`}
                         </div>
                       </div>
