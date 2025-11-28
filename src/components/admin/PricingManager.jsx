@@ -177,6 +177,7 @@ export default function PricingManager() {
               <th>Cost Price (ZAR)</th>
               <th>Suggested Price (1.5x)</th>
               <th>Current Retail Price</th>
+              <th>Profit value</th>
               <th>Margin %</th>
               <th>Markup %</th>
               <th>Actions</th>
@@ -236,6 +237,14 @@ export default function PricingManager() {
                     ) : (
                       <strong>R {retailPrice.toFixed(2)}</strong>
                     )}
+                  </td>
+                  <td>
+                    {(() => {
+                      const effectiveRetail = isEditing ? Number(editPrice) : retailPrice;
+                      const profit = effectiveRetail - costPriceZAR;
+                      const color = profit >= 0 ? '#27ae60' : '#c0392b';
+                      return <span style={{ color }}>R {profit.toFixed(2)}</span>;
+                    })()}
                   </td>
                   <td>
                     <span
