@@ -837,6 +837,7 @@ export default function ProductCuration() {
                     <th>Suggested Price (1.4x)</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
+                    <th>Fulfillment</th>
                     <th>Link Status</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -909,6 +910,27 @@ export default function ProductCuration() {
                         }}>
                           {product.stock_quantity === 0 ? '⚠️ Sold Out' : product.stock_quantity < 10 ? `⚡ ${product.stock_quantity} left` : `✅ ${product.stock_quantity}`}
                         </span>
+                      </td>
+                      <td>
+                        {(() => {
+                          const warehouses = Array.isArray(product.warehouses) ? product.warehouses : [];
+                          const countries = [...new Set(warehouses.map(w => w.country_code).filter(Boolean))];
+                          if (countries.length === 0) {
+                            return <span style={{ fontSize:'11px', color:'#7f8c8d' }}>—</span>;
+                          }
+                          const hasOnlyCN = countries.length === 1 && countries[0] === 'CN';
+                          const style = {
+                            display: 'inline-block',
+                            padding: '4px 8px',
+                            borderRadius: '14px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: hasOnlyCN ? '#d5f4e6' : '#fff3cd',
+                            color: hasOnlyCN ? '#1e8449' : '#b9770e',
+                            maxWidth: '140px'
+                          };
+                          return <span style={style} title={`Warehouses: ${countries.join(', ')}`}>{countries.join(', ')}</span>;
+                        })()}
                       </td>
                       <td>
                         <span style={{
