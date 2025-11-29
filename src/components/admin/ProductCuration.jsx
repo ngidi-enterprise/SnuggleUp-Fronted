@@ -651,6 +651,19 @@ export default function ProductCuration() {
                       }}>
                         {product.name}
                       </p>
+                      <div style={{ margin: '4px 0 8px 0' }}>
+                        {product.originCountry && (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: '#e3f2fd',
+                            color: '#1565c0',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}>Origin: {product.originCountry}</span>
+                        )}
+                      </div>
                       <p className="product-card-price">
                         {(() => { const usd = parseFloat(String(product.price).replace(/[^0-9.]/g,'')) || 0; return `Cost: $${usd.toFixed(2)}`; })()}
                       </p>
