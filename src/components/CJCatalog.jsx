@@ -56,8 +56,60 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   const [opening, setOpening] = useState(false);
 
   const products = useProductMapping(data?.list);
+  // Group variants by shared CJ PID (same product different colors)
+  const groupedProducts = useMemo(() => {
+    const byPid = new Map();
+    for (const p of products) {
+      const cjPid = p.raw?.cj_pid || p.pid; // fallback to unique id if missing
+      if (!byPid.has(cjPid)) byPid.set(cjPid, []);
+      byPid.get(cjPid).push(p);
+    }
+    const combined = [];
+    for (const [pidKey, variants] of byPid.entries()) {
+      if (variants.length === 1) {
+        combined.push(variants[0]);
+        continue;
+      }
+      // Determine representative variant (first) and build combined object
+      const rep = variants[0];
+      const minPrice = Math.min(...variants.map(v => v.minPrice || 0));
+      const maxPrice = Math.max(...variants.map(v => v.maxPrice || 0));
+      // Collect images for gallery
+      const galleryImages = [];
+      for (const v of variants) {
+        if (v.image && !galleryImages.includes(v.image)) galleryImages.push(v.image);
+      }
+      // Derive color names from product names (basic heuristic)
+      const colorWords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
+      const variantOptions = variants.map(v => {
+        const name = v.name || 'Variant';
+        const color = colorWords.find(c => name.toLowerCase().includes(c.toLowerCase())) || 'Option';
+        return {
+          id: v.raw?.id,
+            cj_pid: v.raw?.cj_pid,
+            cj_vid: v.raw?.cj_vid,
+          name: v.name,
+          color,
+          price: v.minPrice,
+          image: v.image,
+          raw: v.raw
+        };
+      });
+      combined.push({
+        ...rep,
+        minPrice,
+        maxPrice,
+        variantCount: variants.length,
+        variantImages: galleryImages,
+        variants: variantOptions,
+        isGrouped: true
+      });
+    }
+    return combined;
+  }, [products]);
+
   // No country filter in storefront
-  const filteredProducts = products;
+  const filteredProducts = groupedProducts;
   const sortedProducts = useMemo(() => {
     if (sortBy === 'price_asc') {
       return [...filteredProducts].sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
@@ -260,6 +312,19 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                   {p.isValidPrice ? (
                     <>
                       From R{Number(p.minPrice).toFixed(2)}
+                      {p.variantCount && p.variantCount > 1 && (
+                        <span style={{
+                          marginLeft: 6,
+                          fontSize: '11px',
+                          color: '#0b7285',
+                          background: '#e3fafc',
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          fontWeight: 600
+                        }} title={`${p.variantCount} colour options`}>
+                          {p.variantCount} colours
+                        </span>
+                      )}
                       {p.isFallback && (
                         <span style={{
                           marginLeft: 6,
