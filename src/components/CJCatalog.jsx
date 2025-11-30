@@ -58,14 +58,21 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   const products = useProductMapping(data?.list);
   // Group variants by shared CJ PID (same product different colors)
   const groupedProducts = useMemo(() => {
-    const byPid = new Map();
+    const byKey = new Map();
+    const extractSkuCode = (name) => {
+      if (!name) return '';
+      const m = String(name).toUpperCase().match(/S\d{5,}/); // e.g., S20101
+      return m ? m[0] : '';
+    };
     for (const p of products) {
-      const cjPid = p.raw?.cj_pid || p.pid; // fallback to unique id if missing
-      if (!byPid.has(cjPid)) byPid.set(cjPid, []);
-      byPid.get(cjPid).push(p);
+      const cjPid = p.raw?.cj_pid || '';
+      const skuCode = extractSkuCode(p.name);
+      const key = cjPid || skuCode || p.pid; // prefer cj_pid, then SKU code, else unique id
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(p);
     }
     const combined = [];
-    for (const [pidKey, variants] of byPid.entries()) {
+    for (const [pidKey, variants] of byKey.entries()) {
       if (variants.length === 1) {
         combined.push(variants[0]);
         continue;
