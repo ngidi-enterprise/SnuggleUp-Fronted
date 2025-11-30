@@ -155,6 +155,16 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     }
   }, [processedVariants]);
 
+  // If URL has ?color=..., auto-select matching variant
+  useEffect(() => {
+    if (!processedVariants || processedVariants.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const colorParam = (params.get('color') || '').toLowerCase();
+    if (!colorParam) return;
+    const match = processedVariants.find(v => v.color.toLowerCase() === colorParam);
+    if (match) setSelectedVariant(match);
+  }, [processedVariants]);
+
   // Sync selected image when variant changes
   useEffect(() => {
     if (selectedVariant?.image) {
@@ -242,7 +252,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         <div className="product-gallery">
           <div className="main-image">
             {selectedImage ? (
-              <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} />
+              <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} loading="lazy" />
             ) : (
               <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
@@ -255,6 +265,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                   key={img} 
                   src={img} 
                   alt={`${activeProduct?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
+                  loading="lazy"
                   className={selectedImage === img ? 'active' : ''}
                   onClick={() => setSelectedImage(img)}
                 />
@@ -287,6 +298,11 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                           if (!isUnavailable) {
                             setSelectedVariant(variant);
                             setSelectedImage(variant.image);
+                            // Persist selected variant in URL
+                            const params = new URLSearchParams(window.location.search);
+                            params.set('color', variant.color.toLowerCase());
+                            const newUrl = `${window.location.pathname}?${params.toString()}`;
+                            window.history.pushState({}, '', newUrl);
                           }
                         }}
                         disabled={isUnavailable}
