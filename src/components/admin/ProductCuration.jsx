@@ -851,10 +851,24 @@ export default function ProductCuration() {
                     <tr key={product.id}>
                       <td style={{ fontWeight: 'bold', color: '#3498db' }}>
                         #{product.id}
-                      <td>
+                      </td>
                       <td>
                         {product.product_image ? (
                           <img
+                            src={product.product_image}
+                            alt={product.product_name}
+                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          '🍼'
+                        )}
+                      </td>
+                      <td>{product.product_name}</td>
+                      <td style={{ fontSize: '11px', color: '#7f8c8d', fontFamily: 'monospace' }}>
+                        {product.cj_pid}
+                      </td>
+                      <td>${Number(product.cj_cost_price).toFixed(2)}</td>
+                      <td>R {(Number(product.cj_cost_price) * pricing.usdToZar).toFixed(2)}</td>
                       <td>
                         {(() => {
                           const codes = Array.isArray(product.warehouse_countries) ? product.warehouse_countries : [];
@@ -876,20 +890,6 @@ export default function ProductCuration() {
                           );
                         })()}
                       </td>
-                            src={product.product_image}
-                            alt={product.product_name}
-                            style={{ width: 50, height: 50, objectFit: 'cover' }}
-                          />
-                        ) : (
-                          '🍼'
-                        )}
-                      </td>
-                      <td>{product.product_name}</td>
-                      <td style={{ fontSize: '11px', color: '#7f8c8d', fontFamily: 'monospace' }}>
-                        {product.cj_pid}
-                      </td>
-                      <td>${Number(product.cj_cost_price).toFixed(2)}</td>
-                      <td>R {(Number(product.cj_cost_price) * pricing.usdToZar).toFixed(2)}</td>
                       <td>
                         {(() => {
                           const costUSD = Number(product.cj_cost_price);
