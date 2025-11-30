@@ -135,13 +135,38 @@ export default function PricingManager() {
     if (!confirm(`Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × ${usdToZar} × ${priceMarkup})\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?`)) {
       return;
     }
+    setSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/sync-retail-to-suggested`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✓ Successfully synced ${data.updated} product retail prices to suggested prices!`);
+        fetchProducts(); // Refresh the list
+      } else {
+        console.warn('Sync retail to suggested failed', { status: res.status, data });
+        alert('Failed to sync prices: ' + (data.error || `HTTP ${res.status}`));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const saveGlobalPricing = async (mode) => {
     // mode: 'save' | 'save_recalc' | 'save_sync'
     setSavingConfig(true);
     try {
       const body = {
         priceMarkup: priceMarkup,
-        // usdToZar retained but could be made editable later
         usdToZar: usdToZar,
         recalcSuggested: mode !== 'save' && applyRecalc,
         syncRetail: mode === 'save_sync' && (applySyncRetail || applyRecalc)
@@ -168,32 +193,6 @@ export default function PricingManager() {
       alert('Error updating pricing config: ' + e.message);
     } finally {
       setSavingConfig(false);
-    }
-  };
-
-    setSyncing(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/products/sync-retail-to-suggested`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        alert(`✓ Successfully synced ${data.updated} product retail prices to suggested prices!`);
-        fetchProducts(); // Refresh the list
-      } else {
-        console.warn('Sync retail to suggested failed', { status: res.status, data });
-        alert('Failed to sync prices: ' + (data.error || `HTTP ${res.status}`));
-      }
-    } catch (err) {
-      alert('Error: ' + err.message);
-    } finally {
-      setSyncing(false);
     }
   };
 
