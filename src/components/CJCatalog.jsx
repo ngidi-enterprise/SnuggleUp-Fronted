@@ -81,11 +81,12 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
       base = base.replace(/[^a-z0-9]+/g, ' ').trim();
       return base;
     };
-    // First pass: group by cj_pid or sku code
+    // First pass: group by explicit group_code, else cj_pid, else sku code
     for (const p of products) {
+      const groupCode = p.raw?.group_code || '';
       const cjPid = p.raw?.cj_pid || '';
       const skuCode = extractSkuCode(p.name);
-      const keyPrimary = cjPid || skuCode;
+      const keyPrimary = groupCode || cjPid || skuCode;
       const key = keyPrimary || canonical(p.name) || p.pid;
       if (!byKey.has(key)) byKey.set(key, []);
       byKey.get(key).push(p);
