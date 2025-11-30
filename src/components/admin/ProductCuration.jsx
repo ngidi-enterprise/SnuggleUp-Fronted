@@ -155,18 +155,20 @@ export default function ProductCuration() {
       const data = await res.json();
       console.log('CJ Search Debug - Raw response:', { 
         itemsCount: data.items?.length || 0,
+        total: data.total,
+        filtered: data.filtered,
         firstItem: data.items?.[0],
-        hasOriginCountry: data.items?.[0]?.originCountry
+        allOriginCountries: (data.items || []).map(p => p.originCountry)
       });
       
-      // Strictly keep only China-origin items
-      const filtered = (data.items || []).filter(p => p.originCountry === 'CN');
-      console.log('CJ Search Debug - After CN filter:', {
-        filteredCount: filtered.length,
-        firstFiltered: filtered?.[0]
+      // Temporarily show ALL results to debug
+      const allResults = data.items || [];
+      console.log('CJ Search Debug - Showing all results (CN filter disabled for debugging):', {
+        totalCount: allResults.length,
+        sample: allResults.slice(0, 3)
       });
       
-      setSearchResults(filtered);
+      setSearchResults(allResults);
     } catch (err) {
       setError(err.message);
     } finally {
