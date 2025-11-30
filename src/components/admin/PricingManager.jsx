@@ -236,23 +236,7 @@ export default function PricingManager() {
           </div>
           <p style={{ fontSize: 12, marginTop: 8, color: '#555' }}>Changing the global markup adjusts all future suggested prices. Enable recalculation to immediately update stored suggested prices. Sync applies the new suggested price to current retail prices (custom_price).</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
-          <button
-            className="btn-primary"
-            onClick={recalculateSuggestedPrices}
-            disabled={recalculating}
-          >
-            {recalculating ? 'Recalculating...' : '🔄 Recalculate All Suggested Prices'}
-          </button>
-          <button
-            className="btn-primary"
-            onClick={syncRetailToSuggested}
-            disabled={syncing}
-            style={{ background: syncing ? '#95a5a6' : '#27ae60' }}
-          >
-            {syncing ? 'Syncing...' : '🔗 Sync All Retail → Suggested'}
-          </button>
-        </div>
+        {/* Legacy quick actions removed; use Global Pricing Settings save options above */}
       </div>
 
       {products.length === 0 ? (
