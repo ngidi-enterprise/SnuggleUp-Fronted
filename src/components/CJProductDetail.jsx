@@ -9,6 +9,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [product, setProduct] = useState(null);
+  const [variants, setVariants] = useState([]);
+    const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [qty, setQty] = useState(1);
 
@@ -24,6 +26,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         
         const res = await response.json();
         const data = res.product;
+        const fetchedVariants = res.variants || [];
         
         // DEBUG: Log full product data from database
         console.log('📦 Product loaded from database:', {
@@ -32,10 +35,12 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
           cj_pid: data.cj_pid,
           cj_vid: data.cj_vid,
           has_cj_vid: !!data.cj_vid,
+          variantCount: fetchedVariants.length,
           fullData: data
         });
         
         setProduct(data);
+        setVariants(fetchedVariants);
         
         // Track product view
         trackProductView({
@@ -125,28 +130,76 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     }
   }, [product?.product_description]);
 
-  // Curated products have a single fixed price (no variants in simplified model)
-  const price = product?.custom_price || product?.suggested_price || 0;
-  const stockQuantity = product?.stock_quantity || 0;
+  // Derive variants with color extraction
+  const processedVariants = useMemo(() => {
+    if (!variants || variants.length === 0) return [];
+    const colorKeywords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
+    return variants.map(v => {
+      const name = v.product_name || '';
+      const foundColor = colorKeywords.find(c => name.includes(c));
+      return {
+        id: v.id,
+        color: foundColor || 'Default',
+        price: v.custom_price || v.suggested_price || 0,
+        image: v.main_image,
+        stock_quantity: v.stock_quantity || 0,
+        raw: v
+      };
+    });
+  }, [variants]);
+
+  // Auto-select first variant on load
+  useEffect(() => {
+    if (processedVariants.length > 0 && !selectedVariant) {
+      setSelectedVariant(processedVariants[0]);
+    }
+  }, [processedVariants]);
+
+  // Sync selected image when variant changes
+  useEffect(() => {
+    if (selectedVariant?.image) {
+      setSelectedImage(selectedVariant.image);
+    }
+  }, [selectedVariant]);
+
+  // Gallery images: variant-specific or all variant images
+  const galleryImages = useMemo(() => {
+    if (selectedVariant) {
+      // If variant selected, show only its image
+      return selectedVariant.image ? [selectedVariant.image] : [];
+    }
+    // Otherwise, show all variant images
+    if (processedVariants.length > 1) {
+      return processedVariants.map(v => v.image).filter(Boolean);
+    }
+    // Fallback to original images logic
+    return images;
+  }, [selectedVariant, processedVariants, images]);
+
+  // Active product is selectedVariant if exists, else main product
+  const activeProduct = selectedVariant?.raw || product;
+  const price = activeProduct?.custom_price || activeProduct?.suggested_price || 0;
+  const stockQuantity = selectedVariant?.stock_quantity ?? (product?.stock_quantity || 0);
   const isOutOfStock = stockQuantity === 0;
   const isLowStock = stockQuantity > 0 && stockQuantity < 10;
 
   const handleAdd = () => {
-    if (!product || isOutOfStock) return;
+    if (!activeProduct || isOutOfStock) return;
     
     // Limit quantity to available stock
     const quantityToAdd = Math.min(qty, stockQuantity);
     
-    const name = product.product_name || 'Product';
+    const baseName = product?.product_name || 'Product';
+    const name = selectedVariant ? `${baseName} - ${selectedVariant.color}` : baseName;
     const item = {
-      id: `curated-${product.id}`,
+      id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
       name: name,
       price: Number(price) || 0,
       image: selectedImage || images[0] || '',
-      category: product.category || 'Store',
+      category: activeProduct.category || 'Store',
       // Carry-through fields needed for shipping + stock in cart
-      cj_vid: product.cj_vid,
-      cj_pid: product.cj_pid,
+      cj_vid: activeProduct.cj_vid,
+      cj_pid: activeProduct.cj_pid,
       stock_quantity: stockQuantity,
     };
     
@@ -189,19 +242,19 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         <div className="product-gallery">
           <div className="main-image">
             {selectedImage ? (
-              <img src={selectedImage} alt={product?.product_name || 'Product'} />
+              <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} />
             ) : (
               <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
           </div>
           {/* Show thumbnail gallery when we have multiple images */}
-          {images.length > 1 && (
+          {galleryImages.length > 1 && (
             <div className="thumbnail-gallery">
-              {images.map((img, idx) => (
+              {galleryImages.map((img, idx) => (
                 <img 
                   key={img} 
                   src={img} 
-                  alt={`${product?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
+                  alt={`${activeProduct?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
                   className={selectedImage === img ? 'active' : ''}
                   onClick={() => setSelectedImage(img)}
                 />
@@ -212,7 +265,83 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
 
         <div className="product-info">
             <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
-            <h1 className="product-title">{product?.product_name || 'Product'}</h1>
+            <h1 className="product-title">
+              {product?.product_name || 'Product'}
+              {selectedVariant && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
+            </h1>
+
+            {/* Color Variant Selector */}
+            {processedVariants.length > 1 && (
+              <div style={{marginBottom: '20px'}}>
+                <div style={{fontSize: '14px', fontWeight: '600', marginBottom: '8px'}}>
+                  Colour:
+                </div>
+                <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                  {processedVariants.map(variant => {
+                    const isSelected = selectedVariant?.id === variant.id;
+                    const isUnavailable = variant.stock_quantity === 0;
+                    return (
+                      <button
+                        key={variant.id}
+                        onClick={() => {
+                          if (!isUnavailable) {
+                            setSelectedVariant(variant);
+                            setSelectedImage(variant.image);
+                          }
+                        }}
+                        disabled={isUnavailable}
+                        aria-pressed={isSelected}
+                        aria-disabled={isUnavailable}
+                        title={`${variant.color}${isUnavailable ? ' (Out of stock)' : ''}`}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: isSelected ? '2px solid #3498db' : '2px solid #ddd',
+                          borderRadius: '8px',
+                          background: isSelected ? '#e3f2fd' : 'white',
+                          cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                          opacity: isUnavailable ? 0.6 : 1,
+                          boxShadow: isSelected ? '0 2px 8px rgba(52,152,219,0.3)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: variant.color.toLowerCase(),
+                          border: '1px solid rgba(0,0,0,0.2)'
+                        }} />
+                        <span style={{fontSize: '14px', fontWeight: isSelected ? '600' : '400'}}>
+                          {variant.color}
+                        </span>
+                        {isUnavailable && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: '#e74c3c',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            border: '2px solid white'
+                          }}>✕</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {isOutOfStock && (
               <div style={{
