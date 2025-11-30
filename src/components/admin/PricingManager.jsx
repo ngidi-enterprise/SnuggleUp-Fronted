@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-// USD to ZAR conversion rate
-const USD_TO_ZAR = 18.0;
-
 export default function PricingManager() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,13 +9,38 @@ export default function PricingManager() {
   const [editPrice, setEditPrice] = useState('');
   const [recalculating, setRecalculating] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [usdToZar, setUsdToZar] = useState(18.0);
+  const [priceMarkup, setPriceMarkup] = useState(1.4);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [applyRecalc, setApplyRecalc] = useState(true);
+  const [applySyncRetail, setApplySyncRetail] = useState(false);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   useEffect(() => {
+    fetchPricingConfig();
     fetchProducts();
   }, []);
+
+  const fetchPricingConfig = async () => {
+    try {
+      setConfigLoading(true);
+      const res = await fetch(`${API_BASE}/api/admin/pricing-config`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsdToZar(Number(data.usdToZar));
+        setPriceMarkup(Number(data.priceMarkup));
+      }
+    } catch (e) {
+      console.warn('Failed to load pricing config', e);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -79,7 +101,7 @@ export default function PricingManager() {
   };
 
   const recalculateSuggestedPrices = async () => {
-    if (!confirm('Recalculate suggested prices for ALL products using the current formula (USD × 18.0 × 1.4)? This will update the database.')) {
+    if (!confirm(`Recalculate suggested prices for ALL products using the current formula (USD × ${usdToZar} × ${priceMarkup})? This will update the database.`)) {
       return;
     }
 
@@ -110,9 +132,44 @@ export default function PricingManager() {
   };
 
   const syncRetailToSuggested = async () => {
-    if (!confirm('Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × 18 × 1.4)\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?')) {
+    if (!confirm(`Sync ALL retail prices to match corrected suggested prices? This will:\n\n1. Recalculate suggested prices (USD × ${usdToZar} × ${priceMarkup})\n2. Update all retail prices to match\n\nThis cannot be undone. Continue?`)) {
       return;
     }
+  const saveGlobalPricing = async (mode) => {
+    // mode: 'save' | 'save_recalc' | 'save_sync'
+    setSavingConfig(true);
+    try {
+      const body = {
+        priceMarkup: priceMarkup,
+        // usdToZar retained but could be made editable later
+        usdToZar: usdToZar,
+        recalcSuggested: mode !== 'save' && applyRecalc,
+        syncRetail: mode === 'save_sync' && (applySyncRetail || applyRecalc)
+      };
+      const res = await fetch(`${API_BASE}/api/admin/pricing-config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('Failed to update pricing config: ' + (data.error || `HTTP ${res.status}`));
+        return;
+      }
+      alert(`✓ Updated pricing config. Markup=${data.priceMarkup}. ${data.recalcSuggested ? `Recalculated ${data.recalcCount} products. ` : ''}${data.syncRetail ? `Synced ${data.syncCount}.` : ''}`);
+      await fetchPricingConfig();
+      if (data.recalcSuggested || data.syncRetail) {
+        await fetchProducts();
+      }
+    } catch (e) {
+      alert('Error updating pricing config: ' + e.message);
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
     setSyncing(true);
     try {
@@ -146,17 +203,50 @@ export default function PricingManager() {
   return (
     <div className="pricing-manager-container">
       <div className="pricing-header">
-        <p>Manage retail prices for your products. Adjust prices based on your target margins.</p>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <button 
-            className="btn-primary" 
+        <p>Manage global profit markup and individual product retail prices.</p>
+        <div className="global-pricing-config" style={{ marginTop: '12px', padding: '12px', border: '1px solid #ddd', borderRadius: 8, background: '#f9fafb' }}>
+          <h3 style={{ marginTop: 0 }}>Global Pricing Settings</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 13 }}>
+              Current USD→ZAR Rate
+              <input type="number" step="0.01" value={usdToZar} onChange={(e) => setUsdToZar(Number(e.target.value))} style={{ width: 120 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', fontSize: 13 }}>
+              Global Markup (×)
+              <input type="number" step="0.05" min="0.3" max="10" value={priceMarkup} onChange={(e) => setPriceMarkup(Number(e.target.value))} style={{ width: 120 }} />
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', fontSize: 13 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={applyRecalc} onChange={(e) => setApplyRecalc(e.target.checked)} /> Recalculate suggested
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={applySyncRetail} onChange={(e) => setApplySyncRetail(e.target.checked)} /> Sync retail to suggested
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button className="btn-small btn-primary" disabled={savingConfig || configLoading} onClick={() => saveGlobalPricing('save')}>
+                {savingConfig ? 'Saving...' : '💾 Save Only'}
+              </button>
+              <button className="btn-small btn-primary" disabled={savingConfig || configLoading} onClick={() => saveGlobalPricing('save_recalc')}>
+                {savingConfig ? 'Saving...' : '💾 Save + Recalc'}
+              </button>
+              <button className="btn-small btn-primary" style={{ background: '#27ae60' }} disabled={savingConfig || configLoading} onClick={() => saveGlobalPricing('save_sync')}>
+                {savingConfig ? 'Saving...' : '💾 Save + Recalc + Sync'}
+              </button>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, marginTop: 8, color: '#555' }}>Changing the global markup adjusts all future suggested prices. Enable recalculation to immediately update stored suggested prices. Sync applies the new suggested price to current retail prices (custom_price).</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+          <button
+            className="btn-primary"
             onClick={recalculateSuggestedPrices}
             disabled={recalculating}
           >
             {recalculating ? 'Recalculating...' : '🔄 Recalculate All Suggested Prices'}
           </button>
-          <button 
-            className="btn-primary" 
+          <button
+            className="btn-primary"
             onClick={syncRetailToSuggested}
             disabled={syncing}
             style={{ background: syncing ? '#95a5a6' : '#27ae60' }}
@@ -175,7 +265,7 @@ export default function PricingManager() {
               <th>Product</th>
               <th>Cost Price (USD)</th>
               <th>Cost Price (ZAR)</th>
-              <th>Suggested Price (1.4x)</th>
+              <th>Suggested Price ({priceMarkup.toFixed(2)}x)</th>
               <th>Current Retail Price</th>
               <th>Profit value</th>
               <th>Margin %</th>
@@ -186,10 +276,10 @@ export default function PricingManager() {
           <tbody>
             {products.map((product) => {
               const costPriceUSD = Number(product.cj_cost_price);
-              const costPriceZAR = costPriceUSD * USD_TO_ZAR;
+              const costPriceZAR = costPriceUSD * usdToZar;
               const storedSuggested = Number(product.suggested_price);
-              // Correct formula should be costPriceZAR * 1.4. Detect old incorrect stored values (USD*1.5) and override.
-              const calculatedSuggested = Math.round(costPriceZAR * 1.4 * 100) / 100;
+              // Correct formula should be costPriceZAR * priceMarkup.
+              const calculatedSuggested = Math.round(costPriceZAR * priceMarkup * 100) / 100;
               const usingFallback = storedSuggested < costPriceZAR; // Indicates it's still the old USD*1.5 value
               const suggestedPrice = usingFallback ? calculatedSuggested : storedSuggested;
               const retailPrice = Number(product.custom_price || suggestedPrice);
