@@ -59,44 +59,55 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   // Group variants by shared CJ PID (same product different colors)
   const groupedProducts = useMemo(() => {
     const byKey = new Map();
+    const colorWords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
     const extractSkuCode = (name) => {
       if (!name) return '';
       const m = String(name).toUpperCase().match(/S\d{5,}/); // e.g., S20101
       return m ? m[0] : '';
     };
+    const canonical = (name) => {
+      if (!name) return '';
+      let base = name.toLowerCase();
+      // remove color words
+      for (const c of colorWords) {
+        base = base.replace(new RegExp(c.toLowerCase(), 'g'), '');
+      }
+      // remove size/speed tokens heuristically
+      base = base.replace(/\b(\d+\s?inch|7-speed|speed|inch|cm|ages?\s?\d+-?\d*)\b/gi, '');
+      // remove punctuation & multiple spaces
+      base = base.replace(/[^a-z0-9]+/g, ' ').trim();
+      return base;
+    };
+    // First pass: group by cj_pid or sku code
     for (const p of products) {
       const cjPid = p.raw?.cj_pid || '';
       const skuCode = extractSkuCode(p.name);
-      const key = cjPid || skuCode || p.pid; // prefer cj_pid, then SKU code, else unique id
+      const keyPrimary = cjPid || skuCode;
+      const key = keyPrimary || canonical(p.name) || p.pid;
       if (!byKey.has(key)) byKey.set(key, []);
       byKey.get(key).push(p);
     }
     const combined = [];
-    for (const [pidKey, variants] of byKey.entries()) {
+    for (const [key, variants] of byKey.entries()) {
       if (variants.length === 1) {
         combined.push(variants[0]);
         continue;
       }
-      // Determine representative variant (first) and build combined object
+      // Representative variant
       const rep = variants[0];
       const minPrice = Math.min(...variants.map(v => v.minPrice || 0));
       const maxPrice = Math.max(...variants.map(v => v.maxPrice || 0));
-      // Collect images for gallery
       const galleryImages = [];
-      for (const v of variants) {
-        if (v.image && !galleryImages.includes(v.image)) galleryImages.push(v.image);
-      }
-      // Derive color names from product names (basic heuristic)
-      const colorWords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
+      for (const v of variants) if (v.image && !galleryImages.includes(v.image)) galleryImages.push(v.image);
       const variantOptions = variants.map(v => {
         const name = v.name || 'Variant';
-        const color = colorWords.find(c => name.toLowerCase().includes(c.toLowerCase())) || 'Option';
+        const foundColor = colorWords.find(c => name.toLowerCase().includes(c.toLowerCase())) || 'Option';
         return {
           id: v.raw?.id,
-            cj_pid: v.raw?.cj_pid,
-            cj_vid: v.raw?.cj_vid,
+          cj_pid: v.raw?.cj_pid,
+          cj_vid: v.raw?.cj_vid,
           name: v.name,
-          color,
+          color: foundColor,
           price: v.minPrice,
           image: v.image,
           raw: v.raw
@@ -111,6 +122,8 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
         variants: variantOptions,
         isGrouped: true
       });
+      // Debug grouping summary
+      console.log('[Catalog Grouping] Group key:', key, 'count:', variants.length, 'names:', variants.map(v => v.name));
     }
     return combined;
   }, [products]);
