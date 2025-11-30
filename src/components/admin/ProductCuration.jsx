@@ -834,10 +834,10 @@ export default function ProductCuration() {
                     <th>CJ PID</th>
                     <th>Cost Price (USD)</th>
                     <th>Cost Price (ZAR)</th>
+                    <th>Warehouses</th>
                     <th>Suggested Price (1.4x)</th>
                     <th>Retail Price</th>
                     <th>Stock</th>
-                    <th>Fulfillment</th>
                     <th>Link Status</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -851,10 +851,31 @@ export default function ProductCuration() {
                     <tr key={product.id}>
                       <td style={{ fontWeight: 'bold', color: '#3498db' }}>
                         #{product.id}
-                      </td>
+                      <td>
                       <td>
                         {product.product_image ? (
                           <img
+                      <td>
+                        {(() => {
+                          const codes = Array.isArray(product.warehouse_countries) ? product.warehouse_countries : [];
+                          if (!codes.length) return <span style={{ fontSize:'11px', color:'#999' }}>—</span>;
+                          const nonCn = codes.filter(c => c && c !== 'CN');
+                          return (
+                            <span style={{
+                              display:'inline-block',
+                              padding:'4px 8px',
+                              borderRadius:'12px',
+                              background: nonCn.length ? '#fff3cd' : '#e3f2fd',
+                              color: nonCn.length ? '#856404' : '#1565c0',
+                              fontSize:'11px',
+                              fontWeight:600,
+                              maxWidth:'140px'
+                            }} title={nonCn.length ? 'Contains non-China warehouse inventory' : 'All inventory warehouses in China'}>
+                              {codes.join(', ')}{nonCn.length ? ' ⚠️' : ''}
+                            </span>
+                          );
+                        })()}
+                      </td>
                             src={product.product_image}
                             alt={product.product_name}
                             style={{ width: 50, height: 50, objectFit: 'cover' }}
@@ -910,27 +931,6 @@ export default function ProductCuration() {
                         }}>
                           {product.stock_quantity === 0 ? '⚠️ Sold Out' : product.stock_quantity < 10 ? `⚡ ${product.stock_quantity} left` : `✅ ${product.stock_quantity}`}
                         </span>
-                      </td>
-                      <td>
-                        {(() => {
-                          const warehouses = Array.isArray(product.warehouses) ? product.warehouses : [];
-                          const countries = [...new Set(warehouses.map(w => w.country_code).filter(Boolean))];
-                          if (countries.length === 0) {
-                            return <span style={{ fontSize:'11px', color:'#7f8c8d' }}>—</span>;
-                          }
-                          const hasOnlyCN = countries.length === 1 && countries[0] === 'CN';
-                          const style = {
-                            display: 'inline-block',
-                            padding: '4px 8px',
-                            borderRadius: '14px',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            background: hasOnlyCN ? '#d5f4e6' : '#fff3cd',
-                            color: hasOnlyCN ? '#1e8449' : '#b9770e',
-                            maxWidth: '140px'
-                          };
-                          return <span style={style} title={`Warehouses: ${countries.join(', ')}`}>{countries.join(', ')}</span>;
-                        })()}
                       </td>
                       <td>
                         <span style={{
