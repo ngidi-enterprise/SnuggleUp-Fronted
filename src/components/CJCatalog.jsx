@@ -55,15 +55,9 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   const [data, setData] = useState({ list: [], total: 0 });
   const [opening, setOpening] = useState(false);
 
-  const [chinaOnly, setChinaOnly] = useState(false);
   const products = useProductMapping(data?.list);
-  // Filter for China if enabled
-  const filteredProducts = useMemo(() => {
-    if (chinaOnly) {
-      return products.filter(p => p.isFromChina);
-    }
-    return products;
-  }, [products, chinaOnly]);
+  // No country filter in storefront
+  const filteredProducts = products;
   const sortedProducts = useMemo(() => {
     if (sortBy === 'price_asc') {
       return [...filteredProducts].sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
@@ -159,10 +153,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
         <button className="cj-btn" onClick={() => runSearch(1)} disabled={loading}>
           {loading ? 'Searching…' : 'Search'}
         </button>
-        <label style={{marginLeft:12, fontSize:'14px'}}>
-          <input type="checkbox" checked={chinaOnly} onChange={e => setChinaOnly(e.target.checked)} style={{marginRight:6}} />
-          Only show products from China
-        </label>
+        {/* Removed China-only toggle per branding/policy */}
         <select className="cj-input cj-input-small" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
           <option value="relevance">Sort: Relevance</option>
           <option value="price_asc">Price: Low to High</option>
