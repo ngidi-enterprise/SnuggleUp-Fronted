@@ -74,6 +74,9 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
       }
       // remove size/speed tokens heuristically
       base = base.replace(/\b(\d+\s?inch|7-speed|speed|inch|cm|ages?\s?\d+-?\d*)\b/gi, '');
+      // remove common bike descriptor stopwords
+      base = base.replace(/\b(premium|mountain|kids|kid|bmx|style|children|girls?|boys?|bike|bicycle|for|with|coaster|brake|safe|engaging|20|inch|7|speed)\b/gi, '');
+      // normalize multiple spaces
       // remove punctuation & multiple spaces
       base = base.replace(/[^a-z0-9]+/g, ' ').trim();
       return base;
@@ -123,7 +126,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
         isGrouped: true
       });
       // Debug grouping summary
-      console.log('[Catalog Grouping] Group key:', key, 'count:', variants.length, 'names:', variants.map(v => v.name));
+      console.log('[Catalog Grouping] key="' + key + '" count=' + variants.length, '\nNames:', variants.map(v => v.name));
     }
     return combined;
   }, [products]);
