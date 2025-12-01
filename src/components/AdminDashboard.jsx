@@ -6,6 +6,7 @@ import PricingManager from './admin/PricingManager';
 import OrderManagement from './admin/OrderManagement';
 import UserManagement from './admin/UserManagement';
 import InventoryPanel from './admin/InventoryPanel';
+import Settings from './admin/Settings';
 import './AdminDashboard.css';
 
 export default function AdminDashboard({ onClose, onStorePreview }) {
@@ -69,6 +70,7 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
     { id: 'store', label: 'Store Preview', icon: '🏪' },
     { id: 'orders', label: 'Orders', icon: '�' },
     { id: 'users', label: 'Users', icon: '👥' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
   const renderContent = () => {
@@ -87,6 +89,8 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
         return <OrderManagement />;
       case 'users':
         return <UserManagement />;
+      case 'settings':
+        return <Settings />;
       default:
         return <Analytics />;
     }
