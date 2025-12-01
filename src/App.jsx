@@ -739,11 +739,15 @@ function App() {
       setShippingError('');
       try {
         // DEBUG: Log cart items to see what data we have
-        console.log('🛒 Cart items for shipping:', cartItems.map(ci => ({
+        console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
+        console.log('🛒 Cart items summary:', cartItems.map(ci => ({
           id: ci.id,
-          name: ci.name,
+          name: ci.name?.substring(0, 30),
           cj_vid: ci.cj_vid,
-          has_cj_vid: !!ci.cj_vid
+          cj_pid: ci.cj_pid,
+          has_cj_vid: !!ci.cj_vid,
+          price: ci.price,
+          quantity: ci.quantity
         })));
 
         // Only include items that have a CJ variant id; older cart entries may lack it
@@ -754,12 +758,13 @@ function App() {
         if (itemsWithVid.length === 0) {
           console.error('❌ NO ITEMS WITH cj_vid!');
           console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
-          console.log('This means products were added to cart before being linked.');
+          console.log('Full cart data:', cartItems);
+          console.log('This means products were added to cart before being linked to CJ.');
           console.log('📝 SOLUTION: Clear cart and re-add products from store.');
           setShippingOptions([]);
           setInsuranceData(null);
           setSelectedShipping(null);
-          setShippingError(`Cart items missing shipping data. Clear cart and re-add products.`);
+          setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
           setShippingLoading(false);
           return;
         }
