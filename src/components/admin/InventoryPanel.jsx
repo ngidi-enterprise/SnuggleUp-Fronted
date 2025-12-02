@@ -35,6 +35,9 @@ export default function InventoryPanel() {
         warehouses: Array.isArray(p.warehouses) ? p.warehouses : [],
       }));
       setInventory(normalized);
+      // Permanently unhide warehouses: expand all products by default
+      const allIds = new Set(normalized.map(p => p.curatedProductId));
+      setExpandedProducts(allIds);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || 'Failed to load inventory');
@@ -87,17 +90,7 @@ export default function InventoryPanel() {
     loadSyncHistory();
   }, []);
 
-  const toggleExpand = (productId) => {
-    setExpandedProducts(prev => {
-      const next = new Set(prev);
-      if (next.has(productId)) {
-        next.delete(productId);
-      } else {
-        next.add(productId);
-      }
-      return next;
-    });
-  };
+  // Warehouses are always visible; toggle is disabled/removed
 
   const formatDuration = (seconds) => {
     if (!seconds) return 'N/A';
@@ -370,7 +363,7 @@ export default function InventoryPanel() {
             <tbody>
               {inventory.map((product) => {
                 const status = getStockStatus(product.stock_quantity);
-                const isExpanded = expandedProducts.has(product.curatedProductId);
+                const isExpanded = true; // permanently expanded
                 return (
                   <React.Fragment key={product.curatedProductId}>
                     <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
@@ -395,24 +388,11 @@ export default function InventoryPanel() {
                           {status.label}
                         </span>
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <button
-                          onClick={() => toggleExpand(product.curatedProductId)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          {isExpanded ? '▼ Hide' : `▶ Show (${(product.warehouses && product.warehouses.length) || 0})`}
-                        </button>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#333' }}>
+                        {(product.warehouses && product.warehouses.length) || 0} location(s) — shown
                       </td>
                     </tr>
-                    {isExpanded && product.warehouses && product.warehouses.length > 0 && (
+                    {product.warehouses && product.warehouses.length > 0 && (
                       <tr>
                         <td colSpan="5" style={{ padding: '0', background: '#f8f9fa' }}>
                           <div style={{ padding: '16px' }}>
