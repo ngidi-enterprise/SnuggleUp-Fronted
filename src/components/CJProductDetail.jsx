@@ -319,7 +319,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                         disabled={isUnavailable}
                         aria-pressed={isSelected}
                         aria-disabled={isUnavailable}
-                        title={`${variant.color}${isUnavailable ? ' (Out of stock)' : ''}`}
+                        title={`${variant.color}${isUnavailable ? ' (Sold out)' : ''}`}
                         style={{
                           position: 'relative',
                           display: 'flex',
