@@ -19,12 +19,14 @@ function Login({ onClose, onSwitchToRegister }) {
     try {
       await loginWithCredentials(email, password);
       trackLogin('email');
-      // Small delay to let browser prompt to save password
-      await new Promise(resolve => setTimeout(resolve, 100));
-      onClose();
+      setLoading(false);
+      // Longer delay to ensure browser can detect successful login
+      // and prompt to save password before modal closes
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
