@@ -230,7 +230,7 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
                         }}
                         aria-pressed={isSelected}
                         aria-disabled={isOutOfStock}
-                        title={isOutOfStock ? `${v.color} - Out of stock` : v.color}
+                        title={isOutOfStock ? `${v.color} - Sold out` : v.color}
                       >
                         <span style={{
                           width: 20,
@@ -269,7 +269,7 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
                 if (displayStock === 0) {
                   return (
                     <span className="out-of-stock" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                      ✕ Out of Stock
+                      ✕ Sold out
                     </span>
                   );
                 }
@@ -494,7 +494,7 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
               >
                 {(() => {
                   const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                  return displayStock === 0 ? '✕ Out of Stock' : '🛒 Add to Cart';
+                  return displayStock === 0 ? '✕ Sold out' : '🛒 Add to Cart';
                 })()}
               </button>
               <button className="add-to-wishlist-btn">
