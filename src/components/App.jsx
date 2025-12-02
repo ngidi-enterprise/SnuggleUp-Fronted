@@ -53,9 +53,9 @@ function App() {
 
   // Prefill shipping name from user profile when available (editable by user)
   const defaultCustomerName = (
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.displayName ||
+    user?.name ||
+    user?._sb?.user_metadata?.full_name ||
+    user?._sb?.user_metadata?.name ||
     (user?.email ? user.email.split('@')[0] : '')
   ) || '';
 
@@ -431,7 +431,21 @@ function App() {
   // Home now shows CJ catalog (handled after helper functions are defined)
 
   const addToCart = (product) => {
+    // Check if product is sold out (stock_quantity = 0)
+    const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
+    
+    if (stockQty === 0) {
+      alert('Sorry, this item is currently sold out and cannot be added to your cart.');
+      return;
+    }
+    
     const existingItem = cartItems.find(item => item.id === product.id);
+    
+    // Check if adding would exceed available stock
+    if (existingItem && existingItem.quantity >= stockQty) {
+      alert(`Only ${stockQty} available in stock.`);
+      return;
+    }
     
     if (existingItem) {
       setCartItems(cartItems.map(item => 
@@ -739,11 +753,15 @@ function App() {
       setShippingError('');
       try {
         // DEBUG: Log cart items to see what data we have
-        console.log('🛒 Cart items for shipping:', cartItems.map(ci => ({
+        console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
+        console.log('🛒 Cart items summary:', cartItems.map(ci => ({
           id: ci.id,
-          name: ci.name,
+          name: ci.name?.substring(0, 30),
           cj_vid: ci.cj_vid,
-          has_cj_vid: !!ci.cj_vid
+          cj_pid: ci.cj_pid,
+          has_cj_vid: !!ci.cj_vid,
+          price: ci.price,
+          quantity: ci.quantity
         })));
 
         // Only include items that have a CJ variant id; older cart entries may lack it
@@ -754,12 +772,13 @@ function App() {
         if (itemsWithVid.length === 0) {
           console.error('❌ NO ITEMS WITH cj_vid!');
           console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
-          console.log('This means products were added to cart before being linked.');
+          console.log('Full cart data:', cartItems);
+          console.log('This means products were added to cart before being linked to CJ.');
           console.log('📝 SOLUTION: Clear cart and re-add products from store.');
           setShippingOptions([]);
           setInsuranceData(null);
           setSelectedShipping(null);
-          setShippingError(`Cart items missing shipping data. Clear cart and re-add products.`);
+          setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
           setShippingLoading(false);
           return;
         }
@@ -818,8 +837,23 @@ function App() {
   if (currentPage === 'cj') {
     // Local helper to add items to cart while in CJ view
     const addToCartCj = (product) => {
+      // Check if product is sold out (stock_quantity = 0)
+      const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
+      
+      if (stockQty === 0) {
+        alert('Sorry, this item is currently sold out and cannot be added to your cart.');
+        return;
+      }
+      
       setCartItems((prev) => {
         const existing = prev.find((i) => i.id === product.id);
+        
+        // Check if adding would exceed available stock
+        if (existing && existing.quantity >= stockQty) {
+          alert(`Only ${stockQty} available in stock.`);
+          return prev; // Return unchanged cart
+        }
+        
         if (existing) {
           return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
         }
@@ -875,7 +909,7 @@ function App() {
           return null;
         })()}
         
-        {!selectedCjPid && (
+        {!showCart && !selectedCjPid && (
           <CJCatalog 
             onBack={() => { window.location.hash = ''; }}
             onOpenProduct={(pid) => setSelectedCjPid(pid)}
@@ -883,7 +917,7 @@ function App() {
           />
         )}
 
-        {selectedCjPid && (
+        {!showCart && selectedCjPid && (
           <CJProductDetail
             pid={selectedCjPid}
             onClose={() => setSelectedCjPid(null)}
@@ -891,13 +925,13 @@ function App() {
           />
         )}
 
-        {/* Shopping Cart Modal (reuse) */}
+        {/* Shopping Cart Full Page */}
         {showCart && (
-          <div className="cart-overlay" onClick={() => setShowCart(false)}>
-            <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="cart-page">
+            <div className="cart-content">
               <div className="cart-header">
                 <h3>Shopping Cart ({cartCount} items)</h3>
-                <button className="close-cart" onClick={() => setShowCart(false)}>✕</button>
+                <button className="close-cart" onClick={() => setShowCart(false)}>← Back to Shop</button>
               </div>
               <div className="cart-items">
                 {cartItems.length === 0 ? (
@@ -969,8 +1003,7 @@ function App() {
                         <div>
                           <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
                           <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                            These products may not be available for shipping to your location. 
-                            We're using standard shipping rates (R99.00). 
+                            Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
                             {shippingError && ` Error: ${String(shippingError)}`}
                           </p>
                         </div>
@@ -978,8 +1011,8 @@ function App() {
                         <div>
                           <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
                           <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                            Our shipping provider doesn't have delivery methods for these products to your selected destination. 
-                            Try selecting different products or contact support. Using standard rate: R99.00
+                            Our shipping provider doesn’t have delivery methods for these products to your selected destination.
+                            We’ll use an estimated tiered rate based on your subtotal.
                           </p>
                         </div>
                       ) : (
@@ -997,13 +1030,18 @@ function App() {
                               >
                                 {shippingOptions.map(o => (
                                   <option key={o.logisticName} value={o.logisticName}>
-                                    {o.logisticName} — R{o.priceZAR.toFixed(2)}
+                                    {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
                                   </option>
                                 ))}
                               </select>
                               {selectedShipping?.deliveryDates && (
                                 <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
                                   📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                                </p>
+                              )}
+                              {selectedShipping?.isFallback && (
+                                <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                  ℹ️ Estimated rate applied (no live quote available)
                                 </p>
                               )}
                             </div>
@@ -1038,7 +1076,7 @@ function App() {
                       )}
                     </div>
                     <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                     {insuranceSelected && insuranceData && (
                       <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                     )}
@@ -1150,7 +1188,7 @@ function App() {
       )}
 
       {/* Show store content ONLY when admin dashboard is showing store preview OR admin is completely closed */}
-      {(!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
+      {!showCart && (!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
         <div style={{
           marginLeft: showAdminDashboard && isStorePreviewActive ? '260px' : '0',
           minHeight: 'calc(100vh - 88px)',
@@ -1187,13 +1225,13 @@ function App() {
         </div>
       )}
 
-      {/* Shopping Cart Modal */}
+      {/* Shopping Cart Full Page */}
       {showCart && (
-        <div className="cart-overlay" onClick={toggleCart}>
-          <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cart-page">
+          <div className="cart-content">
             <div className="cart-header">
               <h3>Shopping Cart ({cartCount} items)</h3>
-              <button className="close-cart" onClick={toggleCart}>✕</button>
+              <button className="close-cart" onClick={toggleCart}>← Back to Shop</button>
             </div>
             <div className="cart-items">
               {cartItems.length === 0 ? (
@@ -1265,8 +1303,7 @@ function App() {
                       <div>
                         <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
                         <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                          These products may not be available for shipping to your location. 
-                          Using standard rate: R99.00
+                          Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
                           {shippingError && ` Error: ${String(shippingError)}`}
                         </p>
                       </div>
@@ -1274,8 +1311,8 @@ function App() {
                       <div>
                         <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
                         <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                          Our shipping provider doesn't have delivery methods for these products to your selected destination. 
-                          Using standard rate: R99.00
+                          Our shipping provider doesn’t have delivery methods for these products to your selected destination.
+                          We’ll use an estimated tiered rate based on your subtotal.
                         </p>
                       </div>
                     ) : (
@@ -1293,13 +1330,18 @@ function App() {
                             >
                               {shippingOptions.map(o => (
                                 <option key={o.logisticName} value={o.logisticName}>
-                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}
+                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
                                 </option>
                               ))}
                             </select>
                             {selectedShipping?.deliveryDates && (
                               <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
                                 📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                              </p>
+                            )}
+                            {selectedShipping?.isFallback && (
+                              <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                ℹ️ Estimated rate applied (no live quote available)
                               </p>
                             )}
                           </div>
@@ -1334,7 +1376,7 @@ function App() {
                     )}
                   </div>
                   <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                   {insuranceSelected && insuranceData && (
                     <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                   )}
@@ -1395,8 +1437,27 @@ function App() {
 
       {/* Auth Modal */}
       {showAuthModal && (
-        <div className="cart-overlay" onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}>
-          <div onClick={(e) => e.stopPropagation()}>
+        <div
+          className="auth-overlay"
+          onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(560px, 92vw)',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
             {authView === 'login' ? (
               <Login 
                 onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
