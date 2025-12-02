@@ -431,7 +431,21 @@ function App() {
   // Home now shows CJ catalog (handled after helper functions are defined)
 
   const addToCart = (product) => {
+    // Check if product is sold out (stock_quantity = 0)
+    const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
+    
+    if (stockQty === 0) {
+      alert('Sorry, this item is currently sold out and cannot be added to your cart.');
+      return;
+    }
+    
     const existingItem = cartItems.find(item => item.id === product.id);
+    
+    // Check if adding would exceed available stock
+    if (existingItem && existingItem.quantity >= stockQty) {
+      alert(`Only ${stockQty} available in stock.`);
+      return;
+    }
     
     if (existingItem) {
       setCartItems(cartItems.map(item => 
@@ -823,8 +837,23 @@ function App() {
   if (currentPage === 'cj') {
     // Local helper to add items to cart while in CJ view
     const addToCartCj = (product) => {
+      // Check if product is sold out (stock_quantity = 0)
+      const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
+      
+      if (stockQty === 0) {
+        alert('Sorry, this item is currently sold out and cannot be added to your cart.');
+        return;
+      }
+      
       setCartItems((prev) => {
         const existing = prev.find((i) => i.id === product.id);
+        
+        // Check if adding would exceed available stock
+        if (existing && existing.quantity >= stockQty) {
+          alert(`Only ${stockQty} available in stock.`);
+          return prev; // Return unchanged cart
+        }
+        
         if (existing) {
           return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
         }
@@ -921,7 +950,7 @@ function App() {
                           <p>R{item.price} each</p>
                           {isOutOfStock && (
                             <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                              ⚠️ Out of stock
+                              ⚠️ Sold out
                             </p>
                           )}
                           {isLowStock && (
@@ -1082,7 +1111,7 @@ function App() {
                   </button>
                   {hasStockIssues && (
                     <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
-                      Please remove or adjust items marked "Out of stock" before continuing.
+                      Please remove or adjust items marked "Sold out" before continuing.
                     </p>
                   )}
                 </div>
@@ -1221,7 +1250,7 @@ function App() {
                         <p>R{item.price} each</p>
                         {isOutOfStock && (
                           <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                            ⚠️ Out of stock
+                            ⚠️ Sold out
                           </p>
                         )}
                         {isLowStock && (
@@ -1397,7 +1426,7 @@ function App() {
                 </button>
                 {hasStockIssues && (
                   <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
-                    Please remove or adjust items marked "Out of stock" before continuing.
+                    Please remove or adjust items marked "Sold out" before continuing.
                   </p>
                 )}
               </div>
