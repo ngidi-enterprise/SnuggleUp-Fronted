@@ -296,7 +296,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                   zIndex: 10,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                  OUT OF STOCK
+                  SOLD OUT
                 </div>
               )}
               {isLowStock && (
