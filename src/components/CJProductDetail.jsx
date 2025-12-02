@@ -28,16 +28,26 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         const data = res.product;
         const fetchedVariants = res.variants || [];
         
-        // DEBUG: Log full product data from database
+        // DEBUG: Log full product data from database INCLUDING stock
         console.log('📦 Product loaded from database:', {
           id: data.id,
           name: data.product_name,
+          stock_quantity: data.stock_quantity,
+          is_active: data.is_active,
           cj_pid: data.cj_pid,
           cj_vid: data.cj_vid,
           has_cj_vid: !!data.cj_vid,
           variantCount: fetchedVariants.length,
           fullData: data
         });
+        
+        // Log stock status clearly
+        const stock = Number(data.stock_quantity) || 0;
+        if (stock === 0) {
+          console.warn(`⚠️ PRODUCT OUT OF STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        } else if (stock < 10) {
+          console.warn(`⚡ LOW STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        }
         
         setProduct(data);
         setVariants(fetchedVariants);
@@ -276,6 +286,44 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
 
         <div className="product-info">
             <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
+            
+            {/* Stock Status Badge - Prominent Display */}
+            {isOutOfStock && (
+              <div style={{
+                position: 'relative',
+                padding: '16px 20px',
+                background: '#fee',
+                border: '3px solid #e74c3c',
+                borderRadius: '12px',
+                margin: '16px 0',
+                color: '#c0392b',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(231, 76, 60, 0.2)'
+              }}>
+                ⚠️ OUT OF STOCK - This product is currently unavailable
+              </div>
+            )}
+            
+            {isLowStock && !isOutOfStock && (
+              <div style={{
+                position: 'relative',
+                padding: '14px 18px',
+                background: '#fef5e7',
+                border: '2px solid #f39c12',
+                borderRadius: '10px',
+                margin: '16px 0',
+                color: '#d68910',
+                fontWeight: 'bold',
+                fontSize: '15px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(243, 156, 18, 0.15)'
+              }}>
+                ⚡ Only {stockQuantity} left in stock - Order soon!
+              </div>
+            )}
+            
             <h1 className="product-title">
               {product?.product_name || 'Product'}
               {selectedVariant && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
