@@ -19,6 +19,8 @@ function Login({ onClose, onSwitchToRegister }) {
     try {
       await loginWithCredentials(email, password);
       trackLogin('email');
+      // Small delay to let browser prompt to save password
+      await new Promise(resolve => setTimeout(resolve, 100));
       onClose();
     } catch (err) {
       setError(err.message);
