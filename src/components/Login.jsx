@@ -32,11 +32,14 @@ function Login({ onClose, onSwitchToRegister }) {
       <h2>Login</h2>
       <p className="auth-subtitle">Welcome back! Please login to continue.</p>
       {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autoComplete="on">
         <div className="form-group">
           <label>Email Address</label>
           <input
             type="email"
+            name="email"
+            id="login-email"
+            autoComplete="username email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -58,6 +61,9 @@ function Login({ onClose, onSwitchToRegister }) {
           </label>
           <input
             type="password"
+            name="password"
+            id="login-password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
