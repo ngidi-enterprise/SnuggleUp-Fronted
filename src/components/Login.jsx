@@ -34,9 +34,9 @@ function Login({ onClose, onSwitchToRegister }) {
       <h2>Login</h2>
       <p className="auth-subtitle">Welcome back! Please login to continue.</p>
       {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit} autoComplete="on">
+      <form onSubmit={handleSubmit} autoComplete="on" method="post" action="#">
         <div className="form-group">
-          <label>Email Address</label>
+          <label htmlFor="login-email">Email Address</label>
           <input
             type="email"
             name="email"
@@ -50,7 +50,7 @@ function Login({ onClose, onSwitchToRegister }) {
           />
         </div>
         <div className="form-group">
-          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <label htmlFor="login-password" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Password</span>
             <button
               type="button"
