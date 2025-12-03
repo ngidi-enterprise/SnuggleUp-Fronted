@@ -231,7 +231,8 @@ export default function ProductCuration() {
     if (!selectedProduct) return;
     
     try {
-      const costPrice = Number(selectedProduct.price) || 0;
+      // Parse price - CJ API may return string like "$8.47" or number
+      const costPrice = parseFloat(String(selectedProduct.price || 0).replace(/[^0-9.]/g,'')) || 0;
       
       // Mark product as being added
       setAddingProducts(prev => new Set(prev).add(selectedProduct.pid));
@@ -267,6 +268,37 @@ export default function ProductCuration() {
         console.log('Could not fetch product details, using fallback');
       }
 
+      // Validate required fields before sending
+      if (!selectedProduct.pid) {
+        setError('❌ Missing CJ Product ID (PID)');
+        setAddingProducts(prev => {
+          const next = new Set(prev);
+          next.delete(selectedProduct.pid);
+          return next;
+        });
+        return;
+      }
+      
+      if (!chosenTitle || chosenTitle.trim() === '') {
+        setError('❌ Product name/title is required');
+        setAddingProducts(prev => {
+          const next = new Set(prev);
+          next.delete(selectedProduct.pid);
+          return next;
+        });
+        return;
+      }
+      
+      if (costPrice <= 0) {
+        setError('❌ Invalid product price from supplier');
+        setAddingProducts(prev => {
+          const next = new Set(prev);
+          next.delete(selectedProduct.pid);
+          return next;
+        });
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/api/admin/products`, {
         method: 'POST',
         headers: {
@@ -275,8 +307,8 @@ export default function ProductCuration() {
         },
         body: JSON.stringify({
           cj_pid: selectedProduct.pid,
-          product_name: chosenTitle,
-          original_cj_title: selectedProduct.name,
+          product_name: chosenTitle.trim(),
+          original_cj_title: selectedProduct.name || chosenTitle,
           product_description: productDetails.description,
           product_material: productDetails.material,
           product_features: productDetails.productFeatures,
@@ -285,7 +317,7 @@ export default function ProductCuration() {
           product_weight: productDetails.weight,
           product_image: selectedProduct.image,
           cj_cost_price: costPrice,
-          category: selectedProduct.category,
+          category: selectedProduct.category || 'Baby/Kids',
         }),
       });
 
