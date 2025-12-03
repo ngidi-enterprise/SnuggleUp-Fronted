@@ -178,7 +178,8 @@ export default function ProductCuration() {
 
   // Open SEO panel when adding a product
   const addToCurated = (product) => {
-    const costPrice = Number(product.price) || 0;
+    // Parse price - CJ API may return string like "$8.47" or number
+    const costPrice = parseFloat(String(product.price || 0).replace(/[^0-9.]/g,'')) || 0;
     
     if (costPrice <= 0) {
       setError('⚠️ Cannot add product: Invalid or missing price from supplier.');
