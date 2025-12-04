@@ -621,77 +621,18 @@ function App() {
       return;
     }
 
-    // Validate stock availability for all cart items
-    try {
-      console.log('🔐 Starting checkout stock validation...');
-      console.log('🛒 Cart items to validate:', cartItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        stock_quantity: item.stock_quantity,
-        cartItemStockDisplay: `${item.stock_quantity} in stock`
-      })));
+    // Check cart has items and no obvious stock issues (already validated when adding)
+    const hasOutOfStockItems = cartItems.some(item => {
+      const stockQty = typeof item.stock_quantity === 'number' ? item.stock_quantity : Number(item.stock_quantity || 0);
+      return stockQty === 0;
+    });
 
-      const stockCheckPromises = cartItems.map(async (item) => {
-        // Extract product ID from cart item ID (format: "curated-123")
-        const productId = item.id.toString().replace('curated-', '');
-        
-        console.log(`📦 Validating product ID ${productId} (from cart ID ${item.id})`);
-        
-        try {
-          const response = await fetchApi(`/api/products/${productId}`);
-          if (!response.ok) {
-            console.error(`❌ Product ${productId} not found (HTTP ${response.status})`);
-            return { item, available: false, reason: 'Product not found' };
-          }
-          
-          const { product } = await response.json();
-          const stockQuantity = product.stock_quantity || 0;
-          
-          console.log(`✅ Product ${productId} loaded from backend:`, {
-            name: product.product_name,
-            stock_quantity: stockQuantity,
-            cartQuantity: item.quantity
-          });
-          
-          if (stockQuantity === 0) {
-            console.error(`❌ Product ${productId} is OUT OF STOCK (stock_quantity = 0)`);
-            return { item, available: false, reason: 'Sold Out' };
-          }
-          
-          if (stockQuantity < item.quantity) {
-            console.error(`❌ Product ${productId} insufficient stock: ${stockQuantity} available vs ${item.quantity} requested`);
-            return { item, available: false, reason: `Only ${stockQuantity} available, you have ${item.quantity} in cart` };
-          }
-          
-          console.log(`✅ Product ${productId} has sufficient stock: ${stockQuantity}`);
-          return { item, available: true };
-        } catch (err) {
-          console.error(`❌ Error validating product ${productId}:`, err);
-          return { item, available: false, reason: 'Unable to verify stock' };
-        }
-      });
-
-      const stockResults = await Promise.all(stockCheckPromises);
-      const unavailableItems = stockResults.filter(r => !r.available);
-
-      console.log('📊 Stock validation results:', {
-        total: stockResults.length,
-        available: stockResults.filter(r => r.available).length,
-        unavailable: unavailableItems.length
-      });
-
-      if (unavailableItems.length > 0) {
-        const itemsList = unavailableItems.map(r => `• ${r.item.name}: ${r.reason}`).join('\n');
-        console.error('❌ Checkout blocked - items unavailable:', itemsList);
-        alert(`⚠️ Some items in your cart are no longer available:\n\n${itemsList}\n\nPlease update your cart and try again.`);
-        return;
-      }
-    } catch (error) {
-      console.error('Stock validation error:', error);
-      alert('Unable to verify product availability. Please try again.');
+    if (hasOutOfStockItems) {
+      alert('Your cart contains items that are no longer in stock. Please remove them before continuing.');
       return;
     }
+
+    console.log('✅ Checkout validation passed, proceeding to shipping form');
 
     // Track begin checkout event
     trackBeginCheckout(cartItems, getTotalPrice());
