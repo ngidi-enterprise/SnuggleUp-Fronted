@@ -542,7 +542,9 @@ function App() {
 
   const getTotalPrice = () => {
     const total = getSubtotal() + getShippingCost() + getInsuranceCost() - getDiscount();
-    return total > 0 ? total : 0;
+    // Round to 2 decimal places to avoid floating-point precision issues
+    const rounded = Math.round(total * 100) / 100;
+    return rounded > 0 ? rounded : 0;
   };
 
   const applyVoucher = () => {
@@ -694,12 +696,12 @@ function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          amount: getTotalPrice(),
+          amount: Math.round(getTotalPrice() * 100) / 100,
           email: user.email,
           orderItems: cartItems,
-          subtotal: getSubtotal(),
-          shipping: getShippingCost(),
-          discount: getDiscount(),
+          subtotal: Math.round(getSubtotal() * 100) / 100,
+          shipping: Math.round(getShippingCost() * 100) / 100,
+          discount: Math.round(getDiscount() * 100) / 100,
           shippingMethod: selectedShipping?.logisticName || 'STANDARD',
           shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
           shippingCountry: shippingCountry,
@@ -1091,7 +1093,7 @@ function App() {
                         </button>
                       </p>
                     )}
-                    <strong>Total: R{getTotalPrice()}</strong>
+                    <strong>Total: R{getTotalPrice().toFixed(2)}</strong>
                   </div>
                   {!appliedVoucher && (
                     <div style={{marginTop: '12px', marginBottom: '12px'}}>
