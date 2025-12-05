@@ -16,6 +16,7 @@ import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
 import TrustBadges from './components/TrustBadges';
 import ShippingForm from './components/ShippingForm';
+import MaintenanceMode from './components/MaintenanceMode';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -48,6 +49,8 @@ function App() {
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [shippingFormData, setShippingFormData] = useState(null);
+  const [backendDown, setBackendDown] = useState(false);
+  const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   
   const { user, token, isAuthenticated } = useAuth();
 
@@ -73,6 +76,11 @@ function App() {
         const res = await fetch(`${base}${path}`, options);
         if (res.ok) {
           if (apiBaseInUse !== base) setApiBaseInUse(base);
+          // Backend is responding - reset failure counter
+          if (backendCheckFailed > 0) {
+            setBackendCheckFailed(0);
+            setBackendDown(false);
+          }
           return res;
         }
         // gather error and try next base
@@ -86,6 +94,15 @@ function App() {
         lastErr = e;
       }
     }
+    // All bases failed - increment failure counter
+    setBackendCheckFailed(prev => {
+      const newCount = prev + 1;
+      // Show maintenance mode after 2 consecutive failures
+      if (newCount >= 2) {
+        setBackendDown(true);
+      }
+      return newCount;
+    });
     throw lastErr || new Error('All API bases failed');
   };
 
@@ -1517,6 +1534,17 @@ function App() {
           }}
           // Prefill with user's name; previously entered values override
           initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
+        />
+      )}
+
+      {/* Maintenance Mode Overlay */}
+      {backendDown && (
+        <MaintenanceMode 
+          onRetry={() => {
+            setBackendCheckFailed(0);
+            setBackendDown(false);
+            window.location.reload();
+          }}
         />
       )}
     </div>
