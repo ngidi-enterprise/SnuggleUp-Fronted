@@ -51,6 +51,7 @@ function App() {
   const [shippingFormData, setShippingFormData] = useState(null);
   const [backendDown, setBackendDown] = useState(false);
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
+  const [lastFailureTime, setLastFailureTime] = useState(0);
   
   const { user, token, isAuthenticated } = useAuth();
 
@@ -97,10 +98,19 @@ function App() {
     // All bases failed - increment failure counter
     setBackendCheckFailed(prev => {
       const newCount = prev + 1;
-      // Show maintenance mode after 2 consecutive failures
-      if (newCount >= 2) {
+      const now = Date.now();
+      
+      // Only show maintenance mode after 5+ consecutive failures
+      // AND at least 10 seconds have passed since first failure
+      if (newCount >= 5 && (now - lastFailureTime) >= 10000) {
         setBackendDown(true);
       }
+      
+      // Track first failure time
+      if (newCount === 1) {
+        setLastFailureTime(now);
+      }
+      
       return newCount;
     });
     throw lastErr || new Error('All API bases failed');
