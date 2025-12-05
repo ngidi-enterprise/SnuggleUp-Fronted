@@ -21,24 +21,32 @@ async function http(path, { method = 'GET', query = {}, body, headers = {} } = {
     .join('&');
   const url = `${API_BASE}${path}${qs ? `?${qs}` : ''}`;
 
-  const res = await fetch(url, {
-    method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...headers
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...headers
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  const contentType = res.headers.get('content-type') || '';
-  const data = contentType.includes('application/json') ? await res.json() : await res.text();
+    const contentType = res.headers.get('content-type') || '';
+    const data = contentType.includes('application/json') ? await res.json() : await res.text();
 
-  if (!res.ok) {
-    const error = (data && data.error) || res.statusText || 'Request failed';
-    throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
+    if (!res.ok) {
+      const error = (data && data.error) || res.statusText || 'Request failed';
+      throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
+    }
+
+    return data;
+  } catch (err) {
+    // Network errors indicate backend is down
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      throw new Error('Backend service unavailable - please try again in a few minutes');
+    }
+    throw err;
   }
-
-  return data;
 }
 
 export async function searchProducts({ q, pageNum = 1, pageSize = 20, minPrice, maxPrice, categoryId } = {}) {
