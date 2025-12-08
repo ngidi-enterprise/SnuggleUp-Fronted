@@ -15,6 +15,7 @@ export default function PricingManager() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [applyRecalc, setApplyRecalc] = useState(true);
   const [applySyncRetail, setApplySyncRetail] = useState(false);
+  const [syncingCJPrices, setSyncingCJPrices] = useState(false);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -196,6 +197,40 @@ export default function PricingManager() {
     }
   };
 
+  const syncCJPrices = async () => {
+    if (!confirm(`Sync product prices with current supplier (CJ) prices? This will:\n\n1. Fetch current USD cost from CJ for up to 50 products\n2. Update stored cost, suggested price, and retail price\n3. Reflect any supplier price changes in your store\n\nThis ensures your prices are current but may change customer-facing prices. Continue?`)) {
+      return;
+    }
+
+    setSyncingCJPrices(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/products/sync-cj-prices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ limit: 50 })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        const msg = data.priceChanges && data.priceChanges.length > 0
+          ? `✓ Synced ${data.synced} products!\n\n${data.priceChanges.length} significant price changes:\n${data.priceChanges.map(c => `• ${c.name}: $${c.oldCostUSD} → $${c.newCostUSD} (${c.increased ? '↑' : '↓'}${c.percentChange}%)`).slice(0, 10).join('\n')}`
+          : `✓ Synced ${data.synced} products. No significant price changes.`;
+        alert(msg);
+        fetchProducts(); // Refresh the list
+      } else {
+        alert('Failed to sync CJ prices: ' + (data.error || `HTTP ${res.status}`));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setSyncingCJPrices(false);
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading products...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -236,6 +271,28 @@ export default function PricingManager() {
           </div>
           <p style={{ fontSize: 12, marginTop: 8, color: '#555' }}>Changing the global markup adjusts all future suggested prices. Enable recalculation to immediately update stored suggested prices. Sync applies the new suggested price to current retail prices (custom_price).</p>
         </div>
+
+        {/* Supplier Price Sync */}
+        <div style={{ marginTop: '16px', padding: '12px', border: '1px solid #e8f5e9', borderRadius: 8, background: '#f1f8e9' }}>
+          <h3 style={{ marginTop: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🔄 Supplier Price Sync
+          </h3>
+          <p style={{ fontSize: 13, margin: '8px 0', color: '#555' }}>
+            Update product costs from supplier (CJ Dropshipping) to reflect current prices. This ensures your margins stay accurate when supplier prices change.
+          </p>
+          <button 
+            className="btn-small btn-primary" 
+            style={{ background: '#2196f3' }}
+            disabled={syncingCJPrices} 
+            onClick={syncCJPrices}
+          >
+            {syncingCJPrices ? '⏳ Syncing...' : '🔄 Sync CJ Prices (50 products)'}
+          </button>
+          <p style={{ fontSize: 11, marginTop: 6, color: '#666', fontStyle: 'italic' }}>
+            Last sync: Manual only (scheduled daily at 2am) • Syncs up to 50 products per run
+          </p>
+        </div>
+
         {/* Legacy quick actions removed; use Global Pricing Settings save options above */}
       </div>
 
