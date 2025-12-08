@@ -109,6 +109,28 @@ export default function OrderManagement() {
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <button
+          className="btn-small btn-secondary"
+          onClick={async () => {
+            try {
+              const res = await fetch(`${API_BASE}/api/admin/orders/create-test`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const data = await res.json();
+              if (res.ok) {
+                alert(`✓ Test order created!\nOrder #: ${data.orderNumber}\nStatus: ${data.status}`);
+                fetchOrders();
+              } else {
+                alert(`Failed: ${data.error}`);
+              }
+            } catch (err) {
+              alert('Error: ' + err.message);
+            }
+          }}
+        >
+          + Create Test Order
+        </button>
       </div>
 
       {orders.length === 0 ? (
