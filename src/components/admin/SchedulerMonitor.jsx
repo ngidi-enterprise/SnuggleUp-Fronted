@@ -24,6 +24,7 @@ export default function SchedulerMonitor() {
       setError('Failed to load scheduler health: ' + err.message);
     } finally {
       setRefreshing(false);
+      setLoading(false);
     }
   };
 
