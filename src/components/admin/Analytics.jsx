@@ -82,6 +82,16 @@ export default function Analytics() {
         </div>
 
         <div className="analytics-card">
+          <div className="analytics-card-icon">📈</div>
+          <div className="analytics-card-content">
+            <h3>Actual Revenue</h3>
+            <p className="analytics-card-value">
+              R {Number(summary.actual_revenue || 0).toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        <div className="analytics-card">
           <div className="analytics-card-icon">📦</div>
           <div className="analytics-card-content">
             <h3>Total Orders</h3>
