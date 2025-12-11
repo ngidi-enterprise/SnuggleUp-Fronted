@@ -574,23 +574,47 @@ function App() {
     return rounded > 0 ? rounded : 0;
   };
 
-  const applyVoucher = () => {
-    // Define available vouchers (in production, this would come from backend)
-    const vouchers = {
-      'SAVE10': { code: 'SAVE10', value: 10, description: 'R10 off' },
-      'SAVE50': { code: 'SAVE50', value: 50, description: 'R50 off' },
-      'SAVE100': { code: 'SAVE100', value: 100, description: 'R100 off' },
-      'WELCOME20': { code: 'WELCOME20', value: 20, description: 'R20 off for new customers' }
-    };
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError('Please enter a discount code');
+      return;
+    }
 
-    const voucher = vouchers[voucherCode.toUpperCase()];
-    
-    if (voucher) {
-      setAppliedVoucher(voucher);
+    try {
       setVoucherError('');
+      const subtotal = getSubtotal();
+      const orderAmount = subtotal + getShippingCost() + getInsuranceCost();
+
+      const response = await fetch(`${BACKEND_URL}/api/discounts/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: voucherCode.trim(),
+          orderAmount: orderAmount
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.applied) {
+        setVoucherError(data.error || 'Invalid discount code');
+        setAppliedVoucher(null);
+        return;
+      }
+
+      // Successfully applied discount
+      setAppliedVoucher({
+        code: data.code,
+        value: data.discountValue,
+        description: data.discountPercentage 
+          ? `${data.discountPercentage}% off`
+          : `R${data.discountAmount} off`
+      });
       setVoucherCode('');
-    } else {
-      setVoucherError('Invalid voucher code');
+      setVoucherError('');
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      setVoucherError('Failed to apply discount code. Please try again.');
       setAppliedVoucher(null);
     }
   };
