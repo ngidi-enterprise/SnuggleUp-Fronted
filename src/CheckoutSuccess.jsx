@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import './CheckoutSuccess.css';
-import { trackPurchase } from './lib/analytics';
 
 function CheckoutSuccess() {
   const [orderDetails, setOrderDetails] = useState(null);
@@ -50,11 +49,24 @@ function CheckoutSuccess() {
           }
           const total = subtotal + shipping + insuranceCost;
           
-          // Track purchase conversion (with error handling)
-          try {
-            trackPurchase(orderId, cartItems, total, shipping);
-          } catch (trackErr) {
-            console.warn('Failed to track purchase (analytics):', trackErr);
+          // Track purchase conversion (Google Analytics)
+          if (typeof window.gtag === 'function') {
+            try {
+              window.gtag('event', 'purchase', {
+                transaction_id: orderId,
+                currency: 'ZAR',
+                value: total,
+                shipping: shipping,
+                items: cartItems.map(item => ({
+                  item_id: item.id || item.pid,
+                  item_name: item.name,
+                  price: item.price,
+                  quantity: item.quantity
+                }))
+              });
+            } catch (trackErr) {
+              console.warn('Failed to track purchase (analytics):', trackErr);
+            }
           }
         } catch (err) {
           console.error('Failed to process cart data:', err);
