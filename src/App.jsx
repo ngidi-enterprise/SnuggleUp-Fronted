@@ -448,7 +448,95 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Safe route-based early returns after hooks have been declared
+  // Fetch real-time shipping quotes from backend (called when cart opens or changes)
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      if (!showCart || cartItems.length === 0) return; // only fetch when cart visible
+      setShippingLoading(true);
+      setShippingError('');
+      try {
+        // DEBUG: Log cart items to see what data we have
+        console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
+        console.log('🛒 Cart items summary:', cartItems.map(ci => ({
+          id: ci.id,
+          name: ci.name?.substring(0, 30),
+          cj_vid: ci.cj_vid,
+          cj_pid: ci.cj_pid,
+          has_cj_vid: !!ci.cj_vid,
+          price: ci.price,
+          quantity: ci.quantity
+        })));
+
+        // Only include items that have a CJ variant id; older cart entries may lack it
+        const itemsWithVid = cartItems
+          .filter(ci => !!ci.cj_vid)
+          .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
+
+        if (itemsWithVid.length === 0) {
+          console.error('❌ NO ITEMS WITH cj_vid!');
+          console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
+          console.log('Full cart data:', cartItems);
+          console.log('This means products were added to cart before being linked to supplier.');
+          console.log('📝 SOLUTION: Clear cart and re-add products from the store.');
+          setShippingOptions([]);
+          setInsuranceData(null);
+          setSelectedShipping(null);
+          setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
+          setShippingLoading(false);
+          return;
+        }
+
+        console.log('✅ Requesting shipping quotes for', itemsWithVid.length, 'items');
+        console.log('📦 Items with VID:', itemsWithVid);
+
+        const body = {
+          items: itemsWithVid,
+          shippingCountry,
+          orderValue: getSubtotal()
+        };
+        
+        console.log('📤 Shipping API request:', body);
+        
+        const res = await fetchApi(`/api/shipping/quote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('❌ Shipping API error:', err);
+          throw new Error(err.error || 'Quote request failed');
+        }
+        const data = await res.json();
+        console.log('📥 Shipping API response:', data);
+        
+        const opts = data.quotes || [];
+        console.log('✅ Received', opts.length, 'shipping quotes');
+        
+        // Add delivery date ranges to quotes
+        const quotesWithDates = opts.map(q => ({
+          ...q,
+          deliveryDates: getDeliveryDateRange(q.deliveryDay)
+        }));
+        
+        setShippingOptions(quotesWithDates);
+        setInsuranceData(data.insurance || null);
+        
+        // Auto-select cheapest option if none chosen yet
+        if (!selectedShipping && quotesWithDates.length > 0) {
+          const cheapest = [...quotesWithDates].sort((a,b) => a.priceZAR - b.priceZAR)[0];
+          setSelectedShipping(cheapest);
+        }
+      } catch (e) {
+        setShippingError(e.message);
+      } finally {
+        setShippingLoading(false);
+      }
+    };
+    fetchQuotes();
+  }, [showCart, cartItems, shippingCountry]);
+
+  // Safe route-based early returns after hooks have been declared (and consistent hook count)
   if (currentPage === 'success') {
     return <CheckoutSuccess />;
   }
