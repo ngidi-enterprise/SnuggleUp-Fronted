@@ -50,10 +50,14 @@ function CheckoutSuccess() {
           }
           const total = subtotal + shipping + insuranceCost;
           
-          // Track purchase conversion
-          trackPurchase(orderId, cartItems, total, shipping);
+          // Track purchase conversion (with error handling)
+          try {
+            trackPurchase(orderId, cartItems, total, shipping);
+          } catch (trackErr) {
+            console.warn('Failed to track purchase (analytics):', trackErr);
+          }
         } catch (err) {
-          console.error('Failed to track purchase:', err);
+          console.error('Failed to process cart data:', err);
         }
       }
       
