@@ -862,13 +862,25 @@ function App() {
           <div 
             className="logo" 
             onClick={() => { 
-              window.location.href = 'https://snuggleup.co.za';
+              try {
+                setShowCart(false);
+                setSelectedCjPid(null);
+                setCjQuery('');
+              } catch {}
+              window.location.hash = '';
+              try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
             }}
             role="button"
             tabIndex={0}
             onKeyPress={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                window.location.href = 'https://snuggleup.co.za';
+                try {
+                  setShowCart(false);
+                  setSelectedCjPid(null);
+                  setCjQuery('');
+                } catch {}
+                window.location.hash = '';
+                try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
               }
             }}
             aria-label="Go to SnuggleUp home page"
