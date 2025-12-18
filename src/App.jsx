@@ -911,28 +911,30 @@ function App() {
               {user?.email ? user.email.split('@')[0] : 'Account'}
             </button>
           )}
-          <button
-            className="checkout-btn"
-            onClick={toggleCart}
-            aria-label={`View cart (${cartCount} items)`}
-            title="View cart"
-          >
-            <svg
-              className="cart-icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-              aria-hidden="true"
-              focusable="false"
+          {!isAdmin && (
+            <button
+              className="checkout-btn"
+              onClick={toggleCart}
+              aria-label={`View cart (${cartCount} items)`}
+              title="View cart"
             >
-              <path
-                fill="currentColor"
-                d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.99 5H6.21L5.27 3H2v2h2l3.6 7.59-1.35 2.44C5.52 15.37 6.2 16 7 16h12v-2H7.42l.74-1.33z"
-              />
-            </svg>
-            <span className="cart-count">{cartCount}</span>
-          </button>
+              <svg
+                className="cart-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  fill="currentColor"
+                  d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.99 5H6.21L5.27 3H2v2h2l3.6 7.59-1.35 2.44C5.52 15.37 6.2 16 7 16h12v-2H7.42l.74-1.33z"
+                />
+              </svg>
+              <span className="cart-count">{cartCount}</span>
+            </button>
+          )}
         </div>
       </header>
 
