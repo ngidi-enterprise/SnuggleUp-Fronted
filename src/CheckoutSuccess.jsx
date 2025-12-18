@@ -5,18 +5,41 @@ function CheckoutSuccess() {
     window.location.href = '/';
   };
 
-  let orderId = 'N/A';
-  let paymentId = 'N/A';
-  
+  // Read params from both search (?x=) and hash (/#/route?x=)
+  const getParam = (name) => {
+    try {
+      // 1) Standard query string
+      const searchParams = new URLSearchParams(window.location.search || '');
+      const fromSearch = searchParams.get(name);
+      if (fromSearch) return decodeURIComponent(fromSearch.replace(/\+/g, ' '));
+
+      // 2) Hash-based query (for hash routing)
+      const hash = window.location.hash || '';
+      const qIndex = hash.indexOf('?');
+      if (qIndex !== -1) {
+        const hashParams = new URLSearchParams(hash.substring(qIndex + 1));
+        const fromHash = hashParams.get(name);
+        if (fromHash) return decodeURIComponent(fromHash.replace(/\+/g, ' '));
+      }
+
+      // 3) Fallback: loose match inside hash
+      const match = hash.match(new RegExp(`[?#&]${name}=([^&]+)`));
+      if (match && match[1]) return decodeURIComponent(match[1].replace(/\+/g, ' '));
+    } catch (e) {
+      // no-op
+    }
+    return null;
+  };
+
+  const orderId = getParam('m_payment_id') || 'N/A';
+  const paymentId = getParam('pf_payment_id') || 'N/A';
+
   try {
-    const urlParams = new URLSearchParams(window.location.search);
-    orderId = urlParams.get('m_payment_id') || 'N/A';
-    paymentId = urlParams.get('pf_payment_id') || 'N/A';
     localStorage.removeItem('cart');
     localStorage.removeItem('checkoutData');
     localStorage.setItem('hasMadeFirstPurchase', 'true');
   } catch (e) {
-    console.error('Checkout error:', e);
+    console.error('Checkout storage cleanup error:', e);
   }
 
   return (
@@ -76,7 +99,7 @@ function CheckoutSuccess() {
           <ul style={{ paddingLeft: '20px', color: '#666' }}>
             <li style={{ marginBottom: '8px' }}>📧 You'll receive an email confirmation shortly</li>
             <li style={{ marginBottom: '8px' }}>📦 Your order will be processed within 24 hours</li>
-            <li>📞 We'll contact you if there are any issues</li>
+            <li>📧 We'll email you if there are any issues</li>
           </ul>
         </div>
         
@@ -100,7 +123,7 @@ function CheckoutSuccess() {
         
         <div style={{ marginTop: '30px', fontSize: '14px', color: '#999' }}>
           <p>Need help? Contact us at:</p>
-          <p>📧 support@snuggleup.co.za | 📞 +27 (0)10 123 4567</p>
+          <p>📧 support@snuggleup.co.za</p>
         </div>
       </div>
     </div>
