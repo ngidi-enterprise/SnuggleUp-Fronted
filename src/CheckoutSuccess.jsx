@@ -34,6 +34,16 @@ function CheckoutSuccess() {
   const orderId = getParam('m_payment_id') || 'N/A';
   const paymentId = getParam('pf_payment_id') || 'N/A';
 
+  // Debug: Log URL and params for troubleshooting
+  if (typeof window !== 'undefined') {
+    console.log('🔍 CheckoutSuccess Debug:');
+    console.log('  URL:', window.location.href);
+    console.log('  Search:', window.location.search);
+    console.log('  Hash:', window.location.hash);
+    console.log('  Order ID:', orderId);
+    console.log('  Payment ID:', paymentId);
+  }
+
   try {
     localStorage.removeItem('cart');
     localStorage.removeItem('checkoutData');
