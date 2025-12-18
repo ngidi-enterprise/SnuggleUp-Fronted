@@ -187,11 +187,11 @@ body {
   background: var(--brand-gradient);
   color: var(--brand-contrast);
   border: none;
-  padding: 12px 24px;
-  border-radius: 25px;
+  padding: 10px 14px;
+  border-radius: 999px;
   font-weight: var(--weight-semibold);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: var(--text-base);
@@ -204,17 +204,17 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
-.cart-count {
-  background: white;
-  color: #ff6b35;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
+.checkout-btn .cart-icon {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+}
+
+.checkout-btn .cart-count {
+  color: var(--brand-contrast);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
 }
 
 /* Hero Section */
@@ -704,12 +704,8 @@ body {
     padding: 8px;
   }
   
-  .cart-count {
-    width: 18px;
-    height: 18px;
-    font-size: 11px;
-    top: -6px;
-    right: -6px;
+  .checkout-btn .cart-count {
+    font-size: 13px;
   }
   
   /* Hero Mobile */
@@ -799,6 +795,7 @@ body {
     width: 100%;
     font-size: 16px;
     padding: 14px;
+    justify-content: center;
   }
   
   /* Section Headers Mobile */
