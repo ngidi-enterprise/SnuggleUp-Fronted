@@ -884,6 +884,24 @@ function App() {
           <button className="login-btn" onClick={() => { window.location.hash = ''; }}>
             Home
           </button>
+          {/* Login/Account Button */}
+          {!isAuthenticated ? (
+            <button
+              className="login-btn"
+              onClick={() => { setAuthView('login'); setShowAuthModal(true); }}
+              title="Login or create an account"
+            >
+              Login
+            </button>
+          ) : (
+            <button
+              className="account-btn"
+              onClick={() => setShowUserAccount(true)}
+              title="Your account"
+            >
+              {user?.email ? user.email.split('@')[0] : 'Account'}
+            </button>
+          )}
           <button className="checkout-btn" onClick={toggleCart}>
             Checkout
             <div className="cart-count">{cartCount}</div>
