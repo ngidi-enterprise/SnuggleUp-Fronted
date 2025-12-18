@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './UserAccount.css';
 
-function UserAccount({ onClose }) {
+function UserAccount({ onClose, isAdmin }) {
   const { user, token, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,37 +16,49 @@ function UserAccount({ onClose }) {
   }, [activeTab]);
 
   const fetchOrders = async () => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
       const response = await fetch('https://snuggleup-backend.onrender.com/api/orders/history', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to fetch orders');
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!contentType.includes('application/json')) {
+        // Backend not reachable or returning HTML error page; treat as no orders yet instead of hard error
+        if (!response.ok) {
+          throw new Error('Server returned non-JSON response (backend may be down).');
+        }
+        setOrders([]);
+        return;
       }
 
-      const data = await response.json();
-      
-      // Parse items field if it's a JSON string
-      const ordersWithParsedItems = (data.orders || []).map(order => {
-        try {
-          return {
-            ...order,
-            items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items
-          };
-        } catch (e) {
-          console.error('Error parsing order items:', e);
-          return { ...order, items: [] };
-        }
+      const data = await response.json().catch(e => {
+        throw new Error('Failed to parse orders response.');
       });
-      
-      setOrders(ordersWithParsedItems);
+
+      const rawOrders = Array.isArray(data.orders) ? data.orders : [];
+
+      const safeParse = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch { return []; }
+        }
+        return [];
+      };
+
+      const normalized = rawOrders.map(o => ({
+        ...o,
+        items: safeParse(o.items)
+      }));
+
+      setOrders(normalized);
     } catch (err) {
       setError(err.message);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -93,12 +105,14 @@ function UserAccount({ onClose }) {
           >
             Profile
           </button>
-          <button 
-            className={activeTab === 'orders' ? 'tab active' : 'tab'}
-            onClick={() => setActiveTab('orders')}
-          >
-            Order History
-          </button>
+          {!isAdmin && (
+            <button 
+              className={activeTab === 'orders' ? 'tab active' : 'tab'}
+              onClick={() => setActiveTab('orders')}
+            >
+              Order History
+            </button>
+          )}
         </div>
 
         {activeTab === 'profile' && (
