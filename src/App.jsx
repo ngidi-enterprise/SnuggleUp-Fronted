@@ -1243,7 +1243,7 @@ function App() {
 
           {/* User Account Modal */}
           {showUserAccount && (
-            <UserAccount onClose={() => setShowUserAccount(false)} />
+            <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
           )}
 
           {/* Promo Popup */}
