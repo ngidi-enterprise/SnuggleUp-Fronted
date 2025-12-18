@@ -881,7 +881,18 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          <button className="login-btn" onClick={() => { window.location.hash = ''; }}>
+          <button
+            className="login-btn"
+            onClick={() => {
+              try {
+                setShowCart(false);
+                setSelectedCjPid(null);
+                setCjQuery('');
+              } catch {}
+              window.location.hash = '';
+              try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+            }}
+          >
             Home
           </button>
           {/* Login/Account Button */}
