@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import './ShippingForm.css';
 
-export default function ShippingForm({ onSubmit, onCancel, initialData = {} }) {
+export default function ShippingForm({ onSubmit, onCancel, initialData }) {
+  // Be resilient to null/undefined initialData
+  const safeInit = initialData ?? {};
   const [formData, setFormData] = useState({
-    customerName: initialData.customerName || '',
-    address: initialData.address || '',
-    city: initialData.city || '',
-    province: initialData.province || 'Gauteng',
-    postalCode: initialData.postalCode || '',
-    phone: initialData.phone || '',
+    customerName: safeInit.customerName || '',
+    address: safeInit.address || '',
+    city: safeInit.city || '',
+    province: safeInit.province || 'Gauteng',
+    postalCode: safeInit.postalCode || '',
+    phone: safeInit.phone || '',
+    idNumber: safeInit.idNumber || ''
   });
 
   const [errors, setErrors] = useState({});
@@ -52,13 +55,23 @@ export default function ShippingForm({ onSubmit, onCancel, initialData = {} }) {
       newErrors.phone = 'Phone number must be 10 digits starting with 0';
     }
 
+    // South African ID number (13 digits)
+    const idDigits = formData.idNumber.replace(/\D/g, '');
+    if (!idDigits) {
+      newErrors.idNumber = 'South African ID number is required';
+    } else if (!/^\d{13}$/.test(idDigits)) {
+      newErrors.idNumber = 'ID number must be exactly 13 digits';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Restrict idNumber to digits only while typing
+    const nextValue = name === 'idNumber' ? value.replace(/\D/g, '') : value;
+    setFormData(prev => ({ ...prev, [name]: nextValue }));
     
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -113,6 +126,24 @@ export default function ShippingForm({ onSubmit, onCancel, initialData = {} }) {
               className={errors.phone ? 'error' : ''}
             />
             {errors.phone && <span className="error-message">{errors.phone}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="idNumber">
+              South African ID Number <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="idNumber"
+              name="idNumber"
+              value={formData.idNumber}
+              onChange={handleChange}
+              placeholder="13 digits"
+              maxLength="13"
+              className={errors.idNumber ? 'error' : ''}
+            />
+            {errors.idNumber && <span className="error-message">{errors.idNumber}</span>}
+            <small className="helper-text">Required for delivery verification and customs.</small>
           </div>
 
           <div className="form-group">
