@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
 import './ShippingForm.css';
 
+// South African ID validator (13 digits + checksum)
+const isValidSouthAfricanId = (value) => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (digits.length !== 13) return false;
+  const nums = digits.split('').map(Number);
+
+  // Sum of digits in odd positions (1,3,5,7,9,11) excluding check digit
+  const sumOdd = nums.slice(0, 12).filter((_, idx) => idx % 2 === 0).reduce((a, b) => a + b, 0);
+
+  // Even positions concatenated, doubled, then sum of digits
+  const evenStr = nums.slice(0, 12).filter((_, idx) => idx % 2 === 1).join('');
+  const doubled = String(Number(evenStr || '0') * 2);
+  const sumEven = doubled.split('').reduce((a, b) => a + Number(b), 0);
+
+  const total = sumOdd + sumEven;
+  const checkDigit = (10 - (total % 10)) % 10;
+  return checkDigit === nums[12];
+};
+
 export default function ShippingForm({ onSubmit, onCancel, initialData }) {
   // Be resilient to null/undefined initialData
   const safeInit = initialData ?? {};
@@ -61,6 +80,8 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
       newErrors.idNumber = 'South African ID number is required';
     } else if (!/^\d{13}$/.test(idDigits)) {
       newErrors.idNumber = 'ID number must be exactly 13 digits';
+    } else if (!isValidSouthAfricanId(idDigits)) {
+      newErrors.idNumber = 'ID number checksum is invalid';
     }
 
     setErrors(newErrors);
