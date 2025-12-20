@@ -86,10 +86,33 @@ export default function OrderManagement() {
         alert(`✓ Order submitted to CJ successfully!\nCJ Order ID: ${data.cjOrderId}\nCJ Order #: ${data.cjOrderNumber}`);
         fetchOrders(); // Refresh orders to show updated CJ status
       } else {
-        alert(`Failed to submit order to CJ:\n${data.error}\n${data.details || ''}`);
+        // Error occurred, but order might have been created anyway (CJ quirk)
+        // Refresh orders to check if order was actually created
+        await fetchOrders();
+        
+        // Re-fetch to check if this specific order now has CJ info
+        const checkRes = await fetch(`${API_BASE}/api/admin/orders`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const checkData = await checkRes.json();
+        const updatedOrder = checkData.orders?.find(o => o.id === orderId);
+        
+        if (updatedOrder?.cj_order_id) {
+          // Order WAS created despite the error!
+          alert(`⚠️ Order was submitted to CJ despite error.\nCJ Order ID: ${updatedOrder.cj_order_id}\nCJ Order #: ${updatedOrder.cj_order_number}\n\nError was: ${data.details || data.error}`);
+        } else {
+          // Order really wasn't created
+          alert(`Failed to submit order to CJ:\n${data.error}\n${data.details || ''}`);
+        }
       }
     } catch (err) {
       alert('Error submitting order to CJ: ' + err.message);
+      // Still refresh to see if order was created
+      try {
+        await fetchOrders();
+      } catch (e) {
+        console.error('Error refreshing orders:', e);
+      }
     } finally {
       setSubmittingOrderId(null);
     }
