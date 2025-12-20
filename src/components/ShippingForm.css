@@ -104,6 +104,14 @@
   margin-top: 6px;
 }
 
+.helper-text {
+  display: block;
+  color: #7f8c8d;
+  font-size: 12px;
+  margin-top: 4px;
+  font-style: italic;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
