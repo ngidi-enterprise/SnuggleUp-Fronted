@@ -447,6 +447,29 @@ export default function OrderManagement() {
               <p><strong>Destination Postal Code:</strong> {diagnosticsResults.postalCode}</p>
               <p><strong>Products Analyzed:</strong> {diagnosticsResults.summary.total}</p>
               <p><strong>Products with Logistics:</strong> {diagnosticsResults.summary.withFreight} / {diagnosticsResults.summary.total}</p>
+              
+              {/* Show ID validation status */}
+              {diagnosticsResults.order.shipping_id_number && (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#f8f9fa', borderRadius: '6px', borderLeft: '4px solid #3498db' }}>
+                  <p style={{ margin: '0 0 6px 0', fontWeight: 600 }}>SA ID Number Check:</p>
+                  <p style={{ margin: '0', fontSize: '13px' }}>
+                    <strong>Stored ID:</strong> {diagnosticsResults.order.shipping_id_number}
+                    {' '}({diagnosticsResults.order.shipping_id_number?.length} digits)
+                  </p>
+                  {diagnosticsResults.order.shipping_id_number?.length !== 13 && (
+                    <p style={{ margin: '6px 0 0 0', color: '#e74c3c', fontSize: '13px', fontWeight: 600 }}>
+                      ⚠️ ID is not 13 digits - CJ will reject this order
+                    </p>
+                  )}
+                </div>
+              )}
+              {!diagnosticsResults.order.shipping_id_number && (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#fff3cd', borderRadius: '6px', borderLeft: '4px solid #f39c12' }}>
+                  <p style={{ margin: '0', fontSize: '13px', fontWeight: 600, color: '#856404' }}>
+                    ⚠️ No SA ID Number stored - CJ will reject this order
+                  </p>
+                </div>
+              )}
             </div>
 
             {(() => {
@@ -454,7 +477,8 @@ export default function OrderManagement() {
               const hasAllLogistics = diagnosticsResults.summary.withFreight === diagnosticsResults.summary.total;
               const isSingleProduct = diagnosticsResults.summary.total === 1;
               const hasCommonLogistics = diagnosticsResults.summary.commonLogistics?.length > 0;
-              const canSubmit = hasAllLogistics && (isSingleProduct || hasCommonLogistics);
+              const hasValidId = diagnosticsResults.order.shipping_id_number?.length === 13;
+              const canSubmit = hasAllLogistics && (isSingleProduct || hasCommonLogistics) && hasValidId;
 
               if (isSubmitted) {
                 // Order already submitted
@@ -462,6 +486,14 @@ export default function OrderManagement() {
                   <div className="diagnostics-success">
                     <h3>✓ Order Already Submitted</h3>
                     <p>This order was successfully submitted to the supplier. The diagnostic below shows current shipping availability for reference.</p>
+                  </div>
+                );
+              } else if (!hasValidId) {
+                // ID validation failed
+                return (
+                  <div className="diagnostics-warning">
+                    <h3>❌ Cannot Submit - Invalid SA ID</h3>
+                    <p>The supplier requires a valid 13-digit South African ID number. This order is missing or has an invalid ID.</p>
                   </div>
                 );
               } else if (canSubmit) {
@@ -477,6 +509,9 @@ export default function OrderManagement() {
                           <li key={idx} className="logistics-item-success">{line}</li>
                         ))}
                       </ul>
+                      <p style={{ marginTop: '12px', fontSize: '13px', color: '#555' }}>
+                        <strong>Note:</strong> Shipping availability confirmed. However, the supplier may still reject orders for other reasons (product restrictions, inventory, etc.).
+                      </p>
                     </div>
                   );
                 } else {
@@ -489,6 +524,9 @@ export default function OrderManagement() {
                           <li key={idx} className="logistics-item-success">{line}</li>
                         ))}
                       </ul>
+                      <p style={{ marginTop: '12px', fontSize: '13px', color: '#555' }}>
+                        <strong>Note:</strong> Shipping availability confirmed. However, the supplier may still reject orders for other reasons (product restrictions, inventory, etc.).
+                      </p>
                     </div>
                   );
                 }
