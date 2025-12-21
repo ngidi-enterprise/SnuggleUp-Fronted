@@ -123,6 +123,7 @@ export default function OrderManagement() {
   const diagnoseOrder = async (order) => {
     try {
       setDiagnosingOrderId(order.id);
+      console.log('Starting diagnostics for order:', order.id);
       // Extract CJ PIDs from order items
       let items = [];
       try {
@@ -132,10 +133,12 @@ export default function OrderManagement() {
       }
       const pids = items.map(i => i.cj_pid).filter(Boolean);
       const postalCode = order.shipping_postal_code || '2196';
+      console.log('Extracted PIDs:', pids, 'Postal Code:', postalCode);
       if (pids.length === 0) {
         alert('No CJ product IDs found in this order to diagnose.');
         return;
       }
+      console.log('Calling diagnostics API with:', { pids, postalCode });
       const res = await fetch(`${API_BASE}/api/admin/cj/diagnose-products`, {
         method: 'POST',
         headers: {
@@ -145,17 +148,20 @@ export default function OrderManagement() {
         body: JSON.stringify({ pids, postalCode })
       });
       const data = await res.json();
+      console.log('API Response:', res.ok, data);
       if (!res.ok) {
         alert(`Diagnostics failed: ${data.error || 'Unknown error'}`);
         return;
       }
       // Store results and show modal
+      console.log('Setting diagnostics results');
       setDiagnosticsResults({
         order,
         items,
         ...data
       });
     } catch (err) {
+      console.error('Diagnostics error:', err);
       alert('Error running diagnostics: ' + err.message);
     } finally {
       setDiagnosingOrderId(null);
