@@ -9,6 +9,7 @@ export default function OrderManagement() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [submittingOrderId, setSubmittingOrderId] = useState(null);
   const [diagnosingOrderId, setDiagnosingOrderId] = useState(null);
+  const [diagnosticsResults, setDiagnosticsResults] = useState(null);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -148,15 +149,21 @@ export default function OrderManagement() {
         alert(`Diagnostics failed: ${data.error || 'Unknown error'}`);
         return;
       }
-      const summary = data.summary || {};
-      const perPid = summary.logisticsPerPid || {};
-      const lines = Object.entries(perPid).map(([pid, lines]) => `• ${pid}: ${lines.join(', ') || 'No logistics to ZA'}`).join('\n');
-      alert(`Diagnostics complete (postal ${data.postalCode}):\n\n${lines}\n\nWith freight: ${summary.withFreight}/${summary.total}`);
+      // Store results and show modal
+      setDiagnosticsResults({
+        order,
+        items,
+        ...data
+      });
     } catch (err) {
       alert('Error running diagnostics: ' + err.message);
     } finally {
       setDiagnosingOrderId(null);
     }
+  };
+
+  const closeDiagnostics = () => {
+    setDiagnosticsResults(null);
   };
 
   if (loading) return <div className="admin-loading">Loading orders...</div>;
@@ -409,6 +416,98 @@ export default function OrderManagement() {
                 <strong>Discount:</strong> R {Number(selectedOrder.discount || 0).toFixed(2)}
               </p>
               <p>
+
+      {/* Diagnostics Results Modal */}
+      {diagnosticsResults && (
+        <div className="modal-overlay" onClick={closeDiagnostics}>
+          <div className="modal-content diagnostics-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeDiagnostics}>
+              ✕
+            </button>
+            <h2>Shipping Logistics Diagnostics</h2>
+            
+            <div className="diagnostics-summary">
+              <p><strong>Order:</strong> #{diagnosticsResults.order.order_number}</p>
+              <p><strong>Destination Postal Code:</strong> {diagnosticsResults.postalCode}</p>
+              <p><strong>Products Analyzed:</strong> {diagnosticsResults.summary.total}</p>
+              <p><strong>Products with Logistics:</strong> {diagnosticsResults.summary.withFreight} / {diagnosticsResults.summary.total}</p>
+            </div>
+
+            {diagnosticsResults.summary.commonLogistics?.length > 0 ? (
+              <div className="diagnostics-success">
+                <h3>✓ Compatible Shipping Lines</h3>
+                <p>These shipping methods work for ALL products in this order:</p>
+                <ul className="logistics-list">
+                  {diagnosticsResults.summary.commonLogistics.map((line, idx) => (
+                    <li key={idx} className="logistics-item-success">{line}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="diagnostics-warning">
+                <h3>⚠️ No Common Shipping Lines</h3>
+                <p>No single shipping method supports all products. Some items may need to be shipped separately or removed.</p>
+              </div>
+            )}
+
+            <div className="diagnostics-details">
+              <h3>Per-Product Breakdown</h3>
+              <table className="diagnostics-table">
+                <thead>
+                  <tr>
+                    <th>Product ID</th>
+                    <th>Product Name</th>
+                    <th>Available Shipping Lines</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(diagnosticsResults.summary.logisticsPerPid || {}).map(([pid, logistics]) => {
+                    const item = diagnosticsResults.items.find(i => i.cj_pid === pid);
+                    const hasCommon = logistics.some(line => 
+                      diagnosticsResults.summary.commonLogistics?.includes(line)
+                    );
+                    return (
+                      <tr key={pid} className={logistics.length === 0 ? 'diagnostics-row-error' : ''}>
+                        <td>{pid}</td>
+                        <td>{item?.name || 'Unknown'}</td>
+                        <td>
+                          {logistics.length > 0 ? (
+                            <ul className="logistics-inline-list">
+                              {logistics.map((line, idx) => {
+                                const isCommon = diagnosticsResults.summary.commonLogistics?.includes(line);
+                                return (
+                                  <li key={idx} className={isCommon ? 'logistics-common' : ''}>
+                                    {line}
+                                    {isCommon && ' ✓'}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <span className="no-logistics">❌ No shipping to destination</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="diagnostics-actions">
+              {diagnosticsResults.summary.commonLogistics?.length > 0 ? (
+                <p className="diagnostics-hint">
+                  ✓ This order can be submitted. The system will automatically use a compatible shipping line.
+                </p>
+              ) : (
+                <p className="diagnostics-hint">
+                  ⚠️ This order cannot be fulfilled as-is. Remove products without logistics or contact supplier for alternatives.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
                 <strong>Total:</strong> R {Number(selectedOrder.total).toFixed(2)}
               </p>
             </div>
