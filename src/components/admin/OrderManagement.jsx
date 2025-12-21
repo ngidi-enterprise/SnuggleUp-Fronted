@@ -440,27 +440,76 @@ export default function OrderManagement() {
             
             <div className="diagnostics-summary">
               <p><strong>Order:</strong> #{diagnosticsResults.order.order_number}</p>
+              <p><strong>Status:</strong> <span className={`status-badge status-${diagnosticsResults.order.status}`}>{diagnosticsResults.order.status}</span></p>
+              {diagnosticsResults.order.cj_order_id && (
+                <p><strong>Supplier Order ID:</strong> {diagnosticsResults.order.cj_order_id}</p>
+              )}
               <p><strong>Destination Postal Code:</strong> {diagnosticsResults.postalCode}</p>
               <p><strong>Products Analyzed:</strong> {diagnosticsResults.summary.total}</p>
               <p><strong>Products with Logistics:</strong> {diagnosticsResults.summary.withFreight} / {diagnosticsResults.summary.total}</p>
             </div>
 
-            {diagnosticsResults.summary.commonLogistics?.length > 0 ? (
-              <div className="diagnostics-success">
-                <h3>✓ Compatible Shipping Lines</h3>
-                <p>These shipping methods work for ALL products in this order:</p>
-                <ul className="logistics-list">
-                  {diagnosticsResults.summary.commonLogistics.map((line, idx) => (
-                    <li key={idx} className="logistics-item-success">{line}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="diagnostics-warning">
-                <h3>⚠️ No Common Shipping Lines</h3>
-                <p>No single shipping method supports all products. Some items may need to be shipped separately or removed.</p>
-              </div>
-            )}
+            {(() => {
+              const isSubmitted = !!diagnosticsResults.order.cj_order_id;
+              const hasAllLogistics = diagnosticsResults.summary.withFreight === diagnosticsResults.summary.total;
+              const isSingleProduct = diagnosticsResults.summary.total === 1;
+              const hasCommonLogistics = diagnosticsResults.summary.commonLogistics?.length > 0;
+              const canSubmit = hasAllLogistics && (isSingleProduct || hasCommonLogistics);
+
+              if (isSubmitted) {
+                // Order already submitted
+                return (
+                  <div className="diagnostics-success">
+                    <h3>✓ Order Already Submitted</h3>
+                    <p>This order was successfully submitted to the supplier. The diagnostic below shows current shipping availability for reference.</p>
+                  </div>
+                );
+              } else if (canSubmit) {
+                // Order can be submitted
+                if (isSingleProduct) {
+                  const logistics = Object.values(diagnosticsResults.summary.logisticsPerPid || {})[0] || [];
+                  return (
+                    <div className="diagnostics-success">
+                      <h3>✓ Ready to Submit</h3>
+                      <p>Single-product order with {logistics.length} available shipping method(s):</p>
+                      <ul className="logistics-list">
+                        {logistics.map((line, idx) => (
+                          <li key={idx} className="logistics-item-success">{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="diagnostics-success">
+                      <h3>✓ Ready to Submit</h3>
+                      <p>These shipping methods work for ALL products in this order:</p>
+                      <ul className="logistics-list">
+                        {diagnosticsResults.summary.commonLogistics.map((line, idx) => (
+                          <li key={idx} className="logistics-item-success">{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                }
+              } else if (!hasAllLogistics) {
+                // Some products have no logistics
+                return (
+                  <div className="diagnostics-warning">
+                    <h3>❌ Cannot Submit</h3>
+                    <p>Some products cannot be shipped to this destination. Remove products without logistics before submitting.</p>
+                  </div>
+                );
+              } else {
+                // Multi-product order with no common logistics
+                return (
+                  <div className="diagnostics-warning">
+                    <h3>⚠️ No Common Shipping Method</h3>
+                    <p>These products cannot be shipped together in one order. They must be shipped separately or removed.</p>
+                  </div>
+                );
+              }
+            })()}
 
             <div className="diagnostics-details">
               <h3>Per-Product Breakdown</h3>
@@ -506,17 +555,36 @@ export default function OrderManagement() {
               </table>
             </div>
 
-            <div className="diagnostics-actions">
-              {diagnosticsResults.summary.commonLogistics?.length > 0 ? (
-                <p className="diagnostics-hint">
-                  ✓ This order can be submitted. The system will automatically use a compatible shipping line.
-                </p>
-              ) : (
-                <p className="diagnostics-hint">
-                  ⚠️ This order cannot be fulfilled as-is. Remove products without logistics or contact supplier for alternatives.
-                </p>
-              )}
-            </div>
+            {!diagnosticsResults.order.cj_order_id && (
+              <div className="diagnostics-actions">
+                {(() => {
+                  const hasAllLogistics = diagnosticsResults.summary.withFreight === diagnosticsResults.summary.total;
+                  const isSingleProduct = diagnosticsResults.summary.total === 1;
+                  const hasCommonLogistics = diagnosticsResults.summary.commonLogistics?.length > 0;
+                  const canSubmit = hasAllLogistics && (isSingleProduct || hasCommonLogistics);
+
+                  if (canSubmit) {
+                    return (
+                      <p className="diagnostics-hint">
+                        ✓ This order can be submitted. The system will automatically select an available shipping method.
+                      </p>
+                    );
+                  } else if (!hasAllLogistics) {
+                    return (
+                      <p className="diagnostics-hint">
+                        ❌ Remove products without shipping availability before submitting.
+                      </p>
+                    );
+                  } else {
+                    return (
+                      <p className="diagnostics-hint">
+                        ⚠️ Products must be ordered separately—no shipping method supports all items together.
+                      </p>
+                    );
+                  }
+                })()}
+              </div>
+            )}
           </div>
         </div>
       )}
