@@ -8,6 +8,7 @@ export default function OrderManagement() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [submittingOrderId, setSubmittingOrderId] = useState(null);
+  const [diagnosingOrderId, setDiagnosingOrderId] = useState(null);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -118,6 +119,46 @@ export default function OrderManagement() {
     }
   };
 
+  const diagnoseOrder = async (order) => {
+    try {
+      setDiagnosingOrderId(order.id);
+      // Extract CJ PIDs from order items
+      let items = [];
+      try {
+        items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+      } catch {
+        items = [];
+      }
+      const pids = items.map(i => i.cj_pid).filter(Boolean);
+      const postalCode = order.shipping_postal_code || '2196';
+      if (pids.length === 0) {
+        alert('No CJ product IDs found in this order to diagnose.');
+        return;
+      }
+      const res = await fetch(`${API_BASE}/api/admin/cj/diagnose-products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ pids, postalCode })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Diagnostics failed: ${data.error || 'Unknown error'}`);
+        return;
+      }
+      const summary = data.summary || {};
+      const perPid = summary.logisticsPerPid || {};
+      const lines = Object.entries(perPid).map(([pid, lines]) => `• ${pid}: ${lines.join(', ') || 'No logistics to ZA'}`).join('\n');
+      alert(`Diagnostics complete (postal ${data.postalCode}):\n\n${lines}\n\nWith freight: ${summary.withFreight}/${summary.total}`);
+    } catch (err) {
+      alert('Error running diagnostics: ' + err.message);
+    } finally {
+      setDiagnosingOrderId(null);
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading orders...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -215,6 +256,13 @@ export default function OrderManagement() {
                       onClick={() => viewOrderDetails(order)}
                     >
                       View
+                    </button>
+                    <button
+                      className="btn-small btn-secondary"
+                      onClick={() => diagnoseOrder(order)}
+                      disabled={diagnosingOrderId === order.id}
+                    >
+                      {diagnosingOrderId === order.id ? 'Diagnosing…' : 'Diagnose Logistics'}
                     </button>
                     {order.status === 'paid' && !order.cj_order_id && (
                       <button
