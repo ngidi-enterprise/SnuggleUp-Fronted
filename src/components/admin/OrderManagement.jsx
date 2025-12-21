@@ -422,6 +422,12 @@ export default function OrderManagement() {
                 <strong>Discount:</strong> R {Number(selectedOrder.discount || 0).toFixed(2)}
               </p>
               <p>
+                <strong>Total:</strong> R {Number(selectedOrder.total).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Diagnostics Results Modal */}
       {diagnosticsResults && (
@@ -510,12 +516,6 @@ export default function OrderManagement() {
                   ⚠️ This order cannot be fulfilled as-is. Remove products without logistics or contact supplier for alternatives.
                 </p>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-                <strong>Total:</strong> R {Number(selectedOrder.total).toFixed(2)}
-              </p>
             </div>
           </div>
         </div>
