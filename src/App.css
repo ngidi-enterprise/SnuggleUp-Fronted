@@ -651,19 +651,21 @@ body {
 @media (max-width: 768px) {
   /* Header Mobile */
   .header {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 0.5rem;
-    padding: 0;
+    padding: 0.5rem 0.75rem;
   }
   
   .logo-section {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    justify-content: flex-start;
+    gap: 0.5rem;
   }
   
   .logo {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: auto;
     font-size: 20px;
   }
   
@@ -672,13 +674,13 @@ body {
   }
   
   .brand-info p {
-    font-size: 12px;
+    display: none;
   }
   
   .header-right {
-    width: 100%;
+    width: auto;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 0.5rem;
   }
   
@@ -820,7 +822,15 @@ body {
   
   /* Footer Mobile */
   .footer {
-    padding: 2rem 1rem;
+    margin-top: 2rem;
+    padding: 1.25rem 1rem;
+  }
+  .footer img {
+    max-height: 22px;
+    height: auto;
+  }
+  .footer p {
+    font-size: 0.95em;
   }
   
   .footer-content {
@@ -841,7 +851,10 @@ body {
   }
   
   .brand-info h1 {
-    font-size: 18px;
+    font-size: 16px;
+  }
+  .logo {
+    width: 48px;
   }
   
   .product-grid {
