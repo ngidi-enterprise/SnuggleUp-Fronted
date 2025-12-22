@@ -10,6 +10,8 @@ export default function OrderManagement() {
   const [submittingOrderId, setSubmittingOrderId] = useState(null);
   const [diagnosingOrderId, setDiagnosingOrderId] = useState(null);
   const [diagnosticsResults, setDiagnosticsResults] = useState(null);
+  const [showCJPayloads, setShowCJPayloads] = useState(false);
+  const [cjPayloads, setCJPayloads] = useState(null);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -172,6 +174,35 @@ export default function OrderManagement() {
     setDiagnosticsResults(null);
   };
 
+  const fetchCJPayloads = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/cj/recent-submissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCJPayloads(data);
+        setShowCJPayloads(true);
+      } else {
+        alert(`Failed to fetch CJ payloads: ${data.error}`);
+      }
+    } catch (err) {
+      alert('Error fetching CJ payloads: ' + err.message);
+    }
+  };
+
+  const closeCJPayloads = () => {
+    setShowCJPayloads(false);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(err => {
+      alert('Failed to copy: ' + err.message);
+    });
+  };
+
   if (loading) return <div className="admin-loading">Loading orders...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -186,6 +217,12 @@ export default function OrderManagement() {
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <button
+          className="btn-small btn-secondary"
+          onClick={fetchCJPayloads}
+        >
+          📋 View CJ Payloads
+        </button>
         <button
           className="btn-small btn-secondary"
           onClick={async () => {
@@ -623,6 +660,91 @@ export default function OrderManagement() {
                 })()}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* CJ Payloads Modal */}
+      {showCJPayloads && cjPayloads && (
+        <div className="modal-overlay" onClick={closeCJPayloads}>
+          <div className="modal-content diagnostics-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'auto' }}>
+            <button className="modal-close" onClick={closeCJPayloads}>
+              ✕
+            </button>
+            <h2>Recent CJ Submissions</h2>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+              {cjPayloads.count} submission(s) stored in memory. Copy exact request/response JSON for CJ support.
+            </p>
+
+            {cjPayloads.submissions.map((sub, idx) => (
+              <div key={idx} style={{ marginBottom: '24px', padding: '16px', background: '#f8f9fa', borderRadius: '8px', borderLeft: sub.error ? '4px solid #e74c3c' : '4px solid #27ae60' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong>Order:</strong> {sub.orderNumber} | <strong>Time:</strong> {new Date(sub.timestamp).toLocaleString()}
+                  {sub.error && <span style={{ marginLeft: '12px', color: '#e74c3c', fontWeight: 600 }}>❌ Failed: {sub.error}</span>}
+                  {!sub.error && <span style={{ marginLeft: '12px', color: '#27ae60', fontWeight: 600 }}>✓ Success</span>}
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>Request URL:</strong>
+                  <code style={{ display: 'block', padding: '8px', background: '#fff', borderRadius: '4px', fontSize: '12px', wordBreak: 'break-all' }}>
+                    {sub.url}
+                  </code>
+                  <button 
+                    className="btn-small btn-secondary" 
+                    style={{ marginTop: '6px' }}
+                    onClick={() => copyToClipboard(sub.url)}
+                  >
+                    📋 Copy URL
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>Request Parameters (JSON):</strong>
+                  <pre style={{ 
+                    background: '#fff', 
+                    padding: '12px', 
+                    borderRadius: '4px', 
+                    fontSize: '11px', 
+                    overflow: 'auto', 
+                    maxHeight: '200px',
+                    border: '1px solid #ddd'
+                  }}>
+                    {JSON.stringify(sub.request, null, 2)}
+                  </pre>
+                  <button 
+                    className="btn-small btn-secondary" 
+                    style={{ marginTop: '6px' }}
+                    onClick={() => copyToClipboard(JSON.stringify(sub.request, null, 2))}
+                  >
+                    📋 Copy Request JSON
+                  </button>
+                </div>
+
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '4px' }}>Response Body (JSON):</strong>
+                  <pre style={{ 
+                    background: '#fff', 
+                    padding: '12px', 
+                    borderRadius: '4px', 
+                    fontSize: '11px', 
+                    overflow: 'auto', 
+                    maxHeight: '200px',
+                    border: '1px solid #ddd'
+                  }}>
+                    {sub.response ? JSON.stringify(sub.response, null, 2) : '(No response body)'}
+                  </pre>
+                  {sub.response && (
+                    <button 
+                      className="btn-small btn-secondary" 
+                      style={{ marginTop: '6px' }}
+                      onClick={() => copyToClipboard(JSON.stringify(sub.response, null, 2))}
+                    >
+                      📋 Copy Response JSON
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
