@@ -885,7 +885,7 @@ function App() {
             }}
             aria-label="Go to SnuggleUp home page"
           >
-            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ width: '150px', height: 'auto', display: 'block' }} loading="eager" />
+            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ height: 'auto', display: 'block' }} loading="eager" />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
