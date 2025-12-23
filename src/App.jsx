@@ -992,4 +992,356 @@ function App() {
                     onQueryChange={setCjQuery}
                     onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                     onOpenProduct={(pid) => setSelectedCjPid(pid)}
-                    isAdmin=
+                    isAdmin={isAdmin}
+                  />
+                )}
+
+                {selectedCjPid && (
+                  <CJProductDetail
+                    pid={selectedCjPid}
+                    onClose={() => setSelectedCjPid(null)}
+                    onAddToCart={addToCart}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Shopping Cart Full Page */}
+          {showCart && (
+            <div className="cart-page">
+              <div className="cart-content">
+                <div className="cart-header">
+                  <h3>Shopping Cart ({cartCount} items)</h3>
+                  <button className="close-cart" onClick={toggleCart}>← Back to Shop</button>
+                </div>
+                <div className="cart-items">
+                  {cartItems.length === 0 ? (
+                    <p className="empty-cart">Your cart is empty</p>
+                  ) : (
+                    cartItems.map(item => {
+                      const stockQty = item.stock_quantity || 0;
+                      const isOutOfStock = stockQty === 0;
+                      const isLowStock = stockQty > 0 && stockQty < item.quantity;
+                      
+                      return (
+                        <div key={item.id} className="cart-item">
+                          <img src={item.image} alt={item.name} className="cart-item-image" />
+                          <div className="cart-item-details">
+                            <h4>{item.name}</h4>
+                            <p>R{item.price} each</p>
+                            {isOutOfStock && (
+                              <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                                ⚠️ Sold out
+                              </p>
+                            )}
+                            {isLowStock && (
+                              <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                                ⚠️ Only {stockQty} available
+                              </p>
+                            )}
+                            <div className="quantity-controls">
+                              <button onClick={() => removeFromCart(item.id)}>-</button>
+                              <span>{item.quantity}</span>
+                              <button onClick={() => addToCart(item)}>+</button>
+                            </div>
+                          </div>
+                          <div className="cart-item-total">
+                            R{item.price * item.quantity}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {cartItems.length > 0 && (
+                  <div className="cart-footer">
+                    <div className="cart-total">
+                      {/* Country Selector */}
+                      <div style={{marginBottom: '12px'}}>
+                        <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
+                          📍 Ship to:
+                        </label>
+                        <select
+                          value={shippingCountry}
+                          onChange={(e) => setShippingCountry(e.target.value)}
+                          style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                        >
+                          <option value="ZA">🇿🇦 South Africa</option>
+                          <option value="US">🇺🇸 United States</option>
+                          <option value="GB">🇬🇧 United Kingdom</option>
+                          <option value="AU">🇦🇺 Australia</option>
+                          <option value="CA">🇨🇦 Canada</option>
+                          <option value="DE">🇩🇪 Germany</option>
+                          <option value="FR">🇫🇷 France</option>
+                        </select>
+                      </div>
+
+                      {/* Real-time shipping options */}
+                      <div style={{marginBottom: '8px'}}>
+                        {shippingLoading ? (
+                          <p>Getting shipping options…</p>
+                        ) : shippingError ? (
+                          <div>
+                            <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                              Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
+                              {shippingError && ` Error: ${String(shippingError)}`}
+                            </p>
+                          </div>
+                        ) : shippingOptions.length === 0 ? (
+                          <div>
+                            <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                              Our shipping provider doesn’t have delivery methods for these products to your selected destination.
+                              We’ll use an estimated tiered rate based on your subtotal.
+                            </p>
+                          </div>
+                        ) : (
+                          shippingOptions.length > 0 && (
+                            <>
+                              <div style={{marginBottom:'8px'}}>
+                                <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
+                                <select
+                                  value={selectedShipping?.logisticName || ''}
+                                  onChange={(e) => {
+                                    const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                    setSelectedShipping(opt || null);
+                                  }}
+                                  style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
+                                >
+                                  {shippingOptions.map(o => (
+                                    <option key={o.logisticName} value={o.logisticName}>
+                                      {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {selectedShipping?.deliveryDates && (
+                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                    📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                                  </p>
+                                )}
+                                {selectedShipping?.isFallback && (
+                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                    ℹ️ Estimated rate applied (no live quote available)
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Insurance Option */}
+                              {insuranceData && insuranceData.available && (
+                                <div style={{
+                                  padding: '10px',
+                                  background: '#f8f9fa',
+                                  borderRadius: '6px',
+                                  marginBottom: '8px',
+                                  border: '1px solid #e0e0e0'
+                                }}>
+                                  <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                                    <input
+                                      type="checkbox"
+                                      checked={insuranceSelected}
+                                      onChange={(e) => setInsuranceSelected(e.target.checked)}
+                                      style={{width: '16px', height: '16px'}}
+                                    />
+                                    <span style={{fontSize: '0.9em', flex: 1}}>
+                                      🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
+                                    </span>
+                                  </label>
+                                  <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
+                                    Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          )
+                        )}
+                      </div>
+                      <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
+                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
+                      {insuranceSelected && insuranceData && (
+                        <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
+                      )}
+                      {appliedVoucher && (
+                        <p style={{marginBottom: '8px', color: '#28a745'}}>
+                          Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                          <button 
+                            onClick={removeVoucher}
+                            style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
+                          >
+                            ✕
+                          </button>
+                        </p>
+                      )}
+                      <strong>Total: R{getTotalPrice()}</strong>
+                    </div>
+                    
+                    {!appliedVoucher && (
+                      <div style={{marginTop: '12px', marginBottom: '12px'}}>
+                        <input
+                          type="text"
+                          placeholder="Enter voucher code"
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value)}
+                          style={{padding: '8px', width: '60%', border: '1px solid #ccc', borderRadius: '4px'}}
+                        />
+                        <button
+                          onClick={applyVoucher}
+                          style={{padding: '8px 16px', marginLeft: '8px', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                        >
+                          Apply
+                        </button>
+                        {voucherError && (
+                          <p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <button 
+                      className="proceed-checkout" 
+                      onClick={handleCheckout}
+                      disabled={hasStockIssues}
+                      title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
+                      style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                    >
+                      Proceed to PayFast Checkout
+                    </button>
+                    {hasStockIssues && (
+                      <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
+                        Please remove or adjust items marked "Sold out" before continuing.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Auth Modal */}
+          {showAuthModal && (
+            <div
+              className="auth-overlay"
+              onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.75)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: 'min(560px, 92vw)',
+                  maxHeight: '90vh',
+                  overflowY: 'auto'
+                }}
+              >
+                {authView === 'login' ? (
+                  <Login 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onSwitchToRegister={() => setAuthView('register')}
+                  />
+                ) : authView === 'register' ? (
+                  <Register 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onSwitchToLogin={() => setAuthView('login')}
+                  />
+                ) : authView === 'forgot-password' ? (
+                  <ForgotPassword 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onBackToLogin={() => setAuthView('login')}
+                  />
+                ) : authView === 'reset-password' ? (
+                  <ResetPassword 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onBackToLogin={() => setAuthView('login')}
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* User Account Modal */}
+          {showUserAccount && (
+            <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
+          )}
+
+          {/* Promo Popup */}
+          {showPromoPopup && (
+            <PromoPopup 
+              onClose={handlePromoClose}
+              onSignup={handlePromoSignup}
+            />
+          )}
+
+          {/* Footer */}
+          <footer className="footer" style={{ flexShrink: 0 }}>
+            <TrustBadges />
+            <div style={{ marginTop: '1.5rem' }}>
+              <p>© 2025 SnuggleUp</p>
+              <p>Made with <span className="heart">❤️</span> for all parents.</p>
+              <p>Contact: support@snuggleup.co.za </p>
+            </div>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
+              <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <img 
+                  src="https://www.payfast.co.za/images/logo.png" 
+                  alt="PayFast Secure Payments" 
+                  style={{ height: '32px', opacity: 0.8 }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '4px 12px', background: 'white', borderRadius: '4px' }}>
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
+                    alt="Visa" 
+                    style={{ height: '20px' }}
+                  />
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
+                    alt="Mastercard" 
+                    style={{ height: '24px' }}
+                  />
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
+                    alt="American Express" 
+                    style={{ height: '20px' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </footer>
+
+          {/* Shipping Form Modal */}
+          {showShippingForm && (
+            <ShippingForm
+              onSubmit={handleShippingFormSubmit}
+              onCancel={() => {
+                setShowShippingForm(false);
+                setShowCart(true);
+              }}
+              // Prefill with user's name; previously entered values override
+              initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
+            />
+          )}
+
+          {/* Maintenance Mode Overlay */}
+          {backendDown && (
+            <MaintenanceMode 
+              onRetry={() => {
+                setBackendCheckFailed(0);
+                setBackendDown(false);
+                window.location.reload();
+              }}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default App;
