@@ -54,6 +54,23 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   const [error, setError] = useState('');
   const [data, setData] = useState({ list: [], total: 0 });
   const [opening, setOpening] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Category definitions
+  const categories = [
+    { id: 'all', name: 'All Products', icon: '🛍️' },
+    { id: 'strollers', name: 'Strollers & Prams', icon: '👶' },
+    { id: 'car-seats', name: 'Car Seats', icon: '🚗' },
+    { id: 'feeding', name: 'Feeding & Nursing', icon: '🍼' },
+    { id: 'toys', name: 'Toys & Games', icon: '🧸' },
+    { id: 'clothing', name: 'Baby Clothing', icon: '👕' },
+    { id: 'safety', name: 'Safety & Health', icon: '🛡️' },
+    { id: 'furniture', name: 'Nursery Furniture', icon: '🛏️' },
+    { id: 'gear', name: 'Baby Gear', icon: '🎒' },
+    { id: 'bath', name: 'Bath & Potty', icon: '🛁' },
+    { id: 'outdoor', name: 'Outdoor & Travel', icon: '⛺' }
+  ];
 
   const products = useProductMapping(data?.list);
   // Group variants by shared CJ PID (same product different colors)
@@ -132,8 +149,30 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
     return combined;
   }, [products]);
 
-  // No country filter in storefront
-  const filteredProducts = groupedProducts;
+  // Filter by selected category
+  const filteredProducts = useMemo(() => {
+    if (!selectedCategory || selectedCategory === 'all') {
+      return groupedProducts;
+    }
+    return groupedProducts.filter(p => {
+      const category = (p.category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      
+      switch(selectedCategory) {
+        case 'strollers': return category.includes('stroller') || category.includes('pram') || name.includes('stroller');
+        case 'car-seats': return category.includes('car seat') || name.includes('car seat');
+        case 'feeding': return category.includes('feeding') || category.includes('bottle') || name.includes('bottle') || name.includes('feeding');
+        case 'toys': return category.includes('toy') || name.includes('toy');
+        case 'clothing': return category.includes('clothing') || category.includes('apparel') || name.includes('clothing');
+        case 'safety': return category.includes('safety') || category.includes('health') || name.includes('safety');
+        case 'furniture': return category.includes('furniture') || name.includes('crib') || name.includes('furniture');
+        case 'gear': return category.includes('gear') || name.includes('carrier') || name.includes('gear');
+        case 'bath': return category.includes('bath') || name.includes('bath') || name.includes('potty');
+        case 'outdoor': return category.includes('outdoor') || category.includes('travel') || name.includes('outdoor');
+        default: return true;
+      }
+    });
+  }, [groupedProducts, selectedCategory]);
   const sortedProducts = useMemo(() => {
     if (sortBy === 'price_asc') {
       return [...filteredProducts].sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
@@ -204,9 +243,67 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
   }, [query]);
 
   return (
-    <div className="cj-page">
+    <div className="cj-page-wrapper">
+      {/* Mobile category toggle */}
+      <button 
+        className="category-toggle-mobile"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle categories"
+      >
+        <span>☰</span>
+        <span>Categories</span>
+      </button>
 
-      <div className="cj-toolbar">
+      {/* Left sidebar for categories */}
+      <aside className={`category-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="category-sidebar-header">
+          <h3>Shop by Category</h3>
+          <button 
+            className="category-close-mobile"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close categories"
+          >
+            ✕
+          </button>
+        </div>
+        <ul className="category-list">
+          {categories.map(cat => (
+            <li 
+              key={cat.id}
+              className={`category-item ${selectedCategory === cat.id ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedCategory(cat.id === 'all' ? null : cat.id);
+                setSidebarOpen(false); // Close on mobile after selection
+              }}
+            >
+              <span className="category-icon">{cat.icon}</span>
+              <span className="category-name">{cat.name}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main content area */}
+      <div className="cj-page">
+        {selectedCategory && (
+          <div className="active-category-badge">
+            <span>Filtering:</span>
+            <strong>{categories.find(c => c.id === selectedCategory)?.name || 'Category'}</strong>
+            <button onClick={() => setSelectedCategory(null)} className="clear-category">
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div className="cj-toolbar">
         <input
           className="cj-input"
           placeholder="Search products..."
@@ -386,6 +483,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
           <button className="cj-btn" disabled={pageNum >= totalPages || loading} onClick={() => runSearch(pageNum + 1)}>Next</button>
         </div>
       )}
+      </div>
     </div>
   );
 }
