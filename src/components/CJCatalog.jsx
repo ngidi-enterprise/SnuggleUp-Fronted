@@ -432,7 +432,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 <div className="cj-price">
                   {p.isValidPrice ? (
                     <>
-                      From R{Number(p.minPrice).toFixed(2)}
+                      R{Number(p.minPrice).toFixed(2)}
                       {p.variantCount && p.variantCount > 1 && (
                         <span style={{
                           marginLeft: 6,
