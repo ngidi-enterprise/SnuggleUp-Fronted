@@ -1125,8 +1125,6 @@ function App() {
                     pid={selectedCjPid}
                     onClose={() => setSelectedCjPid(null)}
                     onAddToCart={addToCart}
-                    onAddToWishlist={addToWishlist}
-                    isInWishlist={isInWishlist}
                   />
                 )}
               </div>
