@@ -56,6 +56,12 @@ function App() {
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
   
+  // Wishlist state
+  const [wishlistItems, setWishlistItems] = useState(() => {
+    const saved = localStorage.getItem('wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   const { user, token, isAuthenticated } = useAuth();
 
   // Prefill shipping name from user profile when available (editable by user)
@@ -600,6 +606,30 @@ function App() {
     }
   };
 
+  // Wishlist functions
+  const addToWishlist = (product) => {
+    const alreadyExists = wishlistItems.some(item => item.id === product.id);
+    if (alreadyExists) {
+      alert('This item is already in your wishlist!');
+      return;
+    }
+    
+    const newWishlist = [...wishlistItems, product];
+    setWishlistItems(newWishlist);
+    localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+    alert('Added to wishlist! ❤️');
+  };
+
+  const removeFromWishlist = (productId) => {
+    const newWishlist = wishlistItems.filter(item => item.id !== productId);
+    setWishlistItems(newWishlist);
+    localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+  };
+
+  const isInWishlist = (productId) => {
+    return wishlistItems.some(item => item.id === productId);
+  };
+
   // Calculate delivery date range from delivery days string (e.g., "15-25" or "5-7")
   const getDeliveryDateRange = (deliveryDay) => {
     if (!deliveryDay) return null;
@@ -924,28 +954,54 @@ function App() {
             </button>
           )}
           {!isAdmin && (
-            <button
-              className="checkout-btn"
-              onClick={toggleCart}
-              aria-label={`View cart (${cartCount} items)`}
-              title="View cart"
-            >
-              <svg
-                className="cart-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                width="22"
-                height="22"
-                aria-hidden="true"
-                focusable="false"
+            <>
+              <button
+                className="wishlist-btn"
+                onClick={() => setCurrentPage('wishlist')}
+                aria-label={`View wishlist (${wishlistItems.length} items)`}
+                title="View wishlist"
               >
-                <path
-                  fill="currentColor"
-                  d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.99 5H6.21L5.27 3H2v2h2l3.6 7.59-1.35 2.44C5.52 15.37 6.2 16 7 16h12v-2H7.42l.74-1.33z"
-                />
-              </svg>
-              <span className="cart-count">{cartCount}</span>
-            </button>
+                <svg
+                  className="wishlist-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  />
+                </svg>
+                {wishlistItems.length > 0 && (
+                  <span className="wishlist-count">{wishlistItems.length}</span>
+                )}
+              </button>
+              <button
+                className="checkout-btn"
+                onClick={toggleCart}
+                aria-label={`View cart (${cartCount} items)`}
+                title="View cart"
+              >
+                <svg
+                  className="cart-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.99 5H6.21L5.27 3H2v2h2l3.6 7.59-1.35 2.44C5.52 15.37 6.2 16 7 16h12v-2H7.42l.74-1.33z"
+                  />
+                </svg>
+                <span className="cart-count">{cartCount}</span>
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -954,6 +1010,74 @@ function App() {
         <CheckoutSuccess />
       ) : currentPage === 'cancel' ? (
         <CheckoutCancel />
+      ) : currentPage === 'wishlist' ? (
+        <div className="wishlist-page">
+          <div className="wishlist-content">
+            <div className="wishlist-header">
+              <h2>My Wishlist ❤️</h2>
+              <button className="back-to-shop" onClick={() => setCurrentPage('home')}>
+                ← Back to Shop
+              </button>
+            </div>
+            {wishlistItems.length === 0 ? (
+              <div className="empty-wishlist">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64" fill="#ccc">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                <p>Your wishlist is empty</p>
+                <button className="continue-shopping" onClick={() => setCurrentPage('home')}>
+                  Start Shopping
+                </button>
+              </div>
+            ) : (
+              <div className="wishlist-grid">
+                {wishlistItems.map(item => (
+                  <div key={item.id} className="wishlist-item">
+                    <button 
+                      className="remove-from-wishlist"
+                      onClick={() => removeFromWishlist(item.id)}
+                      title="Remove from wishlist"
+                    >
+                      ×
+                    </button>
+                    <div 
+                      className="wishlist-item-image"
+                      onClick={() => {
+                        setSelectedCjPid(item.pid || item.id);
+                        setCurrentPage('home');
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <img src={item.image} alt={item.name} />
+                    </div>
+                    <div className="wishlist-item-details">
+                      <h3 
+                        onClick={() => {
+                          setSelectedCjPid(item.pid || item.id);
+                          setCurrentPage('home');
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {item.name}
+                      </h3>
+                      <p className="wishlist-item-price">R {item.price.toFixed(2)}</p>
+                      <button 
+                        className="add-to-cart-from-wishlist"
+                        onClick={() => {
+                          addToCart(item);
+                          removeFromWishlist(item.id);
+                        }}
+                        disabled={item.stock_quantity === 0}
+                      >
+                        {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : currentPage === 'privacy' ? (
         <div style={{ marginTop: '20px' }}>
           <PrivacyPolicy />
@@ -1001,6 +1125,8 @@ function App() {
                     pid={selectedCjPid}
                     onClose={() => setSelectedCjPid(null)}
                     onAddToCart={addToCart}
+                    onAddToWishlist={addToWishlist}
+                    isInWishlist={isInWishlist}
                   />
                 )}
               </div>
