@@ -5,7 +5,7 @@ import { trackProductView } from '../lib/analytics';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
 // A detail modal for curated products from our backend
-export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWishlist, isInWishlist }) {
+export default function CJProductDetail({ pid, onClose, onAddToCart }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [product, setProduct] = useState(null);
@@ -85,27 +85,66 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
       let s = String(u).trim();
       if (s.startsWith('//')) s = 'https:' + s;
       if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+      // Some srcset entries include comma-separated candidates; pick the first URL
+      if (s.includes(' ')) s = s.split(' ')[0];
+      if (s.includes(',')) s = s.split(',')[0];
       return s;
     };
-    
+
     const imageSet = new Set();
-    
+
     // Add main product image
     const main = normalizeUrl(product?.product_image);
     if (main) imageSet.add(main);
-    
-    // Extract images from product description HTML
+
+    // Extract images from product description HTML using DOM for robustness
     if (product?.product_description) {
-      const desc = String(product.product_description);
-      // Match all img src attributes
-      const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
-      let match;
-      while ((match = imgRegex.exec(desc)) !== null) {
-        const imgUrl = normalizeUrl(match[1]);
-        if (imgUrl) imageSet.add(imgUrl);
+      try {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = String(product.product_description);
+
+        // <img> tags: src, data-src, data-original, data-large_image, and common lazy-load attrs
+        wrapper.querySelectorAll('img').forEach((img) => {
+          const candidates = [
+            img.getAttribute('src'),
+            img.getAttribute('data-src'),
+            img.getAttribute('data-original'),
+            img.getAttribute('data-large_image'),
+            img.getAttribute('data-image'),
+            img.getAttribute('data-url'),
+            img.getAttribute('href'),
+          ];
+          candidates.forEach((u) => {
+            const n = normalizeUrl(u);
+            if (n) imageSet.add(n);
+          });
+        });
+
+        // <source srcset> inside <picture>
+        wrapper.querySelectorAll('source').forEach((src) => {
+          const srcset = src.getAttribute('srcset');
+          const n = normalizeUrl(srcset);
+          if (n) imageSet.add(n);
+        });
+
+        // Extract from <a href> that might wrap images (common for product galleries)
+        wrapper.querySelectorAll('a[href*=".jpg"], a[href*=".jpeg"], a[href*=".png"], a[href*=".webp"]').forEach((a) => {
+          const href = a.getAttribute('href');
+          const n = normalizeUrl(href);
+          if (n) imageSet.add(n);
+        });
+      } catch (_) {
+        // Fallback: simple regex on src
+        const desc = String(product.product_description);
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+        let match;
+        while ((match = imgRegex.exec(desc)) !== null) {
+          const imgUrl = normalizeUrl(match[1]);
+          if (imgUrl) imageSet.add(imgUrl);
+        }
       }
     }
-    
+
     return Array.from(imageSet);
   }, [product]);
 
@@ -181,6 +220,17 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
       setSelectedImage(selectedVariant.image);
     }
   }, [selectedVariant]);
+
+  // Ensure selectedImage defaults to first extracted image when available
+  useEffect(() => {
+    if (!selectedVariant && images && images.length > 0) {
+      // Prefer the main product image if present, else first description image
+      const preferred = images[0];
+      if (preferred && selectedImage !== preferred) {
+        setSelectedImage(preferred);
+      }
+    }
+  }, [images, selectedVariant]);
 
   // Gallery images: variant-specific or all variant images
   const galleryImages = useMemo(() => {
@@ -267,8 +317,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
               <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
           </div>
-          {/* Show thumbnail gallery when we have multiple images */}
-          {galleryImages.length > 1 && (
+          {/* Show thumbnail gallery when we have any images */}
+          {galleryImages.length > 0 && (
             <div className="thumbnail-gallery">
               {galleryImages.map((img, idx) => (
                 <img 
@@ -436,33 +486,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
               >
                 {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
               </button>
-              <button 
-                className="add-to-wishlist-btn" 
-                onClick={() => {
-                  if (onAddToWishlist && product) {
-                    const baseName = product?.product_name || 'Product';
-                    const name = selectedVariant ? `${baseName} - ${selectedVariant.color}` : baseName;
-                    const wishlistItem = {
-                      id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
-                      pid: product.id,
-                      name: name,
-                      price: Number(price) || 0,
-                      image: selectedImage || images[0] || '',
-                      category: product.category || 'Store',
-                      cj_vid: activeProduct?.cj_vid,
-                      cj_pid: activeProduct?.cj_pid,
-                      stock_quantity: stockQuantity,
-                    };
-                    onAddToWishlist(wishlistItem);
-                  }
-                }}
-                title={isInWishlist && product && isInWishlist(`curated-${product.id}`) ? "Already in wishlist" : "Add to wishlist"}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill={isInWishlist && product && isInWishlist(`curated-${product.id}`) ? "var(--brand)" : "currentColor"}>
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-                {isInWishlist && product && isInWishlist(`curated-${product.id}`) ? 'Saved' : 'Save'}
-              </button>
+              <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
 
             {product?.product_description && (
