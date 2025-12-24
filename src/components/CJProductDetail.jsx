@@ -85,27 +85,56 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       let s = String(u).trim();
       if (s.startsWith('//')) s = 'https:' + s;
       if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+      // Some srcset entries include comma-separated candidates; pick the first URL
+      if (s.includes(' ')) s = s.split(' ')[0];
+      if (s.includes(',')) s = s.split(',')[0];
       return s;
     };
-    
+
     const imageSet = new Set();
-    
+
     // Add main product image
     const main = normalizeUrl(product?.product_image);
     if (main) imageSet.add(main);
-    
-    // Extract images from product description HTML
+
+    // Extract images from product description HTML using DOM for robustness
     if (product?.product_description) {
-      const desc = String(product.product_description);
-      // Match all img src attributes
-      const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
-      let match;
-      while ((match = imgRegex.exec(desc)) !== null) {
-        const imgUrl = normalizeUrl(match[1]);
-        if (imgUrl) imageSet.add(imgUrl);
+      try {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = String(product.product_description);
+
+        // <img> tags: src, data-src, data-original, data-large_image
+        wrapper.querySelectorAll('img').forEach((img) => {
+          const candidates = [
+            img.getAttribute('src'),
+            img.getAttribute('data-src'),
+            img.getAttribute('data-original'),
+            img.getAttribute('data-large_image'),
+          ];
+          candidates.forEach((u) => {
+            const n = normalizeUrl(u);
+            if (n) imageSet.add(n);
+          });
+        });
+
+        // <source srcset> inside <picture>
+        wrapper.querySelectorAll('source').forEach((src) => {
+          const srcset = src.getAttribute('srcset');
+          const n = normalizeUrl(srcset);
+          if (n) imageSet.add(n);
+        });
+      } catch (_) {
+        // Fallback: simple regex on src
+        const desc = String(product.product_description);
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+        let match;
+        while ((match = imgRegex.exec(desc)) !== null) {
+          const imgUrl = normalizeUrl(match[1]);
+          if (imgUrl) imageSet.add(imgUrl);
+        }
       }
     }
-    
+
     return Array.from(imageSet);
   }, [product]);
 
@@ -181,6 +210,17 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       setSelectedImage(selectedVariant.image);
     }
   }, [selectedVariant]);
+
+  // Ensure selectedImage defaults to first extracted image when available
+  useEffect(() => {
+    if (!selectedVariant && images && images.length > 0) {
+      // Prefer the main product image if present, else first description image
+      const preferred = images[0];
+      if (preferred && selectedImage !== preferred) {
+        setSelectedImage(preferred);
+      }
+    }
+  }, [images, selectedVariant]);
 
   // Gallery images: variant-specific or all variant images
   const galleryImages = useMemo(() => {
