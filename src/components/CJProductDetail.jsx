@@ -103,13 +103,16 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = String(product.product_description);
 
-        // <img> tags: src, data-src, data-original, data-large_image
+        // <img> tags: src, data-src, data-original, data-large_image, and common lazy-load attrs
         wrapper.querySelectorAll('img').forEach((img) => {
           const candidates = [
             img.getAttribute('src'),
             img.getAttribute('data-src'),
             img.getAttribute('data-original'),
             img.getAttribute('data-large_image'),
+            img.getAttribute('data-image'),
+            img.getAttribute('data-url'),
+            img.getAttribute('href'),
           ];
           candidates.forEach((u) => {
             const n = normalizeUrl(u);
@@ -121,6 +124,13 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         wrapper.querySelectorAll('source').forEach((src) => {
           const srcset = src.getAttribute('srcset');
           const n = normalizeUrl(srcset);
+          if (n) imageSet.add(n);
+        });
+
+        // Extract from <a href> that might wrap images (common for product galleries)
+        wrapper.querySelectorAll('a[href*=".jpg"], a[href*=".jpeg"], a[href*=".png"], a[href*=".webp"]').forEach((a) => {
+          const href = a.getAttribute('href');
+          const n = normalizeUrl(href);
           if (n) imageSet.add(n);
         });
       } catch (_) {
@@ -135,7 +145,13 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       }
     }
 
-    return Array.from(imageSet);
+    const result = Array.from(imageSet);
+    console.log('🖼️ Gallery images extracted:', {
+      count: result.length,
+      images: result,
+      hasDescription: !!product?.product_description
+    });
+    return result;
   }, [product]);
 
   // Sanitize description: remove images and media so we don't duplicate the gallery
@@ -222,19 +238,54 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     }
   }, [images, selectedVariant]);
 
-  // Gallery images: variant-specific or all variant images
+  // Gallery images: Use variant images if available, fall back to description images
   const galleryImages = useMemo(() => {
-    if (selectedVariant) {
-      // If variant selected, show only its image
-      return selectedVariant.image ? [selectedVariant.image] : [];
+    const allImages = new Set();
+    
+    // Start with main product image
+    if (product?.product_image) {
+      const normalizeUrl = (u) => {
+        if (!u) return '';
+        let s = String(u).trim();
+        if (s.startsWith('//')) s = 'https:' + s;
+        if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+        return s;
+      };
+      allImages.add(normalizeUrl(product.product_image));
     }
-    // Otherwise, show all variant images
-    if (processedVariants.length > 1) {
-      return processedVariants.map(v => v.image).filter(Boolean);
+    
+    // Add all variant images (different colors/angles)
+    if (processedVariants && processedVariants.length > 0) {
+      processedVariants.forEach(v => {
+        if (v.image) {
+          allImages.add(v.image);
+        }
+      });
     }
-    // Fallback to original images logic
-    return images;
-  }, [selectedVariant, processedVariants, images]);
+    
+    // Fall back to extracted description images if no variant images
+    if (allImages.size <= 1 && images && images.length > 0) {
+      images.forEach(img => allImages.add(img));
+    }
+    
+    // If variant is selected, prioritize its image first
+    if (selectedVariant?.image) {
+      const result = [selectedVariant.image];
+      allImages.forEach(img => {
+        if (img !== selectedVariant.image) result.push(img);
+      });
+      console.log('🎨 Gallery for selected variant:', { variant: selectedVariant.color, count: result.length });
+      return result;
+    }
+    
+    const result = Array.from(allImages);
+    console.log('🎨 Gallery images ready:', { 
+      total: result.length, 
+      fromVariants: processedVariants.length,
+      hasSelectedVariant: !!selectedVariant
+    });
+    return result;
+  }, [selectedVariant, processedVariants, images, product?.product_image]);
 
   // Active product is selectedVariant if exists, else main product
   const activeProduct = selectedVariant?.raw || product;
@@ -307,8 +358,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
               <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
           </div>
-          {/* Show thumbnail gallery when we have multiple images */}
-          {galleryImages.length > 1 && (
+          {/* Show thumbnail gallery when we have any images */}
+          {galleryImages.length > 0 && (
             <div className="thumbnail-gallery">
               {galleryImages.map((img, idx) => (
                 <img 
