@@ -380,7 +380,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
             
             <h1 className="product-title">
               {product?.product_name || 'Product'}
-              {selectedVariant && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
+              {selectedVariant && selectedVariant.color !== 'Default' && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
             </h1>
 
             {/* Color Variant Selector */}
