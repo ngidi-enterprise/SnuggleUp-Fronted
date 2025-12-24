@@ -1187,7 +1187,7 @@ function App() {
                         />
                         <button
                           onClick={applyVoucher}
-                          style={{padding: '8px 16px', marginLeft: '8px', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                          style={{padding: '8px 16px', marginLeft: '8px', background: '#BEE7C1', color: '#126F71', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
                         >
                           Apply
                         </button>

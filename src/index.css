@@ -1,16 +1,18 @@
 /* Base styles for the app; safe minimal sheet to satisfy Vite import */
 :root {
   color-scheme: light;
-  --brand: #ff6600;
+  /* Theme — Blue + Pastel Green + White */
+  --brand: #126F71; /* Primary Blue/Teal */
   --brand-contrast: #ffffff;
-  --brand-hover: #ff5a00;
-  --brand-gradient: linear-gradient(135deg, #ff7a1a 0%, #ff4d00 100%);
-  --radius-8: 8px;
-  --radius-12: 12px;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-hover: 0 8px 24px rgba(0,0,0,0.08);
-  --text-muted: #666;
-  --border: #e6e6e6;
+  --brand-hover: #0f5a5c; /* Slightly deeper for hover */
+  --brand-gradient: linear-gradient(135deg, #126F71 0%, #4FA3C4 100%);
+  --accent: #BEE7C1; /* Pastel Green */
+  --accent-light: #D7F5DE; /* Very light baby green */
+  --accent-dark: #A8DEC9; /* Calm sage-mint */
+  --cream: #FBF9F2; /* Soft cream background */
+  --text-main: #4A4A4A;
+  --text-secondary: #9E9E9E;
+  --border: #EAEAEA;
   --bg-soft: #fafafa;
   
   /* Typography */
@@ -33,7 +35,7 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   background: #fff;
-  color: #222;
+  color: var(--text-main);
 }
 
 #root { min-height: 100vh; }
