@@ -276,7 +276,6 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                 setSidebarOpen(false); // Close on mobile after selection
               }}
             >
-              <span className="category-icon">{cat.icon}</span>
               <span className="category-name">{cat.name}</span>
             </li>
           ))}
