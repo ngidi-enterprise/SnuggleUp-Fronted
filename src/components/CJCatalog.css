@@ -57,9 +57,9 @@
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 12px 16px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
   border-left: 3px solid transparent;
 }
 
@@ -81,8 +81,13 @@
 
 .category-name {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  font-weight: 600;
   color: #333;
+}
+
+.category-item:hover .category-name {
+  color: var(--brand);
 }
 
 /* Mobile category toggle */
