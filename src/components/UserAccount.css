@@ -40,7 +40,7 @@
 .account-header {
   text-align: center;
   padding: 40px 20px 20px;
-  background: linear-gradient(135deg, #ff6600 0%, #ff8833 100%);
+  background: var(--brand-gradient);
   color: white;
   border-radius: 12px 12px 0 0;
 }
@@ -49,7 +49,7 @@
   width: 80px;
   height: 80px;
   background: white;
-  color: #ff6600;
+  color: var(--brand);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -88,12 +88,12 @@
 }
 
 .tab:hover {
-  color: #ff6600;
+  color: var(--brand);
 }
 
 .tab.active {
-  color: #ff6600;
-  border-bottom-color: #ff6600;
+  color: var(--brand);
+  border-bottom-color: var(--brand);
   font-weight: 600;
 }
 
@@ -265,7 +265,7 @@
 
 .order-item-total {
   font-weight: 600;
-  color: #ff6600;
+  color: var(--brand);
   font-size: 15px;
   flex-shrink: 0;
 }

@@ -5,7 +5,7 @@ import { trackProductView } from '../lib/analytics';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
 // A detail modal for curated products from our backend
-export default function CJProductDetail({ pid, onClose, onAddToCart }) {
+export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWishlist, isInWishlist }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [product, setProduct] = useState(null);
@@ -436,7 +436,16 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
               >
                 {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
               </button>
-              <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
+              <button 
+                className="add-to-wishlist-btn" 
+                onClick={() => onAddToWishlist && onAddToWishlist(finalProduct)}
+                title={isInWishlist && isInWishlist(finalProduct.id) ? "Already in wishlist" : "Add to wishlist"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill={isInWishlist && isInWishlist(finalProduct.id) ? "var(--brand)" : "currentColor"}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                {isInWishlist && isInWishlist(finalProduct.id) ? 'Saved' : 'Save'}
+              </button>
             </div>
 
             {product?.product_description && (
