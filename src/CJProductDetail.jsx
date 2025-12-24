@@ -5,10 +5,12 @@ import { trackProductView } from '../lib/analytics';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
 // A detail modal for curated products from our backend
-export default function CJProductDetail({ pid, onClose, onAddToCart }) {
+export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWishlist, isInWishlist }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [product, setProduct] = useState(null);
+  const [variants, setVariants] = useState([]);
+    const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [qty, setQty] = useState(1);
 
@@ -24,18 +26,31 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
         
         const res = await response.json();
         const data = res.product;
+        const fetchedVariants = res.variants || [];
         
-        // DEBUG: Log full product data from database
+        // DEBUG: Log full product data from database INCLUDING stock
         console.log('📦 Product loaded from database:', {
           id: data.id,
           name: data.product_name,
+          stock_quantity: data.stock_quantity,
+          is_active: data.is_active,
           cj_pid: data.cj_pid,
           cj_vid: data.cj_vid,
           has_cj_vid: !!data.cj_vid,
+          variantCount: fetchedVariants.length,
           fullData: data
         });
         
+        // Log stock status clearly
+        const stock = Number(data.stock_quantity) || 0;
+        if (stock === 0) {
+          console.warn(`⚠️ PRODUCT OUT OF STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        } else if (stock < 10) {
+          console.warn(`⚡ LOW STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        }
+        
         setProduct(data);
+        setVariants(fetchedVariants);
         
         // Track product view
         trackProductView({
@@ -72,32 +87,139 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
       if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
       return s;
     };
+    
+    const imageSet = new Set();
+    
+    // Add main product image
     const main = normalizeUrl(product?.product_image);
-    return main ? [main] : [];
+    if (main) imageSet.add(main);
+    
+    // Extract images from product description HTML
+    if (product?.product_description) {
+      const desc = String(product.product_description);
+      // Match all img src attributes
+      const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+      let match;
+      while ((match = imgRegex.exec(desc)) !== null) {
+        const imgUrl = normalizeUrl(match[1]);
+        if (imgUrl) imageSet.add(imgUrl);
+      }
+    }
+    
+    return Array.from(imageSet);
   }, [product]);
 
-  // Curated products have a single fixed price (no variants in simplified model)
-  const price = product?.custom_price || product?.suggested_price || 0;
-  const stockQuantity = product?.stock_quantity || 0;
+  // Sanitize description: remove images and media so we don't duplicate the gallery
+  const sanitizedDescription = useMemo(() => {
+    const raw = product?.product_description;
+    if (!raw) return '';
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = String(raw);
+      // Remove media elements that create the vertical stack
+      wrapper.querySelectorAll('img, picture, figure, svg, video, source').forEach((el) => el.remove());
+      // Drop empty anchors that previously wrapped images
+      wrapper.querySelectorAll('a').forEach((a) => {
+        const hasText = (a.textContent || '').trim().length > 0;
+        const hasChildren = a.children && a.children.length > 0;
+        if (!hasText && !hasChildren) a.remove();
+      });
+      // Remove inline styles to keep typography consistent
+      wrapper.querySelectorAll('[style]').forEach((el) => el.removeAttribute('style'));
+      let html = wrapper.innerHTML;
+      // Normalize line breaks and paragraphs similar to previous behavior
+      html = html
+        .replace(/\n/g, '\n')
+        .replace(/\r/g, '')
+        .replace(/\n/g, '<br/>')
+        .replace(/(<br\/>\s*){2,}/gi, '</p><p>');
+      return html;
+    } catch (e) {
+      // Fallback: regex-strip <img> tags if DOM operations fail
+      return String(raw).replace(/<img[\s\S]*?>/gi, '');
+    }
+  }, [product?.product_description]);
+
+  // Derive variants with color extraction
+  const processedVariants = useMemo(() => {
+    if (!variants || variants.length === 0) return [];
+    const colorKeywords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
+    return variants.map(v => {
+      const name = v.product_name || '';
+      const foundColor = colorKeywords.find(c => name.includes(c));
+      return {
+        id: v.id,
+        color: foundColor || 'Default',
+        price: v.custom_price || v.suggested_price || 0,
+        image: v.main_image,
+        stock_quantity: v.stock_quantity || 0,
+        raw: v
+      };
+    });
+  }, [variants]);
+
+  // Auto-select first variant on load
+  useEffect(() => {
+    if (processedVariants.length > 0 && !selectedVariant) {
+      setSelectedVariant(processedVariants[0]);
+    }
+  }, [processedVariants]);
+
+  // If URL has ?color=..., auto-select matching variant
+  useEffect(() => {
+    if (!processedVariants || processedVariants.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const colorParam = (params.get('color') || '').toLowerCase();
+    if (!colorParam) return;
+    const match = processedVariants.find(v => v.color.toLowerCase() === colorParam);
+    if (match) setSelectedVariant(match);
+  }, [processedVariants]);
+
+  // Sync selected image when variant changes
+  useEffect(() => {
+    if (selectedVariant?.image) {
+      setSelectedImage(selectedVariant.image);
+    }
+  }, [selectedVariant]);
+
+  // Gallery images: variant-specific or all variant images
+  const galleryImages = useMemo(() => {
+    if (selectedVariant) {
+      // If variant selected, show only its image
+      return selectedVariant.image ? [selectedVariant.image] : [];
+    }
+    // Otherwise, show all variant images
+    if (processedVariants.length > 1) {
+      return processedVariants.map(v => v.image).filter(Boolean);
+    }
+    // Fallback to original images logic
+    return images;
+  }, [selectedVariant, processedVariants, images]);
+
+  // Active product is selectedVariant if exists, else main product
+  const activeProduct = selectedVariant?.raw || product;
+  const price = activeProduct?.custom_price || activeProduct?.suggested_price || 0;
+  const stockQuantity = selectedVariant?.stock_quantity ?? (product?.stock_quantity || 0);
   const isOutOfStock = stockQuantity === 0;
   const isLowStock = stockQuantity > 0 && stockQuantity < 10;
 
   const handleAdd = () => {
-    if (!product || isOutOfStock) return;
+    if (!activeProduct || isOutOfStock) return;
     
     // Limit quantity to available stock
     const quantityToAdd = Math.min(qty, stockQuantity);
     
-    const name = product.product_name || 'Product';
+    const baseName = product?.product_name || 'Product';
+    const name = selectedVariant ? `${baseName} - ${selectedVariant.color}` : baseName;
     const item = {
-      id: `curated-${product.id}`,
+      id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
       name: name,
       price: Number(price) || 0,
       image: selectedImage || images[0] || '',
-      category: product.category || 'Store',
+      category: activeProduct.category || 'Store',
       // Carry-through fields needed for shipping + stock in cart
-      cj_vid: product.cj_vid,
-      cj_pid: product.cj_pid,
+      cj_vid: activeProduct.cj_vid,
+      cj_pid: activeProduct.cj_pid,
       stock_quantity: stockQuantity,
     };
     
@@ -137,65 +259,116 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     <div className="product-detail-page">
       <button className="back-button" onClick={onClose}>← Back to Products</button>
       <div className="product-detail-grid">
-        <div className="product-gallery" style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          maxHeight: '600px',
-          overflowY: 'auto',
-          paddingRight: '8px'
-        }}>
-          {images.length > 0 ? (
-            images.map((img, idx) => (
-              <img 
-                key={img} 
-                src={img} 
-                alt={`${product?.product_name || 'Product'} - Image ${idx + 1}`}
-                style={{
-                  width: '100%',
-                  aspectRatio: '1',
-                  objectFit: 'cover',
-                  border: selectedImage === img ? '2px solid #ff6600' : '1px solid #e0e0e0',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: selectedImage === img ? '0 4px 16px rgba(255, 102, 0, 0.2)' : 'none'
-                }}
-                onClick={() => setSelectedImage(img)}
-                onMouseEnter={(e) => {
-                  if (selectedImage !== img) {
-                    e.target.style.borderColor = '#ff6600';
-                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedImage !== img) {
-                    e.target.style.borderColor = '#e0e0e0';
-                    e.target.style.boxShadow = 'none';
-                  }
-                }}
-              />
-            ))
-          ) : (
-            <div style={{
-              width: '100%',
-              aspectRatio: '1',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#f9f9f9',
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              fontSize: '48px'
-            }}>
-              🍼
+        <div className="product-gallery">
+          <div className="main-image">
+            {selectedImage ? (
+              <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} loading="lazy" />
+            ) : (
+              <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
+            )}
+          </div>
+          {/* Show thumbnail gallery when we have multiple images */}
+          {galleryImages.length > 1 && (
+            <div className="thumbnail-gallery">
+              {galleryImages.map((img, idx) => (
+                <img 
+                  key={img} 
+                  src={img} 
+                  alt={`${activeProduct?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
+                  loading="lazy"
+                  className={selectedImage === img ? 'active' : ''}
+                  onClick={() => setSelectedImage(img)}
+                />
+              ))}
             </div>
           )}
         </div>
 
         <div className="product-info">
             <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
-            <h1 className="product-title">{product?.product_name || 'Product'}</h1>
+            
+            <h1 className="product-title">
+              {product?.product_name || 'Product'}
+              {selectedVariant && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
+            </h1>
+
+            {/* Color Variant Selector */}
+            {processedVariants.length > 1 && (
+              <div style={{marginBottom: '20px'}}>
+                <div style={{fontSize: '14px', fontWeight: '600', marginBottom: '8px'}}>
+                  Colour:
+                </div>
+                <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                  {processedVariants.map(variant => {
+                    const isSelected = selectedVariant?.id === variant.id;
+                    const isUnavailable = variant.stock_quantity === 0;
+                    return (
+                      <button
+                        key={variant.id}
+                        onClick={() => {
+                          if (!isUnavailable) {
+                            setSelectedVariant(variant);
+                            setSelectedImage(variant.image);
+                            // Persist selected variant in URL
+                            const params = new URLSearchParams(window.location.search);
+                            params.set('color', variant.color.toLowerCase());
+                            const newUrl = `${window.location.pathname}?${params.toString()}`;
+                            window.history.pushState({}, '', newUrl);
+                          }
+                        }}
+                        disabled={isUnavailable}
+                        aria-pressed={isSelected}
+                        aria-disabled={isUnavailable}
+                        title={`${variant.color}${isUnavailable ? ' (Sold out)' : ''}`}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: isSelected ? '2px solid #3498db' : '2px solid #ddd',
+                          borderRadius: '8px',
+                          background: isSelected ? '#e3f2fd' : 'white',
+                          cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                          opacity: isUnavailable ? 0.6 : 1,
+                          boxShadow: isSelected ? '0 2px 8px rgba(52,152,219,0.3)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: variant.color.toLowerCase(),
+                          border: '1px solid rgba(0,0,0,0.2)'
+                        }} />
+                        <span style={{fontSize: '14px', fontWeight: isSelected ? '600' : '400'}}>
+                          {variant.color}
+                        </span>
+                        {isUnavailable && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: '#e74c3c',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            border: '2px solid white'
+                          }}>✕</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {isOutOfStock && (
               <div style={{
@@ -257,12 +430,39 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                 style={{
                   opacity: isOutOfStock ? 0.8 : 1,
                   cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                  background: isOutOfStock ? '#95a5a6' : ''
+                  background: isOutOfStock ? '#95a5a6' : undefined,
+                  animation: isOutOfStock ? 'none' : undefined
                 }}
               >
                 {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
               </button>
-              <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
+              <button 
+                className="add-to-wishlist-btn" 
+                onClick={() => {
+                  if (onAddToWishlist && product) {
+                    const baseName = product?.product_name || 'Product';
+                    const name = selectedVariant ? `${baseName} - ${selectedVariant.color}` : baseName;
+                    const wishlistItem = {
+                      id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
+                      pid: product.id,
+                      name: name,
+                      price: Number(price) || 0,
+                      image: selectedImage || images[0] || '',
+                      category: product.category || 'Store',
+                      cj_vid: activeProduct?.cj_vid,
+                      cj_pid: activeProduct?.cj_pid,
+                      stock_quantity: stockQuantity,
+                    };
+                    onAddToWishlist(wishlistItem);
+                  }
+                }}
+                title={isInWishlist && product && isInWishlist(`curated-${product.id}`) ? "Already in wishlist" : "Add to wishlist"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill={isInWishlist && product && isInWishlist(`curated-${product.id}`) ? "var(--brand)" : "currentColor"}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                {isInWishlist && product && isInWishlist(`curated-${product.id}`) ? 'Saved' : 'Save'}
+              </button>
             </div>
 
             {product?.product_description && (
@@ -275,12 +475,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                     fontSize: '14px',
                     color: '#555'
                   }}
-                  dangerouslySetInnerHTML={{ 
-                    __html: String(product.product_description)
-                      .replace(/\\n/g, '\n')
-                      .replace(/\n/g, '<br/>')
-                      .replace(/<br\/><br\/>/g, '</p><p>')
-                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                 />
               </div>
             )}
