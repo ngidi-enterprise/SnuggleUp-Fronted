@@ -1,7 +1,7 @@
 export default function DataDeletion() {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', lineHeight: '1.6', color: '#333' }}>
-      <h1 style={{ color: '#ff6b35' }}>Data Deletion Request</h1>
+      <h1 style={{ color: '#126F71' }}>Data Deletion Request</h1>
       <p>At SnuggleUp Baby Store, we respect your right to delete your personal data. If you would like to request deletion of your account and associated information, please follow the steps below.</p>
       
       <h2>How to Request Data Deletion</h2>

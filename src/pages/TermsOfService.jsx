@@ -1,7 +1,7 @@
 export default function TermsOfService() {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', lineHeight: '1.6', color: '#333' }}>
-      <h1 style={{ color: '#ff6b35' }}>Terms of Service</h1>
+      <h1 style={{ color: '#126F71' }}>Terms of Service</h1>
       <p>Welcome to SnuggleUp Baby Store. By using our website and services, you agree to comply with these terms and conditions.</p>
       
       <h2>Use License</h2>
