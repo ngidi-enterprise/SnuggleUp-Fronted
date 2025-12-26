@@ -512,7 +512,19 @@
   .product-title {
     font-size: 24px;
   }
-page {
+
+  .current-price {
+    font-size: 28px;
+  }
+}
+
+/* Mobile responsiveness for smaller screens */
+@media (max-width: 640px) {
+  .product-detail-modal {
+    padding: 0;
+  }
+
+  .product-detail-page {
     padding: 0;
     min-height: auto;
   }
@@ -572,7 +584,8 @@ page {
     gap: 12px;
   }
 
-  .add-to-cart-btn {
+  .add-to-cart-btn,
+  .add-to-wishlist-btn {
     width: 100%;
   }
 
@@ -580,14 +593,6 @@ page {
     max-height: 100vh;
     border-radius: 0;
     padding: 20px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .add-to-wishlist-btn {
-    width: 100%;
   }
 }
 
