@@ -227,24 +227,7 @@ body {
   line-height: 1;
 }
 
-/* Mobile: make header fixed and offset content below it */
-@media (max-width: 640px) {
-  :root {
-    --header-height: 72px; /* approximate mobile header height */
-  }
-
-  .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-  }
-
-  .app {
-    padding-top: var(--header-height);
-  }
-}
+/* Keep header sticky across sizes; no fixed override needed */
 
 /* Hero Section */
 .hero {
