@@ -572,7 +572,9 @@ page {
     gap: 12px;
   }
 
-  .add-to-cart-btn,  }
+  .add-to-cart-btn {
+    width: 100%;
+  }
 
   .product-detail-content {
     max-height: 100vh;
