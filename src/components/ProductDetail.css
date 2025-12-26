@@ -1,14 +1,15 @@
 .product-detail-modal {
   position: fixed;
-  top: 0;
+  top: var(--header-height, 88px);
   left: 0;
   right: 0;
   bottom: 0;
+  height: calc(100vh - var(--header-height, 88px));
   background: rgba(0, 0, 0, 0.75);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
+  z-index: 1900;
   padding: 20px;
   overflow-y: auto;
 }
@@ -49,7 +50,7 @@
   border-radius: 8px;
   width: 100%;
   max-width: 1200px;
-  max-height: 90vh;
+  max-height: calc(90vh - var(--header-height, 88px));
   overflow-y: auto;
   position: relative;
   padding: 40px;
