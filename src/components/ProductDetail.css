@@ -530,11 +530,11 @@
   }
 
   .back-button {
-    position: sticky;
+    position: fixed;
     top: calc(var(--header-height, 88px) + 6px);
-    z-index: 100;
-    margin: 12px;
-    margin-bottom: 0;
+    left: 12px;
+    z-index: 1001;
+    margin: 0;
     background: white;
     border: 1px solid #ddd;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
