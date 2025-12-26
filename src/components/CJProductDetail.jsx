@@ -348,7 +348,9 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
 
   return (
     <div className="product-detail-page">
-      <button className="back-button" onClick={onClose}>← Back to Products</button>
+      <div style={{position: 'sticky', top: 0, zIndex: 99, marginBottom: '12px'}}>
+        <button className="back-button" onClick={onClose}>← Back to Products</button>
+      </div>
       <div className="product-detail-grid">
         <div className="product-gallery">
           <div className="main-image">
