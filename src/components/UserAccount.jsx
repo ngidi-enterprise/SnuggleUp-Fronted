@@ -27,11 +27,21 @@ function UserAccount({ onClose, isAdmin }) {
 
       const contentType = response.headers.get('content-type') || '';
 
-      if (!contentType.includes('application/json')) {
-        // Backend not reachable or returning HTML error page; treat as no orders yet instead of hard error
-        if (!response.ok) {
-          throw new Error('Server returned non-JSON response (backend may be down).');
+      // If response is not OK, handle error gracefully
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Session expired. Please log in again.');
+        } else if (response.status >= 500) {
+          setError('Server error. Please try again later.');
+        } else {
+          setError('Failed to fetch orders.');
         }
+        setOrders([]);
+        return;
+      }
+
+      // If response is OK but not JSON, treat as empty orders
+      if (!contentType.includes('application/json')) {
         setOrders([]);
         return;
       }
