@@ -29,12 +29,13 @@ function UserAccount({ onClose, isAdmin }) {
 
       // If response is not OK, handle error gracefully
       if (!response.ok) {
+        console.log('Orders fetch response:', response.status, contentType);
         if (response.status === 401) {
           setError('Session expired. Please log in again.');
         } else if (response.status >= 500) {
           setError('Server error. Please try again later.');
         } else {
-          setError('Failed to fetch orders.');
+          setError(`Failed to fetch orders (Error ${response.status}). Please try again.`);
         }
         setOrders([]);
         return;
