@@ -5,7 +5,7 @@ import { trackProductView } from '../lib/analytics';
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
 // A detail modal for curated products from our backend
-export default function CJProductDetail({ pid, onClose, onAddToCart }) {
+export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWishlist }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [product, setProduct] = useState(null);
@@ -13,6 +13,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
     const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [qty, setQty] = useState(1);
+  const [wishlistAdding, setWishlistAdding] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -528,6 +529,40 @@ export default function CJProductDetail({ pid, onClose, onAddToCart }) {
                 }}
               >
                 {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
+              </button>
+              <button 
+                className="add-to-wishlist-btn" 
+                onClick={async () => {
+                  if (wishlistAdding) return;
+                  setWishlistAdding(true);
+                  try {
+                    if (onAddToWishlist) {
+                      const wishlistItem = selectedVariant ? {
+                        id: selectedVariant.id,
+                        name: `${product.product_name} - ${selectedVariant.variant_name}`,
+                        image: selectedVariant.variant_image || product.main_image,
+                        price: selectedVariant.price_zar || product.price_zar,
+                        cj_vid: selectedVariant.cj_vid,
+                        cj_pid: product.cj_pid,
+                        stock_quantity: selectedVariant.stock_quantity
+                      } : {
+                        id: product.id,
+                        name: product.product_name,
+                        image: product.main_image,
+                        price: product.price_zar,
+                        cj_vid: product.cj_vid,
+                        cj_pid: product.cj_pid,
+                        stock_quantity: product.stock_quantity
+                      };
+                      onAddToWishlist(wishlistItem);
+                    }
+                  } finally {
+                    setWishlistAdding(false);
+                  }
+                }}
+                disabled={wishlistAdding}
+              >
+                {wishlistAdding ? '...' : '♡ Wishlist'}
               </button>
               <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
