@@ -102,7 +102,7 @@ function UserAccount({ onClose, isAdmin }) {
     <div className="user-account-modal">
       <div className="user-account-content">
         <button className="close-account" onClick={onClose}>✕</button>
-        <button className="back-to-shop-btn" onClick={onClose} style={{position:'absolute',left:16,top:16,background:'#ff6600',color:'#fff',border:'none',borderRadius:'25px',padding:'8px 20px',fontWeight:'600',fontSize:'14px',cursor:'pointer',zIndex:11}}>← Back to Shopping</button>
+        <button className="back-to-shop-btn" onClick={onClose} style={{position:'absolute',left:16,top:16,background:'#ff6600',color:'#fff',border:'none',borderRadius:'25px',padding:'8px 20px',fontWeight:'600',fontSize:'14px',cursor:'pointer',zIndex:1000,boxShadow:'0 2px 8px rgba(0,0,0,0.2)'}}>← Back to Shopping</button>
         <div className="account-header">
           <div className="user-avatar">👤</div>
           <h2>{user?.name || user?.email || 'User'}</h2>
