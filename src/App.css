@@ -61,9 +61,9 @@ body {
 
 
 .logo {
-  width: 50px;
-  min-width: 50px;
-  max-width: 50px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
   height: auto;
   display: flex;
   align-items: center;
@@ -675,9 +675,9 @@ body {
   }
   
   .logo {
-    width: 48px;
-    min-width: 48px;
-    max-width: 48px;
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
   }
   
   .brand-info h1 {
@@ -851,9 +851,9 @@ body {
   }
   
   .logo {
-    width: 44px;
-    min-width: 44px;
-    max-width: 44px;
+    width: 55px;
+    min-width: 55px;
+    max-width: 55px;
   }
   
   .brand-info h1 {
