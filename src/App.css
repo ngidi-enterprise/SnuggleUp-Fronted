@@ -61,10 +61,10 @@ body {
 
 
 .logo {
-  width: 76px;
-  min-width: 76px;
-  max-width: 76px;
-  height: 76px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,7 +232,7 @@ body {
 
 @media (max-width: 640px) {
   :root {
-    --header-height: 88px;
+    --header-height: 80px;
   }
 }
 
@@ -676,10 +676,10 @@ body {
   }
   
   .logo {
-    width: 66px;
-    min-width: 66px;
-    max-width: 66px;
-    height: 66px;
+    width: 62px;
+    min-width: 62px;
+    max-width: 62px;
+    height: 62px;
   }
   
   .brand-info h1 {
@@ -854,10 +854,10 @@ body {
   }
   
   .logo {
-    width: 58px;
-    min-width: 58px;
-    max-width: 58px;
-    height: 58px;
+    width: 54px;
+    min-width: 54px;
+    max-width: 54px;
+    height: 54px;
   }
   
   .brand-info h1 {
