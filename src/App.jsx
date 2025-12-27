@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
-const BRAND_LOGO_SRC = '/images/SnuggleUp-Logo.svg';
+const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
 import CheckoutSuccess from './CheckoutSuccess';
 import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
@@ -1470,4 +1470,3 @@ function App() {
 }
 
 export default App;
-
