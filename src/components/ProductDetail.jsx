@@ -1,260 +1,461 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './ProductDetail.css';
+import { trackProductView } from '../lib/analytics';
 
-function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
-  const [quantity, setQuantity] = useState(1);
-  // If product has grouped variants, set initial selectedVariant
-  const variants = Array.isArray(product.variants) ? product.variants : [];
-  const [selectedVariant, setSelectedVariant] = useState(variants.length ? variants[0] : null);
-  
-  // Active product is either selected variant's raw data or base product
-  const activeProduct = selectedVariant ? (selectedVariant.raw || product) : product;
-  
-  // Gallery images: variant-specific or all variant images
-  const galleryImages = useMemo(() => {
-    if (selectedVariant) return [selectedVariant.image].filter(Boolean);
-    if (product.variantImages) return product.variantImages;
-    const base = [product.image];
-    if (product.altImages) base.push(...product.altImages);
-    return base.filter(Boolean);
-  }, [product, selectedVariant]);
-  
-  const [selectedImage, setSelectedImage] = useState(galleryImages[0] || product.image);
-  const [showAddedToCart, setShowAddedToCart] = useState(false);
-  
-  // Update selected image when variant changes
-  React.useEffect(() => {
-    if (selectedVariant && selectedVariant.image) {
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
+
+// A detail modal for curated products from our backend
+export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWishlist }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [product, setProduct] = useState(null);
+  const [variants, setVariants] = useState([]);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [qty, setQty] = useState(1);
+  const [wishlistAdding, setWishlistAdding] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_BASE}/api/products/${pid}`);
+        
+        if (!response.ok) {
+          throw new Error(`Product not found: ${response.statusText}`);
+        }
+        
+        const res = await response.json();
+        const data = res.product;
+        const fetchedVariants = res.variants || [];
+        
+        // DEBUG: Log full product data from database INCLUDING stock
+        console.log('📦 Product loaded from database:', {
+          id: data.id,
+          name: data.product_name,
+          stock_quantity: data.stock_quantity,
+          is_active: data.is_active,
+          cj_pid: data.cj_pid,
+          cj_vid: data.cj_vid,
+          has_cj_vid: !!data.cj_vid,
+          variantCount: fetchedVariants.length,
+          fullData: data
+        });
+        
+        // Log stock status clearly
+        const stock = Number(data.stock_quantity) || 0;
+        if (stock === 0) {
+          console.warn(`⚠️ PRODUCT OUT OF STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        } else if (stock < 10) {
+          console.warn(`⚡ LOW STOCK: ${data.product_name} (stock_quantity = ${stock})`);
+        }
+        
+        setProduct(data);
+        setVariants(fetchedVariants);
+        
+        // Track product view
+        trackProductView({
+          id: data.id || data.cj_pid,
+          pid: data.cj_pid,
+          name: data.product_name,
+          category: data.category || 'uncategorized',
+          price: data.custom_price || data.suggested_price || 0
+        });
+        
+        // Normalize image URL
+        const normalizeUrl = (u) => {
+          if (!u) return '';
+          let s = String(u).trim();
+          if (s.startsWith('//')) s = 'https:' + s;
+          if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+          return s;
+        };
+        const main = normalizeUrl(data?.product_image || '');
+        setSelectedImage(main);
+      } catch (e) {
+        setError(e.message || 'Failed to load product');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [pid]);
+
+  const images = useMemo(() => {
+    const normalizeUrl = (u) => {
+      if (!u) return '';
+      let s = String(u).trim();
+      if (s.startsWith('//')) s = 'https:' + s;
+      if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+      // Some srcset entries include comma-separated candidates; pick the first URL
+      if (s.includes(' ')) s = s.split(' ')[0];
+      if (s.includes(',')) s = s.split(',')[0];
+      return s;
+    };
+
+    const imageSet = new Set();
+
+    // Add main product image
+    const main = normalizeUrl(product?.product_image);
+    if (main) imageSet.add(main);
+
+    // Extract images from product description HTML using DOM for robustness
+    if (product?.product_description) {
+      try {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = String(product.product_description);
+
+        // <img> tags: src, data-src, data-original, data-large_image, and common lazy-load attrs
+        wrapper.querySelectorAll('img').forEach((img) => {
+          const candidates = [
+            img.getAttribute('src'),
+            img.getAttribute('data-src'),
+            img.getAttribute('data-original'),
+            img.getAttribute('data-large_image'),
+            img.getAttribute('data-image'),
+            img.getAttribute('data-url'),
+            img.getAttribute('href'),
+          ];
+          candidates.forEach((u) => {
+            const n = normalizeUrl(u);
+            if (n) imageSet.add(n);
+          });
+        });
+
+        // <source srcset> inside <picture>
+        wrapper.querySelectorAll('source').forEach((src) => {
+          const srcset = src.getAttribute('srcset');
+          const n = normalizeUrl(srcset);
+          if (n) imageSet.add(n);
+        });
+
+        // Extract from <a href> that might wrap images (common for product galleries)
+        wrapper.querySelectorAll('a[href*=".jpg"], a[href*=".jpeg"], a[href*=".png"], a[href*=".webp"]').forEach((a) => {
+          const href = a.getAttribute('href');
+          const n = normalizeUrl(href);
+          if (n) imageSet.add(n);
+        });
+      } catch (_) {
+        // Fallback: simple regex on src
+        const desc = String(product.product_description);
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+        let match;
+        while ((match = imgRegex.exec(desc)) !== null) {
+          const imgUrl = normalizeUrl(match[1]);
+          if (imgUrl) imageSet.add(imgUrl);
+        }
+      }
+    }
+
+    const result = Array.from(imageSet);
+    console.log('🖼️ Gallery images extracted:', {
+      count: result.length,
+      images: result,
+      hasDescription: !!product?.product_description
+    });
+    return result;
+  }, [product]);
+
+  // Sanitize description: remove images and media so we don't duplicate the gallery
+  const sanitizedDescription = useMemo(() => {
+    const raw = product?.product_description;
+    if (!raw) return '';
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = String(raw);
+      // Remove media elements that create the vertical stack
+      wrapper.querySelectorAll('img, picture, figure, svg, video, source').forEach((el) => el.remove());
+      // Drop empty anchors that previously wrapped images
+      wrapper.querySelectorAll('a').forEach((a) => {
+        const hasText = (a.textContent || '').trim().length > 0;
+        const hasChildren = a.children && a.children.length > 0;
+        if (!hasText && !hasChildren) a.remove();
+      });
+      // Remove inline styles to keep typography consistent
+      wrapper.querySelectorAll('[style]').forEach((el) => el.removeAttribute('style'));
+      let html = wrapper.innerHTML;
+      // Normalize line breaks and paragraphs similar to previous behavior
+      html = html
+        .replace(/\n/g, '\n')
+        .replace(/\r/g, '')
+        .replace(/\n/g, '<br/>')
+        .replace(/(<br\/>\s*){2,}/gi, '</p><p>');
+      return html;
+    } catch (e) {
+      // Fallback: regex-strip <img> tags if DOM operations fail
+      return String(raw).replace(/<img[\s\S]*?>/gi, '');
+    }
+  }, [product?.product_description]);
+
+  // Derive variants with color extraction
+  const processedVariants = useMemo(() => {
+    if (!variants || variants.length === 0) return [];
+    const colorKeywords = ['Pink','Blue','Red','Black','White','Green','Yellow','Purple','Gray','Grey','Orange'];
+    return variants.map(v => {
+      const name = v.product_name || '';
+      const foundColor = colorKeywords.find(c => name.includes(c));
+      return {
+        id: v.id,
+        color: foundColor || 'Default',
+        price: v.custom_price || v.suggested_price || 0,
+        image: v.main_image,
+        stock_quantity: v.stock_quantity || 0,
+        raw: v
+      };
+    });
+  }, [variants]);
+
+  // Auto-select first variant on load
+  useEffect(() => {
+    if (processedVariants.length > 0 && !selectedVariant) {
+      setSelectedVariant(processedVariants[0]);
+    }
+  }, [processedVariants]);
+
+  // If URL has ?color=..., auto-select matching variant
+  useEffect(() => {
+    if (!processedVariants || processedVariants.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const colorParam = (params.get('color') || '').toLowerCase();
+    if (!colorParam) return;
+    const match = processedVariants.find(v => v.color.toLowerCase() === colorParam);
+    if (match) setSelectedVariant(match);
+  }, [processedVariants]);
+
+  // Sync selected image when variant changes
+  useEffect(() => {
+    if (selectedVariant?.image) {
       setSelectedImage(selectedVariant.image);
     }
   }, [selectedVariant]);
 
-  const handleAddToCart = () => {
-    // Build cart item with variant info if applicable
-    const cartItem = selectedVariant ? {
-      ...product,
-      id: selectedVariant.id || product.id,
-      name: selectedVariant.color ? `${product.name} - ${selectedVariant.color}` : product.name,
-      image: selectedVariant.image || product.image,
-      price: selectedVariant.price || product.price,
-      stock_quantity: selectedVariant.raw?.stock_quantity ?? product.stock_quantity
-    } : product;
+  // Ensure selectedImage defaults to first extracted image when available
+  useEffect(() => {
+    if (!selectedVariant && images && images.length > 0) {
+      // Prefer the main product image if present, else first description image
+      const preferred = images[0];
+      if (preferred && selectedImage !== preferred) {
+        setSelectedImage(preferred);
+      }
+    }
+  }, [images, selectedVariant]);
+
+  // Gallery images: Use variant images if available, fall back to description images
+  const galleryImages = useMemo(() => {
+    const allImages = new Set();
     
-    for (let i = 0; i < quantity; i++) {
-      onAddToCart(cartItem);
+    // Start with main product image
+    if (product?.product_image) {
+      const normalizeUrl = (u) => {
+        if (!u) return '';
+        let s = String(u).trim();
+        if (s.startsWith('//')) s = 'https:' + s;
+        if (s.startsWith('http://')) s = s.replace(/^http:/, 'https:');
+        return s;
+      };
+      allImages.add(normalizeUrl(product.product_image));
     }
-    setShowAddedToCart(true);
-  };
-
-  const handleGoToCart = () => {
-    onClose();
-    // This will trigger the cart to open in the parent component
-  };
-
-  const handleContinueShopping = () => {
-    onClose();
-  };
-
-  // Get related products (different products from the same category or random products)
-  const getRelatedProducts = () => {
-    if (!allProducts) return [];
-    return allProducts
-      .filter(p => p.id !== product.id)
-      .slice(0, 3);
-  };
-
-  const incrementQuantity = () => {
-    setQuantity(prev => prev + 1);
-  };
-
-  const decrementQuantity = () => {
-    if (quantity > 1) {
-      setQuantity(prev => prev - 1);
+    
+    // Add all variant images (different colors/angles)
+    if (processedVariants && processedVariants.length > 0) {
+      processedVariants.forEach(v => {
+        if (v.image) {
+          allImages.add(v.image);
+        }
+      });
     }
-  };
-
-  const relatedProducts = getRelatedProducts();
-
-  const formatDescription = (input) => {
-    if (!input) return null;
-    try {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = String(input || '');
-      let text = tmp.textContent || tmp.innerText || '';
-      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      text = text.replace(/[ \t]+/g, ' ').trim();
-      const paras = text.split(/\n{2,}|\n/).map(p => p.trim()).filter(Boolean);
-      if (paras.length === 0) return null;
-      return paras.map((p, i) => <p key={i} style={{marginTop: i === 0 ? 0 : 8, lineHeight: 1.45}}>{p}</p>);
-    } catch (e) {
-      return <p>{String(input)}</p>;
+    
+    // Fall back to extracted description images if no variant images
+    if (allImages.size <= 1 && images && images.length > 0) {
+      images.forEach(img => allImages.add(img));
     }
+    
+    // If variant is selected, prioritize its image first
+    if (selectedVariant?.image) {
+      const result = [selectedVariant.image];
+      allImages.forEach(img => {
+        if (img !== selectedVariant.image) result.push(img);
+      });
+      console.log('🎨 Gallery for selected variant:', { variant: selectedVariant.color, count: result.length });
+      return result;
+    }
+    
+    const result = Array.from(allImages);
+    console.log('🎨 Gallery images ready:', { 
+      total: result.length, 
+      fromVariants: processedVariants.length,
+      hasSelectedVariant: !!selectedVariant
+    });
+    return result;
+  }, [selectedVariant, processedVariants, images, product?.product_image]);
+
+  // Active product is selectedVariant if exists, else main product
+  const activeProduct = selectedVariant?.raw || product;
+  const price = activeProduct?.custom_price || activeProduct?.suggested_price || 0;
+  const stockQuantity = selectedVariant?.stock_quantity ?? (product?.stock_quantity || 0);
+  const isOutOfStock = stockQuantity === 0;
+  const isLowStock = stockQuantity > 0 && stockQuantity < 10;
+
+  const handleAdd = () => {
+    if (!activeProduct || isOutOfStock) return;
+    
+    // Limit quantity to available stock
+    const quantityToAdd = Math.min(qty, stockQuantity);
+    
+    const baseName = product?.product_name || 'Product';
+    const name = selectedVariant ? `${baseName} - ${selectedVariant.color}` : baseName;
+    const item = {
+      id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
+      name: name,
+      price: Number(price) || 0,
+      image: selectedImage || images[0] || '',
+      category: activeProduct.category || 'Store',
+      // Carry-through fields needed for shipping + stock in cart
+      cj_vid: activeProduct.cj_vid,
+      cj_pid: activeProduct.cj_pid,
+      stock_quantity: stockQuantity,
+    };
+    
+    // DEBUG: Log what we're adding to cart
+    console.log('➕ Adding to cart:', {
+      productId: product.id,
+      name: name.substring(0, 30),
+      has_cj_vid: !!product.cj_vid,
+      cj_vid: product.cj_vid,
+      cj_pid: product.cj_pid,
+      fullProduct: product
+    });
+    
+    for (let i = 0; i < quantityToAdd; i++) onAddToCart?.(item);
+    onClose?.();
   };
+
+  if (loading) {
+    return (
+      <div className="product-detail-page">
+        <button className="back-button" onClick={onClose}>← Back to Products</button>
+        <div style={{ padding: 24, textAlign: 'center' }}>Loading product…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="product-detail-page">
+        <button className="back-button" onClick={onClose}>← Back to Products</button>
+        <div style={{ padding: 24, color: '#a30000', textAlign: 'center' }}>{error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="product-detail-modal" onClick={onClose}>
-      <div className="product-detail-content" onClick={(e) => e.stopPropagation()}>
-        <button className="close-detail" onClick={onClose}>✕</button>
-        
-        {showAddedToCart ? (
-          // Added to Cart Confirmation
-          <div className="added-to-cart-view">
-            <div className="added-header">
-              <h2>✓ Added to cart</h2>
-              <button className="close-detail" onClick={onClose}>✕</button>
-            </div>
-
-            <div className="added-product-info">
-              <img src={product.image} alt={product.name} className="added-product-image" />
-              <div className="added-product-details">
-                <h3>{product.name}</h3>
-                <p className="added-quantity">Quantity: {quantity}</p>
-                <p className="added-price">R {(product.price * quantity).toFixed(2)}</p>
-              </div>
-            </div>
-
-            <div className="added-actions">
-              <button className="go-to-cart-btn" onClick={handleGoToCart}>
-                → Go to Cart
-              </button>
-              <button className="continue-shopping-btn" onClick={handleContinueShopping}>
-                Continue Shopping
-              </button>
-            </div>
-
-            {relatedProducts.length > 0 && (
-              <div className="related-products-section">
-                <h3>Related Products</h3>
-                <div className="related-products-grid">
-                  {relatedProducts.map((relatedProduct) => (
-                    <div key={relatedProduct.id} className="related-product-card">
-                      <img src={relatedProduct.image} alt={relatedProduct.name} />
-                      <div className="related-product-info">
-                        <h4>{relatedProduct.name}</h4>
-                        <p className="related-product-price">R {relatedProduct.price}</p>
-                        <button 
-                          className="related-add-btn"
-                          onClick={() => {
-                            onAddToCart(relatedProduct);
-                          }}
-                        >
-                          Add to Cart
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+    <div className="product-detail-page">
+      <div style={{position: 'sticky', top: 0, zIndex: 99, marginBottom: '12px'}}>
+        <button className="back-button" onClick={onClose}>← Back to Products</button>
+      </div>
+      <div className="product-detail-grid">
+        <div className="product-gallery">
+          <div className="main-image">
+            {selectedImage ? (
+              <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} loading="lazy" />
+            ) : (
+              <div style={{height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize: '48px'}}>🍼</div>
             )}
           </div>
-        ) : (
-          // Original Product Detail View
-          <div className="product-detail-grid">
-          {/* Left side - Image Gallery */}
-          <div className="product-gallery">
-            <div className="main-image">
-              <img src={selectedImage} alt={product.name} />
-            </div>
+          {/* Show thumbnail gallery when we have any images */}
+          {galleryImages.length > 0 && (
             <div className="thumbnail-gallery">
               {galleryImages.map((img, idx) => (
-                <img
-                  key={img || idx}
-                  src={img}
-                  alt={selectedVariant ? `${product.name} - ${selectedVariant.color}` : product.name}
+                <img 
+                  key={img} 
+                  src={img} 
+                  alt={`${activeProduct?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
+                  loading="lazy"
                   className={selectedImage === img ? 'active' : ''}
                   onClick={() => setSelectedImage(img)}
-                  style={{marginLeft: idx > 0 ? '8px' : 0}}
                 />
               ))}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Right side - Product Info */}
-          <div className="product-info">
-            <div className="breadcrumb">
-              <span>Beauty</span> / <span>{product.category}</span>
-            </div>
-
+        <div className="product-info">
+            <div className="breadcrumb">Store / {product?.category || 'Products'}</div>
+            
             <h1 className="product-title">
-              {product.name}
-              {selectedVariant && selectedVariant.color && (
-                <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#666', marginLeft: 8 }}>
-                  – {selectedVariant.color}
-                </span>
-              )}
+              {product?.product_name || 'Product'}
+              {selectedVariant && selectedVariant.color !== 'Default' && <span style={{color: '#666'}}> – {selectedVariant.color}</span>}
             </h1>
 
-            <div className="product-rating">
-              <span className="stars">
-                ★★★★★
-              </span>
-              <span className="rating-text">4.5</span>
-              <span className="review-count">12 Reviews</span>
-            </div>
-
-            <div className="product-price">
-              <span className="current-price">R {selectedVariant ? (selectedVariant.price || product.price) : product.price}</span>
-            </div>
-
-            {variants.length > 1 && (
-              <div style={{ margin: '20px 0 16px 0' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: 10, color: '#2c3e50' }}>Select Colour:</div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {variants.map(v => {
-                    const isSelected = selectedVariant?.id === v.id;
-                    const variantStock = v.raw?.stock_quantity ?? 0;
-                    const isOutOfStock = variantStock === 0;
+            {/* Color Variant Selector */}
+            {processedVariants.length > 1 && (
+              <div style={{marginBottom: '20px'}}>
+                <div style={{fontSize: '14px', fontWeight: '600', marginBottom: '8px'}}>
+                  Colour:
+                </div>
+                <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                  {processedVariants.map(variant => {
+                    const isSelected = selectedVariant?.id === variant.id;
+                    const isUnavailable = variant.stock_quantity === 0;
                     return (
                       <button
-                        key={v.id}
-                        onClick={() => { 
-                          if (!isOutOfStock) {
-                            setSelectedVariant(v); 
-                            setSelectedImage(v.image); 
+                        key={variant.id}
+                        onClick={() => {
+                          if (!isUnavailable) {
+                            setSelectedVariant(variant);
+                            setSelectedImage(variant.image);
+                            // Persist selected variant in URL
+                            const params = new URLSearchParams(window.location.search);
+                            params.set('color', variant.color.toLowerCase());
+                            const newUrl = `${window.location.pathname}?${params.toString()}`;
+                            window.history.pushState({}, '', newUrl);
                           }
                         }}
-                        disabled={isOutOfStock}
+                        disabled={isUnavailable}
+                        aria-pressed={isSelected}
+                        aria-disabled={isUnavailable}
+                        title={`${variant.color}${isUnavailable ? ' (Sold out)' : ''}`}
                         style={{
                           position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 8,
-                          padding: '10px 16px',
-                          borderRadius: 8,
-                          border: isSelected ? '2px solid #3498db' : '1px solid #d0d7de',
-                          background: isOutOfStock ? '#f5f5f5' : (isSelected ? '#eaf6ff' : '#fff'),
-                          cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                          opacity: isOutOfStock ? 0.6 : 1,
-                          boxShadow: isSelected ? '0 0 0 2px rgba(52,152,219,0.15)' : 'none',
-                          transition: 'all 0.15s ease'
+                          gap: '8px',
+                          padding: '8px 12px',
+                          border: isSelected ? '2px solid #3498db' : '2px solid #ddd',
+                          borderRadius: '8px',
+                          background: isSelected ? '#e3f2fd' : 'white',
+                          cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                          opacity: isUnavailable ? 0.6 : 1,
+                          boxShadow: isSelected ? '0 2px 8px rgba(52,152,219,0.3)' : 'none',
+                          transition: 'all 0.2s ease'
                         }}
-                        aria-pressed={isSelected}
-                        aria-disabled={isOutOfStock}
-                        title={isOutOfStock ? `${v.color} - Sold out` : v.color}
                       >
-                        <span style={{
-                          width: 20,
-                          height: 20,
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
                           borderRadius: '50%',
-                          background: v.color.toLowerCase(),
-                          border: '1px solid #ccc'
+                          background: variant.color.toLowerCase(),
+                          border: '1px solid rgba(0,0,0,0.2)'
                         }} />
-                        <span style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400 }}>{v.color}</span>
-                        {isOutOfStock && (
-                          <span style={{
+                        <span style={{fontSize: '14px', fontWeight: isSelected ? '600' : '400'}}>
+                          {variant.color}
+                        </span>
+                        {isUnavailable && (
+                          <div style={{
                             position: 'absolute',
-                            top: -6,
-                            right: -6,
+                            top: '-6px',
+                            right: '-6px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
                             background: '#e74c3c',
                             color: 'white',
-                            fontSize: 9,
-                            padding: '2px 5px',
-                            borderRadius: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
                             fontWeight: 'bold',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                          }}>
-                            ✕
-                          </span>
+                            border: '2px solid white'
+                          }}>✕</div>
                         )}
                       </button>
                     );
@@ -262,267 +463,126 @@ function ProductDetail({ product, onClose, onAddToCart, allProducts }) {
                 </div>
               </div>
             )}
-
-            <div className="stock-info">
-              {(() => {
-                const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                if (displayStock === 0) {
-                  return (
-                    <span className="out-of-stock" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                      ✕ Sold out
-                    </span>
-                  );
-                }
-                if (displayStock > 0 && displayStock < 10) {
-                  return (
-                    <span className="low-stock" style={{ color: '#f39c12', fontWeight: 'bold' }}>
-                      ⚡ Only {displayStock} left - order soon!
-                    </span>
-                  );
-                }
-                return <span className="in-stock">✓ In stock</span>;
-              })()}
-            </div>
-
-            <div className="product-description">
-              {product.fullDescription ? (
-                <div>{formatDescription(product.fullDescription)}</div>
-              ) : (
-                <>
-                  {formatDescription(product.description) || <p>High-quality baby product designed for comfort and safety. Perfect for your little one's needs.</p>}
-                </>
-              )}
-            </div>
-
-            {/* Rich Product Details from CJ - Formatted like image 2 */}
-            {(product.product_material || product.product_features || product.package_size || product.packing_list || product.product_weight) && (
-              <div className="product-specifications" style={{
-                marginTop: '24px',
-                padding: '20px',
-                background: '#ffffff',
+            
+            {isOutOfStock && (
+              <div style={{
+                padding: '12px 16px',
+                background: '#fee',
+                border: '2px solid #e74c3c',
                 borderRadius: '8px',
-                border: '1px solid #e1e8ed'
+                marginBottom: '16px',
+                color: '#c0392b',
+                fontWeight: 'bold',
+                fontSize: '14px'
               }}>
-                <h3 style={{ 
-                  margin: '0 0 20px 0', 
-                  fontSize: '18px', 
-                  fontWeight: '700', 
-                  color: '#2c3e50',
-                  borderBottom: '2px solid #3498db',
-                  paddingBottom: '10px'
-                }}>
-                  Product Specifications
-                </h3>
-                
-                {/* Table format like CJ website */}
-                <table style={{ 
-                  width: '100%', 
-                  borderCollapse: 'collapse',
-                  marginBottom: '20px'
-                }}>
-                  <tbody>
-                    {product.product_material && (
-                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <td style={{ 
-                          padding: '12px 16px', 
-                          width: '30%',
-                          background: '#f8f9fa',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          color: '#2c3e50'
-                        }}>
-                          Material
-                        </td>
-                        <td style={{ 
-                          padding: '12px 16px', 
-                          fontSize: '14px', 
-                          color: '#555',
-                          lineHeight: '1.6'
-                        }}>
-                          {product.product_material}
-                        </td>
-                      </tr>
-                    )}
-                    
-                    {product.product_weight && (
-                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <td style={{ 
-                          padding: '12px 16px',
-                          background: '#f8f9fa',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          color: '#2c3e50'
-                        }}>
-                          Product Weight
-                        </td>
-                        <td style={{ 
-                          padding: '12px 16px', 
-                          fontSize: '14px', 
-                          color: '#555'
-                        }}>
-                          {product.product_weight}
-                        </td>
-                      </tr>
-                    )}
-                    
-                    {product.package_size && (
-                      <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <td style={{ 
-                          padding: '12px 16px',
-                          background: '#f8f9fa',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          color: '#2c3e50'
-                        }}>
-                          Package Size
-                        </td>
-                        <td style={{ 
-                          padding: '12px 16px', 
-                          fontSize: '14px', 
-                          color: '#555',
-                          lineHeight: '1.6'
-                        }}>
-                          {product.package_size}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                
-                {/* Product Features - Formatted list */}
-                {product.product_features && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <h4 style={{ 
-                      margin: '0 0 12px 0', 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
-                      color: '#2c3e50'
-                    }}>
-                      Product features:
-                    </h4>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: '#555', 
-                      lineHeight: '1.8',
-                      paddingLeft: '0'
-                    }}>
-                      {product.product_features.split('\n').map((line, idx) => {
-                        const trimmed = line.trim();
-                        if (!trimmed) return null;
-                        
-                        // Check if line starts with number (1. 2. 3.)
-                        const isNumbered = /^\d+\./.test(trimmed);
-                        
-                        return (
-                          <div key={idx} style={{ 
-                            marginBottom: '4px',
-                            paddingLeft: isNumbered ? '0' : '0'
-                          }}>
-                            {trimmed}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Packing List - Formatted list */}
-                {product.packing_list && (
-                  <div>
-                    <h4 style={{ 
-                      margin: '0 0 12px 0', 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
-                      color: '#2c3e50'
-                    }}>
-                      Packing list:
-                    </h4>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: '#555', 
-                      lineHeight: '1.8'
-                    }}>
-                      {product.packing_list.split('\n').map((item, idx) => {
-                        const trimmed = item.trim();
-                        if (!trimmed) return null;
-                        return (
-                          <div key={idx} style={{ marginBottom: '4px' }}>
-                            {trimmed}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                ⚠️ SOLD OUT - This product is currently unavailable
               </div>
             )}
-
-            <div className="product-features">
-              <ul>
-                <li>✓ 6-Month Limited Warranty</li>
-                <li>✓ Safe and tested for babies</li>
-              </ul>
+            
+            {isLowStock && !isOutOfStock && (
+              <div style={{
+                padding: '12px 16px',
+                background: '#fef5e7',
+                border: '2px solid #f39c12',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                color: '#d68910',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                ⚡ Only {stockQuantity} left in stock - Order soon!
+              </div>
+            )}
+            
+            <div className="product-price">
+              <span className="current-price">R {Number(price).toFixed(2)}</span>
             </div>
 
             <div className="quantity-selector">
               <label>Quantity:</label>
               <div className="quantity-controls">
-                <button onClick={decrementQuantity} className="qty-btn">-</button>
-                <span className="quantity-display">{quantity}</span>
-                <button onClick={incrementQuantity} className="qty-btn">+</button>
+                <button className="qty-btn" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={isOutOfStock}>-</button>
+                <span className="quantity-display">{qty}</span>
+                <button 
+                  className="qty-btn" 
+                  onClick={() => setQty((q) => Math.min(stockQuantity, q + 1))}
+                  disabled={isOutOfStock || qty >= stockQuantity}
+                >+</button>
               </div>
+              {!isOutOfStock && isLowStock && (
+                <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
+                  Max: {stockQuantity} available
+                </small>
+              )}
             </div>
 
             <div className="action-buttons">
               <button 
                 className="add-to-cart-btn" 
-                onClick={handleAddToCart}
-                disabled={(() => {
-                  const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                  return displayStock === 0;
-                })()}
+                onClick={handleAdd}
+                disabled={isOutOfStock}
                 style={{
-                  opacity: (() => {
-                    const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                    return displayStock === 0 ? 0.5 : 1;
-                  })(),
-                  cursor: (() => {
-                    const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                    return displayStock === 0 ? 'not-allowed' : 'pointer';
-                  })()
+                  opacity: isOutOfStock ? 0.8 : 1,
+                  cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                  background: isOutOfStock ? '#95a5a6' : undefined,
+                  animation: isOutOfStock ? 'none' : undefined
                 }}
               >
-                {(() => {
-                  const displayStock = selectedVariant ? (selectedVariant.raw?.stock_quantity ?? product.stock_quantity) : product.stock_quantity;
-                  return displayStock === 0 ? '✕ Sold out' : '🛒 Add to Cart';
-                })()}
+                {isOutOfStock ? '😔 Sold Out - Check Again Soon' : '🛒 Add to Cart'}
               </button>
-              <button className="add-to-wishlist-btn">
-                ♡ Add to List
+              <button 
+                className="add-to-wishlist-btn" 
+                onClick={async () => {
+                  if (wishlistAdding) return;
+                  setWishlistAdding(true);
+                  try {
+                    if (onAddToWishlist) {
+                      const wishlistItem = selectedVariant ? {
+                        id: selectedVariant.id,
+                        name: `${product.product_name} - ${selectedVariant.variant_name}`,
+                        image: selectedVariant.variant_image || product.main_image,
+                        price: selectedVariant.price_zar || product.price_zar,
+                        cj_vid: selectedVariant.cj_vid,
+                        cj_pid: product.cj_pid,
+                        stock_quantity: selectedVariant.stock_quantity
+                      } : {
+                        id: product.id,
+                        name: product.product_name,
+                        image: product.main_image,
+                        price: product.price_zar,
+                        cj_vid: product.cj_vid,
+                        cj_pid: product.cj_pid,
+                        stock_quantity: product.stock_quantity
+                      };
+                      onAddToWishlist(wishlistItem);
+                    }
+                  } finally {
+                    setWishlistAdding(false);
+                  }
+                }}
+                disabled={wishlistAdding}
+              >
+                {wishlistAdding ? '...' : '♡ Wishlist'}
               </button>
-              {/* Keywords for Jeep Electric Car */}
-              {product?.id === 8 && (
-                <div style={{margin: '18px 0 0 0', padding: '12px', background: '#f9f9f9', borderRadius: '8px'}}>
-                  <strong>Keywords:</strong>
-                  <div style={{marginTop: '8px', fontSize: '0.95em', color: '#555'}}>
-                    kids electric ride-on jeep, battery-powered toy car, kids 12V jeep South Africa, rechargeable kids jeep, remote control kids car, electric jeep blue, outdoor toy vehicle, boys ride-on car, Takealot kids jeep.
-                  </div>
-                </div>
-              )}
+              <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
 
-            <div className="delivery-info">
-              <div className="delivery-row">
-                <span className="label">Estimated Delivery:</span>
-                <span className="value">20 October - 22 October</span>
+            {product?.product_description && (
+              <div className="product-description" style={{ marginTop: 16 }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: '#333' }}>Description</h3>
+                <div 
+                  style={{ 
+                    whiteSpace: 'pre-wrap', 
+                    lineHeight: '1.8',
+                    fontSize: '14px',
+                    color: '#555'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                />
               </div>
-            </div>
+            )}
           </div>
-        </div>
-        )}
       </div>
     </div>
   );
 }
-
-export default ProductDetail;
