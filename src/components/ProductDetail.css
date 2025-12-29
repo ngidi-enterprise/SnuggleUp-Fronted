@@ -21,6 +21,8 @@
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .back-button {
@@ -786,6 +788,40 @@
 
 .related-add-btn:hover {
   background: var(--brand-hover);
+}
+
+/* Product Reviews Section - Responsive */
+@media (max-width: 768px) {
+  .product-detail-page {
+    padding: 16px;
+  }
+
+  .product-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .product-gallery {
+    max-width: 100%;
+  }
+
+  .main-image {
+    max-height: 400px;
+  }
+
+  .product-reviews-section {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-detail-page {
+    padding: 12px;
+  }
+
+  .product-reviews-section {
+    padding: 16px;
+  }
 }
 
 /* Responsive for Added to Cart View */

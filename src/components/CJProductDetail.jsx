@@ -585,11 +585,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
           </div>
       </div>
 
-            {/* Customer Reviews Section */}
-            <ProductReviews 
-              productId={product?.cj_pid || product?.id} 
-              productName={product?.product_name || 'Product'} 
-            />
-          </div>
-        );
-      }
+      {/* Customer Reviews Section */}
+      <ProductReviews 
+        productId={product?.cj_pid || product?.id} 
+        productName={product?.product_name || 'Product'} 
+      />
