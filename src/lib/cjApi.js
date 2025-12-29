@@ -66,6 +66,10 @@ export async function getProduct(pid) {
   return http(`/api/cj/products/${encodeURIComponent(pid)}`);
 }
 
+export async function getProductReviews(pid) {
+  return http(`/api/cj/products/${encodeURIComponent(pid)}/reviews`);
+}
+
 export async function getInventory(vid) {
   return http(`/api/cj/inventory/${encodeURIComponent(vid)}`);
 }
