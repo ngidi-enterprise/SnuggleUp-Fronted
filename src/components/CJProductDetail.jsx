@@ -404,11 +404,6 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                           if (!isUnavailable) {
                             setSelectedVariant(variant);
                             setSelectedImage(variant.image);
-                            // Persist selected variant in URL
-                            const params = new URLSearchParams(window.location.search);
-                            params.set('color', variant.color.toLowerCase());
-                            const newUrl = `${window.location.pathname}?${params.toString()}`;
-                            window.history.pushState({}, '', newUrl);
                           }
                         }}
                         disabled={isUnavailable}
@@ -538,22 +533,14 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                   setWishlistAdding(true);
                   try {
                     if (onAddToWishlist) {
-                      const wishlistItem = selectedVariant ? {
-                        id: selectedVariant.id,
-                        name: `${product.product_name} - ${selectedVariant.variant_name}`,
-                        image: selectedVariant.variant_image || product.main_image,
-                        price: selectedVariant.price_zar || product.price_zar,
-                        cj_vid: selectedVariant.cj_vid,
-                        cj_pid: product.cj_pid,
-                        stock_quantity: selectedVariant.stock_quantity
-                      } : {
-                        id: product.id,
-                        name: product.product_name,
-                        image: product.main_image,
-                        price: product.price_zar,
-                        cj_vid: product.cj_vid,
-                        cj_pid: product.cj_pid,
-                        stock_quantity: product.stock_quantity
+                      const wishlistItem = {
+                        id: selectedVariant ? `curated-${selectedVariant.id}` : `curated-${product.id}`,
+                        name: selectedVariant ? `${product.product_name} - ${selectedVariant.color}` : product.product_name,
+                        image: selectedImage || product?.product_image || '',
+                        price: Number(price) || 0,
+                        cj_vid: activeProduct.cj_vid,
+                        cj_pid: activeProduct.cj_pid,
+                        stock_quantity: stockQuantity
                       };
                       onAddToWishlist(wishlistItem);
                     }
@@ -582,7 +569,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                 />
               </div>
             )}
-          </div>
+        </div>
       </div>
 
       {/* Customer Reviews Section */}
@@ -590,3 +577,6 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
         productId={product?.cj_pid || product?.id} 
         productName={product?.product_name || 'Product'} 
       />
+    </div>
+  );
+}
