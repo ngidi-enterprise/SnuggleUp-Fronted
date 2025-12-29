@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './ProductDetail.css';
+import ProductReviews from './ProductReviews.jsx';
 import { trackProductView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -583,6 +584,12 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
             )}
           </div>
       </div>
-    </div>
-  );
-}
+
+            {/* Customer Reviews Section */}
+            <ProductReviews 
+              productId={product?.cj_pid || product?.id} 
+              productName={product?.product_name || 'Product'} 
+            />
+          </div>
+        );
+      }
