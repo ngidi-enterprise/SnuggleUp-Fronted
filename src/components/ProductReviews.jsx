@@ -1,11 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './ProductReviews.css';
 import { getProductReviews } from '../lib/cjApi.js';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProductReviews({ productId, productName = 'Product' }) {
+  const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [canReview, setCanReview] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewData, setReviewData] = useState({
+    rating: 5,
+    title: '',
+    comment: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [orderInfo, setOrderInfo] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +46,47 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
     fetchReviews();
     return () => { cancelled = true; };
   }, [productId]);
+
+  // Check if logged-in user can review this product
+  useEffect(() => {
+    let cancelled = false;
+    const checkReviewEligibility = async () => {
+      if (!user || !productId) {
+        setCanReview(false);
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/can-review/${productId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          setCanReview(false);
+          return;
+        }
+        
+        const data = await response.json();
+        if (cancelled) return;
+        
+        setCanReview(data.canReview);
+        if (data.canReview) {
+          setOrderInfo({ orderId: data.orderId, orderNumber: data.orderNumber });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Review eligibility check failed:', err);
+          setCanReview(false);
+        }
+      }
+    };
+
+    checkReviewEligibility();
+    return () => { cancelled = true; };
+  }, [user, productId]);
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
@@ -76,9 +129,66 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
     );
   };
 
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!orderInfo) return;
+    
+    setSubmitting(true);
+    setSubmitError('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          productId,
+          orderId: orderInfo.orderId,
+          rating: reviewData.rating,
+          title: reviewData.title,
+          comment: reviewData.comment
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
+      
+      // Success - close modal and refresh reviews
+      setShowReviewModal(false);
+      setReviewData({ rating: 5, title: '', comment: '' });
+      setCanReview(false);
+      
+      // Refresh reviews list
+      const refreshData = await getProductReviews(productId);
+      const incoming = Array.isArray(refreshData?.reviews) ? refreshData.reviews : [];
+      setReviews(incoming.slice(0, 50));
+      
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="product-reviews-section">
-      <h3 className="reviews-title">Customer Reviews</h3>
+      <div className="reviews-title-row">
+        <h3 className="reviews-title">Customer Reviews</h3>
+        {canReview && (
+          <button 
+            className="write-review-btn"
+            onClick={() => setShowReviewModal(true)}
+          >
+            ✍️ Write a Review
+          </button>
+        )}
+      </div>
 
       {loading && (
         <div className="no-reviews" style={{ padding: '32px 0' }}>
@@ -153,6 +263,89 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
       {!loading && !error && reviews.length === 0 && (
         <div className="no-reviews">
           <p>No reviews yet. Be the first to review this product!</p>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="review-modal-overlay" onClick={() => setShowReviewModal(false)}>
+          <div className="review-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="review-modal-header">
+              <h3>Write Your Review</h3>
+              <button 
+                className="review-modal-close"
+                onClick={() => setShowReviewModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitReview} className="review-form">
+              <div className="form-group">
+                <label>Your Rating *</label>
+                <div className="rating-input">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      className={`star-btn ${star <= reviewData.rating ? 'filled' : ''}`}
+                      onClick={() => setReviewData({ ...reviewData, rating: star })}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="review-title">Review Title (optional)</label>
+                <input
+                  id="review-title"
+                  type="text"
+                  placeholder="Sum up your experience"
+                  value={reviewData.title}
+                  onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="review-comment">Your Review *</label>
+                <textarea
+                  id="review-comment"
+                  placeholder="Tell us about your experience with this product..."
+                  value={reviewData.comment}
+                  onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                  rows={5}
+                  required
+                  minLength={10}
+                />
+                <span className="char-count">{reviewData.comment.length} characters</span>
+              </div>
+
+              {submitError && (
+                <div className="review-error">{submitError}</div>
+              )}
+
+              <div className="review-modal-footer">
+                <button 
+                  type="button" 
+                  className="btn-cancel"
+                  onClick={() => setShowReviewModal(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-submit"
+                  disabled={submitting || reviewData.comment.trim().length < 10}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
