@@ -4,7 +4,7 @@ import { getProductReviews } from '../lib/cjApi.js';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProductReviews({ productId, productName = 'Product' }) {
-  const { user } = useAuth();
+  const { user, token: authToken } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,16 +51,17 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
   useEffect(() => {
     let cancelled = false;
     const checkReviewEligibility = async () => {
-      if (!user || !productId) {
+      const bearerToken = authToken || localStorage.getItem('token');
+
+      if (!user || !productId || !bearerToken) {
         setCanReview(false);
         return;
       }
       
       try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/can-review/${productId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${bearerToken}`
           }
         });
         
@@ -86,7 +87,7 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
 
     checkReviewEligibility();
     return () => { cancelled = true; };
-  }, [user, productId]);
+  }, [user, authToken, productId]);
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
@@ -137,12 +138,16 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
     setSubmitError('');
     
     try {
-      const token = localStorage.getItem('token');
+      const bearerToken = authToken || localStorage.getItem('token');
+      if (!bearerToken) {
+        setSubmitError('You need to be signed in to write a review.');
+        return;
+      }
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${bearerToken}`
         },
         body: JSON.stringify({
           productId,
