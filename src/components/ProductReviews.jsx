@@ -207,6 +207,12 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
             ✍️ Write a Review
           </button>
         )}
+        {/* Debug info - remove after testing */}
+        {user && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>
+            Debug: user={user.email || 'yes'} | canReview={canReview ? 'YES' : 'NO'} | token={authToken ? 'yes' : 'no'}
+          </div>
+        )}
       </div>
 
       {loading && (
