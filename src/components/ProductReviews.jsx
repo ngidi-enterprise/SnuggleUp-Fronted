@@ -53,24 +53,35 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
     const checkReviewEligibility = async () => {
       const bearerToken = authToken || localStorage.getItem('token');
 
+      console.log('🔍 Review eligibility check:', { user: !!user, productId, bearerToken: !!bearerToken });
+
       if (!user || !productId || !bearerToken) {
+        console.log('❌ Early exit: missing user/productId/token');
         setCanReview(false);
         return;
       }
       
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/can-review/${productId}`, {
+        // Auto-detect production API URL
+        const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
+        const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
+        const apiUrl = `${baseUrl}/api/reviews/can-review/${productId}`;
+        console.log('📡 Fetching:', apiUrl);
+        const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${bearerToken}`
           }
         });
         
+        console.log('📨 Response status:', response.status);
         if (!response.ok) {
+          console.log('❌ Non-OK response');
           setCanReview(false);
           return;
         }
         
         const data = await response.json();
+        console.log('✅ Eligibility data:', data);
         if (cancelled) return;
         
         setCanReview(data.canReview);
@@ -79,7 +90,7 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('Review eligibility check failed:', err);
+          console.error('❌ Review eligibility check failed:', err);
           setCanReview(false);
         }
       }
@@ -143,7 +154,10 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
         setSubmitError('You need to be signed in to write a review.');
         return;
       }
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reviews/submit`, {
+      // Auto-detect production API URL
+      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
+      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
+      const response = await fetch(`${baseUrl}/api/reviews/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
