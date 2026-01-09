@@ -1,0 +1,399 @@
+import React, { useState, useEffect } from 'react';
+import './LocalProductManager.css';
+
+export default function LocalProductManager() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    compare_at_price: '',
+    stock_quantity: '',
+    sku: '',
+    category: 'General',
+    tags: '',
+    images: '',
+    weight_kg: '',
+    dimensions: '',
+    is_featured: false,
+    is_active: true
+  });
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
+      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
+      
+      const response = await fetch(`${baseUrl}/api/local-products`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setProducts(data.products || []);
+    } catch (error) {
+      console.error('Error fetching local products:', error);
+      setMessage('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
+      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
+
+      const payload = {
+        ...formData,
+        price: parseFloat(formData.price),
+        compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
+        stock_quantity: parseInt(formData.stock_quantity),
+        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
+        images: formData.images ? formData.images.split('\n').filter(url => url.trim()) : [],
+        dimensions: formData.dimensions ? JSON.parse(formData.dimensions) : null
+      };
+
+      const url = editingId 
+        ? `${baseUrl}/api/local-products/${editingId}`
+        : `${baseUrl}/api/local-products`;
+      
+      const method = editingId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save product');
+      }
+
+      setMessage(editingId ? 'Product updated successfully!' : 'Product created successfully!');
+      setShowForm(false);
+      setEditingId(null);
+      resetForm();
+      fetchProducts();
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const handleEdit = (product) => {
+    setFormData({
+      name: product.name,
+      description: product.description || '',
+      price: product.price,
+      compare_at_price: product.compare_at_price || '',
+      stock_quantity: product.stock_quantity,
+      sku: product.sku || '',
+      category: product.category || 'General',
+      tags: Array.isArray(product.tags) ? product.tags.join(', ') : '',
+      images: Array.isArray(product.images) ? product.images.join('\n') : '',
+      weight_kg: product.weight_kg || '',
+      dimensions: product.dimensions ? JSON.stringify(product.dimensions) : '',
+      is_featured: product.is_featured,
+      is_active: product.is_active
+    });
+    setEditingId(product.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
+      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
+
+      const response = await fetch(`${baseUrl}/api/local-products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Failed to delete product');
+
+      setMessage('Product deleted successfully!');
+      fetchProducts();
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      compare_at_price: '',
+      stock_quantity: '',
+      sku: '',
+      category: 'General',
+      tags: '',
+      images: '',
+      weight_kg: '',
+      dimensions: '',
+      is_featured: false,
+      is_active: true
+    });
+  };
+
+  if (loading) return <div className="loading">Loading products...</div>;
+
+  return (
+    <div className="local-product-manager">
+      <div className="header">
+        <h2>🏭 Local Warehouse Products</h2>
+        <button 
+          className="btn-primary"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingId(null);
+            resetForm();
+          }}
+        >
+          {showForm ? '✕ Cancel' : '+ Add Product'}
+        </button>
+      </div>
+
+      {message && (
+        <div className={`message ${message.includes('Error') ? 'error' : 'success'}`}>
+          {message}
+          <button onClick={() => setMessage('')}>✕</button>
+        </div>
+      )}
+
+      {showForm && (
+        <form className="product-form" onSubmit={handleSubmit}>
+          <h3>{editingId ? 'Edit Product' : 'Add New Product'}</h3>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label>Product Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>SKU</label>
+              <input
+                type="text"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                placeholder="PROD-001"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+              placeholder="Product description..."
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Price (R) *</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Compare At Price (R)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.compare_at_price}
+                onChange={(e) => setFormData({ ...formData, compare_at_price: e.target.value })}
+                placeholder="Was R..."
+              />
+            </div>
+            <div className="form-group">
+              <label>Stock Quantity *</label>
+              <input
+                type="number"
+                value={formData.stock_quantity}
+                onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Category</label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              >
+                <option value="General">General</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Toys">Toys</option>
+                <option value="Feeding">Feeding</option>
+                <option value="Bath & Care">Bath & Care</option>
+                <option value="Furniture">Furniture</option>
+                <option value="Safety">Safety</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Weight (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.weight_kg}
+                onChange={(e) => setFormData({ ...formData, weight_kg: e.target.value })}
+                placeholder="0.5"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Tags (comma separated)</label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              placeholder="essentials, best-seller, organic"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Image URLs (one per line)</label>
+            <textarea
+              value={formData.images}
+              onChange={(e) => setFormData({ ...formData, images: e.target.value })}
+              rows={4}
+              placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+            />
+            <small>Copy image URLs from other retailers or upload to a CDN</small>
+          </div>
+
+          <div className="form-group">
+            <label>Dimensions (JSON)</label>
+            <input
+              type="text"
+              value={formData.dimensions}
+              onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+              placeholder='{"length": 30, "width": 20, "height": 10}'
+            />
+          </div>
+
+          <div className="form-checkboxes">
+            <label>
+              <input
+                type="checkbox"
+                checked={formData.is_featured}
+                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
+              />
+              Featured Product
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              />
+              Active
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button type="button" onClick={() => { setShowForm(false); resetForm(); }}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              {editingId ? 'Update Product' : 'Create Product'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="products-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Name</th>
+              <th>SKU</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((product) => (
+              <tr key={product.id}>
+                <td>
+                  {product.images?.[0] ? (
+                    <img src={product.images[0]} alt={product.name} className="product-thumb" />
+                  ) : (
+                    <div className="no-image">📦</div>
+                  )}
+                </td>
+                <td>
+                  <strong>{product.name}</strong>
+                  {product.is_featured && <span className="badge featured">⭐ Featured</span>}
+                </td>
+                <td>{product.sku || '-'}</td>
+                <td>
+                  R{product.price}
+                  {product.compare_at_price && (
+                    <span className="compare-price">R{product.compare_at_price}</span>
+                  )}
+                </td>
+                <td className={product.stock_quantity === 0 ? 'out-of-stock' : ''}>
+                  {product.stock_quantity}
+                </td>
+                <td>{product.category}</td>
+                <td>
+                  <span className={`status ${product.is_active ? 'active' : 'inactive'}`}>
+                    {product.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="actions">
+                  <button onClick={() => handleEdit(product)} title="Edit">✏️</button>
+                  <button onClick={() => handleDelete(product.id)} title="Delete" className="delete">🗑️</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {products.length === 0 && (
+          <div className="empty-state">
+            <p>📦 No products yet. Click "Add Product" to get started!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
