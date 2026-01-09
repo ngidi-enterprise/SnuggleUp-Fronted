@@ -388,9 +388,15 @@ export default function LocalProductManager() {
           </tbody>
         </table>
 
-        {products.length === 0 && (
+        {products.length === 0 && !showForm && (
           <div className="empty-state">
             <p>📦 No products yet. Click "Add Product" to get started!</p>
+            <button 
+              className="btn-primary btn-large"
+              onClick={() => setShowForm(true)}
+            >
+              ➕ Add Your First Product
+            </button>
           </div>
         )}
       </div>
