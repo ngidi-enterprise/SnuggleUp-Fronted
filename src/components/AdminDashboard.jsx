@@ -7,6 +7,7 @@ import OrderManagement from './admin/OrderManagement';
 import UserManagement from './admin/UserManagement';
 import InventoryPanel from './admin/InventoryPanel';
 import SchedulerMonitor from './admin/SchedulerMonitor';
+import LocalProductManager from './admin/LocalProductManager';
 import Settings from './admin/Settings';
 import './AdminDashboard.css';
 
@@ -66,6 +67,7 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
   const tabs = [
     { id: 'analytics', label: 'Analytics', icon: '📊' },
     { id: 'products', label: 'Product Curator', icon: '🛍️' },
+    { id: 'local-products', label: 'Local Warehouse', icon: '🏭' },
     { id: 'pricing', label: 'Pricing', icon: '💰' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'scheduler', label: 'Scheduler Monitor', icon: '⏱️' },
@@ -81,6 +83,8 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
         return <Analytics />;
       case 'products':
         return <ProductCuration />;
+      case 'local-products':
+        return <LocalProductManager />;
       case 'pricing':
         return <PricingManager />;
       case 'inventory':

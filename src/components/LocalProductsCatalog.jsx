@@ -1,0 +1,245 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import './LocalProductsCatalog.css';
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
+
+function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload }) {
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [pageNum, setPageNum] = useState(1);
+  const [pageSize] = useState(48);
+
+  // Fetch local products
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/local-products?limit=200`);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data.products || []);
+    } catch (err) {
+      console.error('Error fetching local products:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter products by search query
+  useEffect(() => {
+    if (!query) {
+      setFilteredProducts(products);
+    } else {
+      const q = query.toLowerCase();
+      setFilteredProducts(
+        products.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
+          (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q)))
+        )
+      );
+    }
+    setPageNum(1);
+  }, [query, products]);
+
+  // Normalize image URL
+  const normalizeImageUrl = (url) => {
+    if (!url) return '';
+    // If already base64, return as is
+    if (url.startsWith('data:')) return url;
+    // If relative path, prepend API base
+    if (url.startsWith('/')) return `${API_BASE}${url}`;
+    // If protocol-relative, use https
+    if (url.startsWith('//')) return `https:${url}`;
+    // If http, upgrade to https
+    if (url.startsWith('http://')) return url.replace(/^http:/, 'https:');
+    return url;
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / pageSize);
+  const paginatedProducts = useMemo(() => {
+    const start = (pageNum - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, pageNum, pageSize]);
+
+  const handleProductClick = (product) => {
+    onOpenProduct({
+      ...product,
+      id: product.id,
+      name: product.name,
+      product_name: product.name,
+      image: normalizeImageUrl(product.images?.[0] || ''),
+      price: product.price,
+      isLocal: true
+    });
+  };
+
+  const renderProductCard = (product) => {
+    const inStock = product.stock_quantity > 0;
+    const onSale = product.compare_at_price && product.compare_at_price > product.price;
+    const discount = onSale ? Math.round((1 - product.price / product.compare_at_price) * 100) : 0;
+
+    return (
+      <div
+        key={product.id}
+        className="local-product-card"
+        onClick={() => handleProductClick(product)}
+      >
+        <div className="card-image-container">
+          <img
+            src={normalizeImageUrl(product.images?.[0] || '')}
+            alt={product.name}
+            className="card-image"
+          />
+
+          {/* Fast Shipping Badge */}
+          <div className="card-fast-shipping-badge">⚡ Fast Shipping</div>
+
+          {/* Discount Badge */}
+          {onSale && discount > 0 && (
+            <div className="card-discount-badge">-{discount}%</div>
+          )}
+
+          {/* Out of Stock Overlay */}
+          {!inStock && (
+            <div className="card-out-of-stock">
+              <span>OUT OF STOCK</span>
+            </div>
+          )}
+
+          {/* Quick View Button */}
+          <button className="card-quick-view">
+            👁️ Quick View
+          </button>
+        </div>
+
+        <div className="card-body">
+          <h3 className="card-name">{product.name}</h3>
+
+          <p className="card-category">
+            {product.category ? product.category.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'General'}
+          </p>
+
+          <div className="card-pricing">
+            {onSale ? (
+              <>
+                <span className="card-price-original">R{product.compare_at_price.toFixed(2)}</span>
+                <span className="card-price-current">R{product.price.toFixed(2)}</span>
+              </>
+            ) : (
+              <span className="card-price-current">R{product.price.toFixed(2)}</span>
+            )}
+          </div>
+
+          <div className="card-stock">
+            {inStock ? (
+              <span className="stock-available">In stock ({product.stock_quantity})</span>
+            ) : (
+              <span className="stock-unavailable">Out of stock</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading && products.length === 0) {
+    return (
+      <div className="local-catalog-loading">
+        <p>Loading local products...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="local-catalog-error">
+        <p>⚠️ {error}</p>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="local-catalog-empty">
+        <p>No local products available</p>
+        {isAdmin && (
+          <button className="btn-add-first" onClick={onShowUpload}>
+            📸 Upload Your First Product
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="local-products-catalog">
+      {/* Header */}
+      <div className="catalog-header">
+        <h2>⚡ Local Products - Fast Delivery</h2>
+        <p>Products from our warehouse • Delivered in 2-3 working days</p>
+        {isAdmin && (
+          <button className="btn-upload-new" onClick={onShowUpload}>
+            📸 Upload New Product
+          </button>
+        )}
+      </div>
+
+      {/* Search Results Info */}
+      {query && (
+        <div className="search-results-info">
+          <p>Search results for "<strong>{query}</strong>" ({filteredProducts.length} products)</p>
+        </div>
+      )}
+
+      {/* Products Grid */}
+      {filteredProducts.length > 0 ? (
+        <>
+          <div className="products-grid">
+            {paginatedProducts.map(renderProductCard)}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                onClick={() => setPageNum(Math.max(1, pageNum - 1))}
+                disabled={pageNum === 1}
+                className="pagination-button"
+              >
+                ← Previous
+              </button>
+
+              <div className="pagination-info">
+                Page {pageNum} of {totalPages}
+              </div>
+
+              <button
+                onClick={() => setPageNum(Math.min(totalPages, pageNum + 1))}
+                disabled={pageNum === totalPages}
+                className="pagination-button"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="no-results">
+          <p>No products found for "{query}"</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default LocalProductsCatalog;
