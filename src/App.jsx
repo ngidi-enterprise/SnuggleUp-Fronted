@@ -12,6 +12,9 @@ import ResetPassword from './components/ResetPassword';
 import ProductDetail from './components/ProductDetail';
 import CJCatalog from './components/CJCatalog';
 import CJProductDetail from './components/CJProductDetail';
+import LocalProductsCatalog from './components/LocalProductsCatalog';
+import LocalProductDetail from './components/LocalProductDetail';
+import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
 import TrustBadges from './components/TrustBadges';
@@ -55,6 +58,12 @@ function App() {
   const [backendDown, setBackendDown] = useState(false);
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
+  
+  // Local Products State
+  const [selectedLocalProductId, setSelectedLocalProductId] = useState(null);
+  const [showLocalProductUpload, setShowLocalProductUpload] = useState(false);
+  const [localProductsRefresh, setLocalProductsRefresh] = useState(0);
+  const [catalogView, setCatalogView] = useState('cj'); // 'cj' or 'local'
   
   // Wishlist state
   const [wishlistItems, setWishlistItems] = useState(() => {
@@ -1108,27 +1117,96 @@ function App() {
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* CJ Catalog as main store */}
-              <div id="cj-anchor" style={{ flex: '1 0 auto' }}>
-                {!selectedCjPid && (
-                  <CJCatalog 
-                    query={cjQuery}
-                    onQueryChange={setCjQuery}
-                    onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    onOpenProduct={(pid) => setSelectedCjPid(pid)}
-                    isAdmin={isAdmin}
-                  />
-                )}
-
-                {selectedCjPid && (
-                  <CJProductDetail
-                    pid={selectedCjPid}
-                    onClose={() => setSelectedCjPid(null)}
-                    onAddToCart={addToCart}
-                    onAddToWishlist={addToWishlist}
-                  />
-                )}
+              {/* Catalog View Tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                padding: '15px 20px',
+                background: '#f9f9f9',
+                borderBottom: '1px solid #eee',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => { setCatalogView('cj'); setSelectedCjPid(null); }}
+                  style={{
+                    padding: '10px 20px',
+                    background: catalogView === 'cj' ? '#ff6b9d' : '#f0f0f0',
+                    color: catalogView === 'cj' ? 'white' : '#333',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🌍 Import Store (CJ)
+                </button>
+                <button
+                  onClick={() => { setCatalogView('local'); setSelectedLocalProductId(null); }}
+                  style={{
+                    padding: '10px 20px',
+                    background: catalogView === 'local' ? '#ff6b9d' : '#f0f0f0',
+                    color: catalogView === 'local' ? 'white' : '#333',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ⚡ Local Warehouse (Fast Delivery)
+                </button>
               </div>
+
+              {/* CJ Catalog as main store */}
+              {catalogView === 'cj' && (
+                <div id="cj-anchor" style={{ flex: '1 0 auto' }}>
+                  {!selectedCjPid && (
+                    <CJCatalog 
+                      query={cjQuery}
+                      onQueryChange={setCjQuery}
+                      onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      onOpenProduct={(pid) => setSelectedCjPid(pid)}
+                      isAdmin={isAdmin}
+                    />
+                  )}
+
+                  {selectedCjPid && (
+                    <CJProductDetail
+                      pid={selectedCjPid}
+                      onClose={() => setSelectedCjPid(null)}
+                      onAddToCart={addToCart}
+                      onAddToWishlist={addToWishlist}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Local Products Catalog */}
+              {catalogView === 'local' && (
+                <div id="local-anchor" style={{ flex: '1 0 auto' }}>
+                  {!selectedLocalProductId && (
+                    <LocalProductsCatalog
+                      query={searchTerm}
+                      onOpenProduct={(product) => setSelectedLocalProductId(product)}
+                      isAdmin={isAdmin}
+                      onShowUpload={() => setShowLocalProductUpload(true)}
+                    />
+                  )}
+
+                  {selectedLocalProductId && (
+                    <LocalProductDetail
+                      product={selectedLocalProductId}
+                      onClose={() => setSelectedLocalProductId(null)}
+                      onAddToCart={addToCart}
+                      allProducts={[]}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1450,6 +1528,18 @@ function App() {
               }}
               // Prefill with user's name; previously entered values override
               initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
+            />
+          )}
+
+          {/* Local Product Upload Modal */}
+          {showLocalProductUpload && (
+            <LocalProductUpload
+              onClose={() => setShowLocalProductUpload(false)}
+              onProductAdded={(newProduct) => {
+                // Refresh local products by incrementing counter
+                setLocalProductsRefresh(prev => prev + 1);
+              }}
+              token={token}
             />
           )}
 
