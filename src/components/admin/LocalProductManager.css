@@ -9,26 +9,35 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .header h2 {
   margin: 0;
   color: #2c3e50;
+  flex: 1;
+  min-width: 200px;
 }
 
 .btn-primary {
-  background: #ff6b35;
-  color: black;
+  background: linear-gradient(135deg, #ff6b9d, #ff4f85);
+  color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
-  transition: background 0.2s;
+  font-size: 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.2);
 }
 
 .btn-primary:hover {
-  background: #e55a2b;
+  background: linear-gradient(135deg, #ff4f85, #ff3570);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
 }
 
 .btn-large {
