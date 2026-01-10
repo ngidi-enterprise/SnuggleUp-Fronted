@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './LocalProductManager.css';
 
+// Determine API base consistently with the rest of the app
+const API_BASE = (import.meta.env.VITE_API_BASE)
+  || ((typeof window !== 'undefined' && (window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za'))
+        ? 'https://snuggleup-backend.onrender.com'
+        : 'http://localhost:3000');
+
 export default function LocalProductManager() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,17 +36,15 @@ export default function LocalProductManager() {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
-      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
-      
-      const response = await fetch(`${baseUrl}/api/local-products`, {
+
+      const response = await fetch(`${API_BASE}/api/local-products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       setProducts(data.products || []);
     } catch (error) {
       console.error('Error fetching local products:', error);
-      setMessage('Failed to load products');
+      setMessage('Failed to load products. Please check backend availability.');
     } finally {
       setLoading(false);
     }
@@ -50,8 +54,6 @@ export default function LocalProductManager() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
-      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
 
       const payload = {
         ...formData,
@@ -65,8 +67,8 @@ export default function LocalProductManager() {
       };
 
       const url = editingId 
-        ? `${baseUrl}/api/local-products/${editingId}`
-        : `${baseUrl}/api/local-products`;
+        ? `${API_BASE}/api/local-products/${editingId}`
+        : `${API_BASE}/api/local-products`;
       
       const method = editingId ? 'PUT' : 'POST';
 
@@ -90,7 +92,12 @@ export default function LocalProductManager() {
       resetForm();
       fetchProducts();
     } catch (error) {
-      setMessage(`Error: ${error.message}`);
+      // Network errors often show as TypeError: Failed to fetch
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        setMessage('Error: Failed to reach backend. Check VITE_API_BASE and CORS.');
+      } else {
+        setMessage(`Error: ${error.message}`);
+      }
     }
   };
 
@@ -119,10 +126,8 @@ export default function LocalProductManager() {
     
     try {
       const token = localStorage.getItem('token');
-      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
-      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
 
-      const response = await fetch(`${baseUrl}/api/local-products/${id}`, {
+      const response = await fetch(`${API_BASE}/api/local-products/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
