@@ -120,6 +120,35 @@
   font-size: 12px;
 }
 
+/* File Drop Zone */
+.file-drop-zone {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 16px;
+  background: #f9f9f9;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.file-drop-zone:hover {
+  border-color: #ff6b35;
+  background: #fff5f2;
+}
+
+.file-drop-label {
+  display: block;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-drop-zone:hover .file-drop-label {
+  color: #ff6b35;
+}
+
 .form-checkboxes {
   display: flex;
   gap: 24px;

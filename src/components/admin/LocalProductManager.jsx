@@ -28,6 +28,7 @@ export default function LocalProductManager() {
     is_active: true
   });
   const [message, setMessage] = useState('');
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -157,6 +158,66 @@ export default function LocalProductManager() {
       is_featured: false,
       is_active: true
     });
+  };
+
+  // Upload images to ImgBB and get URLs
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    setUploadingImages(true);
+    setMessage('Uploading images...');
+    
+    try {
+      const imgbbApiKey = '6d207e02198a847aa98d0a2a901485a5'; // Free public key
+      const uploadedUrls = [];
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          uploadedUrls.push(data.data.url);
+        } else {
+          throw new Error('Failed to upload image');
+        }
+      }
+      
+      // Append new URLs to existing ones
+      const existingUrls = formData.images ? formData.images.trim().split('\n').filter(u => u) : [];
+      const allUrls = [...existingUrls, ...uploadedUrls].join('\n');
+      
+      setFormData(prev => ({ ...prev, images: allUrls }));
+      setMessage(`Successfully uploaded ${uploadedUrls.length} image(s)!`);
+    } catch (error) {
+      setMessage(`Error uploading images: ${error.message}`);
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      handleImageUpload(files);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      handleImageUpload(files);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   if (loading) return <div className="loading">Loading products...</div>;
@@ -290,14 +351,40 @@ export default function LocalProductManager() {
           </div>
 
           <div className="form-group">
-            <label>Image URLs (one per line)</label>
+            <label>Image URLs (one per line) or Drop Files:</label>
+            
+            {/* File Drop Zone */}
+            <div 
+              className="file-drop-zone"
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
+              <input
+                type="file"
+                id="imageFiles"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="imageFiles" className="file-drop-label">
+                {uploadingImages ? (
+                  <>📤 Uploading...</>
+                ) : (
+                  <>📁 Drop images here or click to browse</>
+                )}
+              </label>
+            </div>
+            
+            {/* Manual URL Textarea */}
             <textarea
               value={formData.images}
               onChange={(e) => setFormData({ ...formData, images: e.target.value })}
               rows={4}
-              placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+              placeholder="Or paste image URLs here (one per line)"
+              disabled={uploadingImages}
             />
-            <small>Copy image URLs from other retailers or upload to a CDN</small>
+            <small>Drop files to auto-upload to CDN, or paste URLs manually</small>
           </div>
 
           <div className="form-group">
