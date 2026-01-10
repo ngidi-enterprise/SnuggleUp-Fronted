@@ -33,8 +33,10 @@ export default function LocalProductManager() {
   const [uploadingImages, setUploadingImages] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (token) {
+      fetchProducts();
+    }
+  }, [token]);
 
   const fetchProducts = async () => {
     try {
@@ -53,6 +55,12 @@ export default function LocalProductManager() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token) {
+      setMessage('Error: Not authenticated. Please log in again.');
+      return;
+    }
+
     try {
       const payload = {
         ...formData,
@@ -123,6 +131,11 @@ export default function LocalProductManager() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     
+    if (!token) {
+      setMessage('Error: Not authenticated. Please log in again.');
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE}/api/local-products/${id}`, {
         method: 'DELETE',
