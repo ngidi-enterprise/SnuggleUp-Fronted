@@ -160,45 +160,20 @@ export default function LocalProductManager() {
     });
   };
 
-  // Upload images to imgbb (no account needed, free forever)
+  // Compress and convert images to data URLs (stored directly in DB)
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
 
     setUploadingImages(true);
-    setMessage('Uploading images...');
+    setMessage('Processing images...');
 
     try {
       const uploadedUrls = [];
       
       for (const file of files) {
-        // Convert to base64 for imgbb
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result;
-            // Remove data:image/...;base64, prefix
-            const base64Data = result.substring(result.indexOf(',') + 1);
-            resolve(base64Data);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        // Upload to imgbb (free API, no signup needed)
-        const fd = new FormData();
-        fd.append('image', base64);
-
-        const res = await fetch('https://api.imgbb.com/1/upload?key=6d207e02198a847aa98d0a2a901485a5', {
-          method: 'POST',
-          body: fd
-        });
-        
-        const data = await res.json();
-        if (!data.success || !data.data?.url) {
-          throw new Error(data.error?.message || 'Upload failed');
-        }
-        
-        uploadedUrls.push(data.data.url);
+        // Compress image to reasonable size before storing
+        const compressed = await compressImage(file, 800, 0.85);
+        uploadedUrls.push(compressed);
       }
 
       // Append new URLs to existing ones
@@ -206,12 +181,52 @@ export default function LocalProductManager() {
       const allUrls = [...existingUrls, ...uploadedUrls].join('\n');
 
       setFormData(prev => ({ ...prev, images: allUrls }));
-      setMessage(`Successfully uploaded ${uploadedUrls.length} image(s)!`);
+      setMessage(`Successfully processed ${uploadedUrls.length} image(s)! (Optimized & stored)`);
     } catch (error) {
-      setMessage(`Error uploading images: ${error.message}`);
+      setMessage(`Error processing images: ${error.message}`);
     } finally {
       setUploadingImages(false);
     }
+  };
+
+  // Compress image to data URL with max dimensions and quality
+  const compressImage = (file, maxSize = 800, quality = 0.85) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Calculate new dimensions maintaining aspect ratio
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+          }
+
+          // Draw to canvas and compress
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to data URL with compression
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleFileChange = (e) => {
