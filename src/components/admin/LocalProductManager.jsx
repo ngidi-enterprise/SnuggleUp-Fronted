@@ -160,32 +160,26 @@ export default function LocalProductManager() {
     });
   };
 
-  // Upload images to ImgBB and get URLs
+  // Convert images to base64 data URLs (no external service needed)
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
     
     setUploadingImages(true);
-    setMessage('Uploading images...');
+    setMessage('Processing images...');
     
     try {
-      const imgbbApiKey = '6d207e02198a847aa98d0a2a901485a5'; // Free public key
       const uploadedUrls = [];
       
       for (const file of files) {
-        const uploadFormData = new FormData();
-        uploadFormData.append('image', file);
-        
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
-          method: 'POST',
-          body: uploadFormData
+        // Convert to base64 data URL
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
         
-        const data = await response.json();
-        if (data.success) {
-          uploadedUrls.push(data.data.url);
-        } else {
-          throw new Error(data.error?.message || 'Failed to upload image');
-        }
+        uploadedUrls.push(dataUrl);
       }
       
       // Append new URLs to existing ones
@@ -193,9 +187,9 @@ export default function LocalProductManager() {
       const allUrls = [...existingUrls, ...uploadedUrls].join('\n');
       
       setFormData(prev => ({ ...prev, images: allUrls }));
-      setMessage(`Successfully uploaded ${uploadedUrls.length} image(s)!`);
+      setMessage(`Successfully processed ${uploadedUrls.length} image(s)! (Base64 encoded)`);
     } catch (error) {
-      setMessage(`Error uploading images: ${error.message}`);
+      setMessage(`Error processing images: ${error.message}`);
     } finally {
       setUploadingImages(false);
     }
