@@ -78,15 +78,17 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload }) {
       name: product.name,
       product_name: product.name,
       image: normalizeImageUrl(product.images?.[0] || ''),
-      price: product.price,
+      price: parseFloat(product.price) || 0,
       isLocal: true
     });
   };
 
   const renderProductCard = (product) => {
     const inStock = product.stock_quantity > 0;
-    const onSale = product.compare_at_price && product.compare_at_price > product.price;
-    const discount = onSale ? Math.round((1 - product.price / product.compare_at_price) * 100) : 0;
+    const price = parseFloat(product.price) || 0;
+    const comparePrice = parseFloat(product.compare_at_price) || 0;
+    const onSale = comparePrice && comparePrice > price;
+    const discount = onSale ? Math.round((1 - price / comparePrice) * 100) : 0;
 
     return (
       <div
@@ -132,11 +134,11 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload }) {
           <div className="card-pricing">
             {onSale ? (
               <>
-                <span className="card-price-original">R{product.compare_at_price.toFixed(2)}</span>
-                <span className="card-price-current">R{product.price.toFixed(2)}</span>
+                <span className="card-price-original">R{comparePrice.toFixed(2)}</span>
+                <span className="card-price-current">R{price.toFixed(2)}</span>
               </>
             ) : (
-              <span className="card-price-current">R{product.price.toFixed(2)}</span>
+              <span className="card-price-current">R{price.toFixed(2)}</span>
             )}
           </div>
 
