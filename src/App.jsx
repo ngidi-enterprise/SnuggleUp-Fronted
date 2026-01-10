@@ -1141,7 +1141,7 @@ function App() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  🌍 Import Store (CJ)
+                  🌍 Import Store
                 </button>
                 <button
                   onClick={() => { setCatalogView('local'); setSelectedLocalProductId(null); }}
@@ -1188,16 +1188,14 @@ function App() {
               {/* Local Products Catalog */}
               {catalogView === 'local' && (
                 <div id="local-anchor" style={{ flex: '1 0 auto' }}>
-                  {!selectedLocalProductId && (
+                  {!selectedLocalProductId ? (
                     <LocalProductsCatalog
                       query={searchTerm}
                       onOpenProduct={(product) => setSelectedLocalProductId(product)}
                       isAdmin={isAdmin}
                       onShowUpload={() => setShowLocalProductUpload(true)}
                     />
-                  )}
-
-                  {selectedLocalProductId && (
+                  ) : (
                     <LocalProductDetail
                       product={selectedLocalProductId}
                       onClose={() => setSelectedLocalProductId(null)}
