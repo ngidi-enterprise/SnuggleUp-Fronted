@@ -118,8 +118,8 @@
 /* Fast Shipping Badge on Card */
 .card-fast-shipping-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   background: linear-gradient(135deg, #ffd700, #ffed4e);
   color: #333;
   padding: 6px 12px;
@@ -127,21 +127,23 @@
   font-weight: 700;
   font-size: 11px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  z-index: 3;
+  z-index: 10;
+  white-space: nowrap;
 }
 
 /* Discount Badge on Card */
 .card-discount-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   background: #ff6b9d;
   color: white;
   padding: 6px 10px;
   border-radius: 6px;
   font-weight: 700;
   font-size: 12px;
-  z-index: 3;
+  z-index: 10;
+  white-space: nowrap;
 }
 
 /* Out of Stock Overlay on Card */
