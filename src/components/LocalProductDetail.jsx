@@ -84,10 +84,15 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const discount = onSale ? Math.round((1 - price / comparePrice) * 100) : 0;
 
   return (
-    <div className="product-detail-modal" onClick={onClose}>
-      <div className="product-detail-content" onClick={(e) => e.stopPropagation()}>
-        <button className="close-detail" onClick={onClose}>✕</button>
+    <div className="local-product-detail-page">
+      <div className="product-detail-header">
+        <button className="back-button" onClick={onClose}>
+          ← Back to Products
+        </button>
+        <h1>{product.name}</h1>
+      </div>
 
+      <div className="product-detail-container">
         {showAddedToCart ? (
           // Added to Cart Confirmation
           <div className="added-to-cart-confirmation">

@@ -1,74 +1,68 @@
-/* Local Product Detail Modal */
-.product-detail-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: fadeInModal 0.3s ease;
+/* Local Product Detail Page View */
+.local-product-detail-page {
+  min-height: calc(100vh - 88px);
+  background: #f9f9f9;
+  flex: 1 0 auto;
 }
 
-@keyframes fadeInModal {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.product-detail-content {
+.product-detail-header {
   background: white;
-  border-radius: 12px;
-  max-width: 1200px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-}
-
-.close-detail {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: #f0f0f0;
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  font-size: 24px;
-  cursor: pointer;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 10;
-  transition: all 0.2s ease;
+  gap: 20px;
 }
 
-.close-detail:hover {
-  background: #e0e0e0;
-  transform: scale(1.1);
+.product-detail-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+  flex: 1;
+}
+
+.back-button {
+  background: white;
+  border: 2px solid var(--brand, #ff6b9d);
+  color: var(--brand, #ff6b9d);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.back-button:hover {
+  background: var(--brand, #ff6b9d);
+  color: white;
+}
+
+/* Product Detail Container */
+.product-detail-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 20px;
 }
 
 /* Product Detail Body */
 .product-detail-body {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: 50px;
+  background: white;
   padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .product-detail-body {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 40px;
     padding: 30px;
   }
 }
@@ -76,7 +70,7 @@
 @media (max-width: 600px) {
   .product-detail-body {
     padding: 20px;
-    gap: 20px;
+    gap: 25px;
   }
 }
 
