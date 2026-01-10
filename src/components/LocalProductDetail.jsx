@@ -255,7 +255,6 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                   <li>Shipped from our local warehouse</li>
                   <li>Delivery in 2-3 working days</li>
                   <li>No international shipping delays</li>
-                  <li>Same quality guarantee as imported products</li>
                 </ul>
               </div>
             </div>
