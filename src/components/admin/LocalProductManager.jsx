@@ -263,16 +263,18 @@ export default function LocalProductManager() {
     <div className="local-product-manager">
       <div className="header">
         <h2>🏭 Local Warehouse Products</h2>
-        <button 
-          className="btn-primary"
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditingId(null);
-            resetForm();
-          }}
-        >
-          {showForm ? '✕ Cancel' : '+ Add Product'}
-        </button>
+        {!showForm && (
+          <button 
+            className="btn-primary"
+            onClick={() => {
+              setShowForm(true);
+              setEditingId(null);
+              resetForm();
+            }}
+          >
+            + Add Product
+          </button>
+        )}
       </div>
 
       {message && (
