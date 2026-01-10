@@ -160,36 +160,59 @@ export default function LocalProductManager() {
     });
   };
 
-  // Convert images to base64 data URLs (no external service needed)
+  // Upload images to Cloudinary using backend-signed request
+  const getCloudinarySignature = async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_BASE}/api/admin/upload-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ folder: 'local-products' })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Signature error' }));
+      throw new Error(err.error || 'Failed to get upload signature');
+    }
+    return res.json();
+  };
+
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
-    
+
     setUploadingImages(true);
-    setMessage('Processing images...');
-    
+    setMessage('Uploading images...');
+
     try {
+      const { signature, timestamp, folder, cloudName, apiKey } = await getCloudinarySignature();
       const uploadedUrls = [];
-      
+
       for (const file of files) {
-        // Convert to base64 data URL
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        
-        uploadedUrls.push(dataUrl);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('api_key', apiKey);
+        fd.append('timestamp', String(timestamp));
+        fd.append('signature', signature);
+        fd.append('folder', folder);
+
+        const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+        const res = await fetch(url, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok || !data.secure_url) {
+          throw new Error(data.error?.message || 'Cloudinary upload failed');
+        }
+        uploadedUrls.push(data.secure_url);
       }
-      
+
       // Append new URLs to existing ones
       const existingUrls = formData.images ? formData.images.trim().split('\n').filter(u => u) : [];
       const allUrls = [...existingUrls, ...uploadedUrls].join('\n');
-      
+
       setFormData(prev => ({ ...prev, images: allUrls }));
-      setMessage(`Successfully processed ${uploadedUrls.length} image(s)! (Base64 encoded)`);
+      setMessage(`Successfully uploaded ${uploadedUrls.length} image(s)!`);
     } catch (error) {
-      setMessage(`Error processing images: ${error.message}`);
+      setMessage(`Error uploading images: ${error.message}`);
     } finally {
       setUploadingImages(false);
     }
