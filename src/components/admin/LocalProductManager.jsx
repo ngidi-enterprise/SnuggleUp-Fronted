@@ -160,24 +160,7 @@ export default function LocalProductManager() {
     });
   };
 
-  // Upload images to Cloudinary using backend-signed request
-  const getCloudinarySignature = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_BASE}/api/admin/upload-signature`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ folder: 'local-products' })
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Signature error' }));
-      throw new Error(err.error || 'Failed to get upload signature');
-    }
-    return res.json();
-  };
-
+  // Upload images to imgbb (no account needed, free forever)
   const handleImageUpload = async (files) => {
     if (!files || files.length === 0) return;
 
@@ -185,24 +168,37 @@ export default function LocalProductManager() {
     setMessage('Uploading images...');
 
     try {
-      const { signature, timestamp, folder, cloudName, apiKey } = await getCloudinarySignature();
       const uploadedUrls = [];
-
+      
       for (const file of files) {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('api_key', apiKey);
-        fd.append('timestamp', String(timestamp));
-        fd.append('signature', signature);
-        fd.append('folder', folder);
+        // Convert to base64 for imgbb
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            // Remove data:image/...;base64, prefix
+            const base64Data = result.substring(result.indexOf(',') + 1);
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-        const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-        const res = await fetch(url, { method: 'POST', body: fd });
+        // Upload to imgbb (free API, no signup needed)
+        const fd = new FormData();
+        fd.append('image', base64);
+
+        const res = await fetch('https://api.imgbb.com/1/upload?key=6d207e02198a847aa98d0a2a901485a5', {
+          method: 'POST',
+          body: fd
+        });
+        
         const data = await res.json();
-        if (!res.ok || !data.secure_url) {
-          throw new Error(data.error?.message || 'Cloudinary upload failed');
+        if (!data.success || !data.data?.url) {
+          throw new Error(data.error?.message || 'Upload failed');
         }
-        uploadedUrls.push(data.secure_url);
+        
+        uploadedUrls.push(data.data.url);
       }
 
       // Append new URLs to existing ones
