@@ -261,8 +261,11 @@ export default function LocalProductManager() {
 
   return (
     <div className="local-product-manager">
-      <div className="header">
-        <h2>🏭 Local Warehouse Products</h2>
+      <div className="local-warehouse-actions" style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end', 
+        marginBottom: '20px' 
+      }}>
         <button 
           className="btn-primary"
           onClick={() => {
@@ -270,7 +273,7 @@ export default function LocalProductManager() {
             setEditingId(null);
             resetForm();
           }}
-          style={{ display: showForm ? 'none' : 'block' }}
+          style={{ display: showForm ? 'none' : 'inline-block' }}
         >
           ➕ Add New Product
         </button>
