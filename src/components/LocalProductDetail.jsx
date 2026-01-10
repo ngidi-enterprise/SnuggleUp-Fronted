@@ -89,7 +89,6 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
         <button className="back-button" onClick={onClose}>
           ← Back to Products
         </button>
-        <h1>{product.name}</h1>
       </div>
 
       <div className="product-detail-container">
