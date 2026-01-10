@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import './LocalProductManager.css';
 
 // Determine API base consistently with the rest of the app
@@ -8,6 +9,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE)
         : 'http://localhost:3000');
 
 export default function LocalProductManager() {
+  const { token } = useAuth(); // Get token from auth context
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -36,8 +38,6 @@ export default function LocalProductManager() {
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-
       const response = await fetch(`${API_BASE}/api/local-products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -54,8 +54,6 @@ export default function LocalProductManager() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-
       const payload = {
         ...formData,
         price: parseFloat(formData.price),
@@ -126,8 +124,6 @@ export default function LocalProductManager() {
     if (!confirm('Are you sure you want to delete this product?')) return;
     
     try {
-      const token = localStorage.getItem('token');
-
       const response = await fetch(`${API_BASE}/api/local-products/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
