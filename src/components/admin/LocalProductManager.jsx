@@ -318,13 +318,53 @@ export default function LocalProductManager() {
               />
             </div>
             <div className="form-group">
-              <label>SKU</label>
-              <input
-                type="text"
-                value={formData.sku}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                placeholder="PROD-001"
-              />
+              <label>SKU <span style={{fontSize: '12px', color: '#666'}}>(Auto-generated if left empty)</span></label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={formData.sku}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  placeholder="SNUG-0126-0001-HUG"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!formData.name) {
+                      setMessage('Error: Enter product name first to generate SKU');
+                      return;
+                    }
+                    try {
+                      const response = await fetch(
+                        `${API_BASE}/api/local-products/generate-sku?productName=${encodeURIComponent(formData.name)}`,
+                        { headers: { 'Authorization': `Bearer ${token}` } }
+                      );
+                      const data = await response.json();
+                      if (response.ok) {
+                        setFormData({ ...formData, sku: data.sku });
+                        setMessage(`Generated SKU: ${data.sku}`);
+                      } else {
+                        setMessage(`Error: ${data.error}`);
+                      }
+                    } catch (error) {
+                      setMessage('Error: Failed to generate SKU');
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  🔄 Generate
+                </button>
+              </div>
             </div>
           </div>
 
