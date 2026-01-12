@@ -72,7 +72,7 @@ export default function DescriptionGeneratorButton({
     setGenerating(true);
     try {
       // Convert image URL to base64
-      let imageBase64 = imageUrl;
+      let imageBase64 = '';
       let imageMimeType = 'image/jpeg';
 
       // If it's a URL (not already base64), fetch and convert
@@ -85,22 +85,40 @@ export default function DescriptionGeneratorButton({
         
         // Convert blob to base64
         const reader = new FileReader();
-        imageBase64 = await new Promise((resolve) => {
+        imageBase64 = await new Promise((resolve, reject) => {
           reader.onload = () => {
             const result = reader.result;
             // Extract base64 part if it's a data URI
-            const base64Part = result.includes(',') ? result.split(',')[1] : result;
-            resolve(base64Part);
+            if (result && typeof result === 'string') {
+              const base64Part = result.includes(',') ? result.split(',')[1] : result;
+              if (base64Part && base64Part.length > 10) {
+                resolve(base64Part);
+              } else {
+                reject(new Error('Invalid base64 conversion'));
+              }
+            } else {
+              reject(new Error('FileReader failed'));
+            }
           };
+          reader.onerror = () => reject(new Error('FileReader error'));
           reader.readAsDataURL(blob);
         });
       } else if (imageUrl.startsWith('data:')) {
         // It's already a data URI, extract base64 and MIME type
         const match = imageUrl.match(/data:([^;]+);base64,(.+)/);
-        if (match) {
+        if (match && match[2] && match[2].length > 10) {
           imageMimeType = match[1];
           imageBase64 = match[2];
+        } else {
+          throw new Error('Invalid data URI format');
         }
+      } else {
+        throw new Error('Image must be a URL or data URI');
+      }
+
+      // Validate base64 before sending
+      if (!imageBase64 || imageBase64.length < 100) {
+        throw new Error('Image data is too short or invalid');
       }
 
       const response = await fetch(`${apiBase}/api/admin/products/generate-description`, {
