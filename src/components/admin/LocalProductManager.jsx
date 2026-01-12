@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import CategorySuggestionButton, { CATEGORY_OPTIONS } from '../CategorySuggestionButton';
+import DescriptionGeneratorButton from '../DescriptionGeneratorButton';
 import './LocalProductManager.css';
 
 // Determine API base consistently with the rest of the app
@@ -370,13 +371,30 @@ export default function LocalProductManager() {
           </div>
 
           <div className="form-group">
-            <label>Description</label>
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span>Description</span>
+              {formData.images && formData.images.length > 0 && (
+                <DescriptionGeneratorButton
+                  productName={formData.name}
+                  imageUrl={formData.images[0]}
+                  onDescriptionGenerated={(desc) => setFormData({ ...formData, description: desc })}
+                  setMessage={setMessage}
+                  token={token}
+                  apiBase={API_BASE}
+                />
+              )}
+            </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
               placeholder="Product description..."
             />
+            {(!formData.images || formData.images.length === 0) && (
+              <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>
+                💡 Tip: Upload an image above to use AI description generator
+              </small>
+            )}
           </div>
 
           <div className="form-row">

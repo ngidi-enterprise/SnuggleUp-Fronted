@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import CategorySuggestionButton, { CATEGORY_OPTIONS } from '../CategorySuggestionButton';
+import DescriptionGeneratorButton from '../DescriptionGeneratorButton';
 
 // Fallback pricing (will be replaced by /api/admin/pricing-config)
 const FALLBACK_USD_TO_ZAR = 18.0;
@@ -1073,7 +1074,19 @@ export default function ProductCuration() {
               </div>
 
               <div className="form-group">
-                <label>Product Description (SEO-friendly)</label>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span>Product Description (SEO-friendly)</span>
+                  {editingProduct?.images && editingProduct.images.length > 0 && (
+                    <DescriptionGeneratorButton
+                      productName={editForm.product_name}
+                      imageUrl={editingProduct.images[0]}
+                      onDescriptionGenerated={(desc) => setEditForm({...editForm, product_description: desc})}
+                      setMessage={setError}
+                      token={token}
+                      apiBase={API_BASE}
+                    />
+                  )}
+                </label>
                 <textarea
                   rows="6"
                   value={editForm.product_description}
