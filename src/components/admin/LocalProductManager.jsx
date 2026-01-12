@@ -62,6 +62,23 @@ export default function LocalProductManager() {
     }
 
     try {
+      // Validate Dimensions JSON
+      let parsedDimensions = null;
+      if (formData.dimensions && formData.dimensions.trim()) {
+        try {
+          parsedDimensions = JSON.parse(formData.dimensions);
+        } catch (err) {
+          setMessage('Error: Dimensions must be valid JSON. Example: {"length": 30, "width": 20, "height": 10}');
+          return;
+        }
+      }
+
+      // Prevent duplicate SKU (must be unique)
+      if (formData.sku && products.some(p => p.sku && p.sku.toLowerCase() === formData.sku.toLowerCase() && p.id !== editingId)) {
+        setMessage('Error: SKU already exists. Please use a unique SKU.');
+        return;
+      }
+
       const payload = {
         ...formData,
         price: parseFloat(formData.price),
@@ -70,7 +87,7 @@ export default function LocalProductManager() {
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
         images: formData.images ? formData.images.split('\n').filter(url => url.trim()) : [],
-        dimensions: formData.dimensions ? JSON.parse(formData.dimensions) : null
+        dimensions: parsedDimensions
       };
 
       const url = editingId 
