@@ -413,18 +413,67 @@ export default function LocalProductManager() {
           <div className="form-row">
             <div className="form-group">
               <label>Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              >
-                <option value="General">General</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Toys">Toys</option>
-                <option value="Feeding">Feeding</option>
-                <option value="Bath & Care">Bath & Care</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Safety">Safety</option>
-              </select>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="Accessories">Accessories</option>
+                  <option value="Bedding">Bedding</option>
+                  <option value="Baby Clothing">Baby Clothing</option>
+                  <option value="Nursery Items">Nursery Items</option>
+                  <option value="Toys">Toys</option>
+                  <option value="Feeding">Feeding</option>
+                  <option value="Health & Safety">Health & Safety</option>
+                  <option value="Moms Essentials">Moms Essentials</option>
+                  <option value="Travel / Strollers">Travel / Strollers</option>
+                  <option value="Diapering">Diapering</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!formData.name) {
+                      setMessage('Error: Enter product name first');
+                      return;
+                    }
+                    try {
+                      const params = new URLSearchParams({
+                        productName: formData.name,
+                        description: formData.description || ''
+                      });
+                      const response = await fetch(
+                        `${API_BASE}/api/local-products/suggest-category?${params}`,
+                        { headers: { 'Authorization': `Bearer ${token}` } }
+                      );
+                      const data = await response.json();
+                      if (response.ok && data.category) {
+                        setFormData({ ...formData, category: data.category });
+                        setMessage(`💡 Suggested category: ${data.category}`);
+                      } else if (data.category === null) {
+                        setMessage('No matching category found. Please select manually.');
+                      } else {
+                        setMessage(`Error: ${data.error}`);
+                      }
+                    } catch (error) {
+                      setMessage('Error: Failed to suggest category');
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  💡 Suggest
+                </button>
+              </div>
             </div>
             <div className="form-group">
               <label>Weight (kg)</label>
