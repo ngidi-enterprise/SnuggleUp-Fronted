@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import CategorySuggestionButton, { CATEGORY_OPTIONS } from '../CategorySuggestionButton';
 import './LocalProductManager.css';
 
 // Determine API base consistently with the rest of the app
@@ -419,60 +420,18 @@ export default function LocalProductManager() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   style={{ flex: 1 }}
                 >
-                  <option value="Accessories">Accessories</option>
-                  <option value="Bedding">Bedding</option>
-                  <option value="Baby Clothing">Baby Clothing</option>
-                  <option value="Nursery Items">Nursery Items</option>
-                  <option value="Toys">Toys</option>
-                  <option value="Feeding">Feeding</option>
-                  <option value="Health & Safety">Health & Safety</option>
-                  <option value="Moms Essentials">Moms Essentials</option>
-                  <option value="Travel / Strollers">Travel / Strollers</option>
-                  <option value="Diapering">Diapering</option>
+                  {CATEGORY_OPTIONS.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!formData.name) {
-                      setMessage('Error: Enter product name first');
-                      return;
-                    }
-                    try {
-                      const params = new URLSearchParams({
-                        productName: formData.name,
-                        description: formData.description || ''
-                      });
-                      const response = await fetch(
-                        `${API_BASE}/api/local-products/suggest-category?${params}`,
-                        { headers: { 'Authorization': `Bearer ${token}` } }
-                      );
-                      const data = await response.json();
-                      if (response.ok && data.category) {
-                        setFormData({ ...formData, category: data.category });
-                        setMessage(`💡 Suggested category: ${data.category}`);
-                      } else if (data.category === null) {
-                        setMessage('No matching category found. Please select manually.');
-                      } else {
-                        setMessage(`Error: ${data.error}`);
-                      }
-                    } catch (error) {
-                      setMessage('Error: Failed to suggest category');
-                    }
-                  }}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#2196f3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  💡 Suggest
-                </button>
+                <CategorySuggestionButton
+                  productName={formData.name}
+                  description={formData.description}
+                  onCategorySuggested={(cat) => setFormData({ ...formData, category: cat })}
+                  setMessage={setMessage}
+                  token={token}
+                  apiBase={API_BASE}
+                />
               </div>
             </div>
             <div className="form-group">

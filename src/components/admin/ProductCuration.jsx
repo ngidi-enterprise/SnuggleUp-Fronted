@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import CategorySuggestionButton, { CATEGORY_OPTIONS } from '../CategorySuggestionButton';
 
 // Fallback pricing (will be replaced by /api/admin/pricing-config)
 const FALLBACK_USD_TO_ZAR = 18.0;
@@ -1243,12 +1244,26 @@ export default function ProductCuration() {
               <div className="form-row">
                 <div className="form-group">
                   <label>Category</label>
-                  <input
-                    type="text"
-                    value={editForm.category}
-                    onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                    placeholder="E.g., clothing, toys, feeding"
-                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">-- Select Category --</option>
+                      {CATEGORY_OPTIONS.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <CategorySuggestionButton
+                      productName={editForm.product_name}
+                      description={editForm.product_description}
+                      onCategorySuggested={(cat) => setEditForm({...editForm, category: cat})}
+                      setMessage={setError}
+                      token={token}
+                      apiBase={API_BASE}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
