@@ -373,10 +373,10 @@ export default function LocalProductManager() {
           <div className="form-group">
             <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span>Description</span>
-              {formData.images && formData.images.length > 0 && (
+              {formData.images && formData.images.trim() && (
                 <DescriptionGeneratorButton
                   productName={formData.name}
-                  imageUrl={formData.images[0]}
+                  imageUrl={formData.images.trim().split('\n')[0]}
                   onDescriptionGenerated={(desc) => setFormData({ ...formData, description: desc })}
                   setMessage={setMessage}
                   token={token}
@@ -390,7 +390,7 @@ export default function LocalProductManager() {
               rows={4}
               placeholder="Product description..."
             />
-            {(!formData.images || formData.images.length === 0) && (
+            {(!formData.images || !formData.images.trim()) && (
               <small style={{ color: '#999', marginTop: '4px', display: 'block' }}>
                 💡 Tip: Upload an image above to use AI description generator
               </small>
