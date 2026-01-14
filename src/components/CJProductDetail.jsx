@@ -295,6 +295,11 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
   const stockQuantity = selectedVariant?.stock_quantity ?? (product?.stock_quantity || 0);
   const isOutOfStock = stockQuantity === 0;
   const isLowStock = stockQuantity > 0 && stockQuantity < 10;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
+  const shareId = activeProduct?.cj_pid || activeProduct?.id || '';
+  const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
+  const shareText = `Check this out on SnuggleUp: ${product?.product_name || 'this product'} – R${(Number(price) || 0).toFixed(2)} ${shareLink}`;
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   const handleAdd = () => {
     if (!activeProduct || isOutOfStock) return;
@@ -552,6 +557,16 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
               >
                 {wishlistAdding ? '...' : '♡ Wishlist'}
               </button>
+              <a
+                className="whatsapp-share-btn"
+                href={whatsappHref}
+                target="_blank"
+                rel="noreferrer"
+                style={{ textDecoration: 'none' }}
+              >
+                <span className="wa-icon">📲</span>
+                <span>Share on WhatsApp</span>
+              </a>
               <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
 

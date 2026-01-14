@@ -367,6 +367,34 @@
   flex-wrap: wrap;
 }
 
+.whatsapp-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #25d366, #1ebe5d);
+  color: white;
+  border-radius: 6px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.whatsapp-share-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(37, 211, 102, 0.45);
+}
+
+.whatsapp-share-btn:active {
+  transform: translateY(0);
+}
+
+.wa-icon {
+  font-size: 16px;
+}
+
 /* Inner ripple — perfect circle from true center outward */
 @keyframes rippleInner {
   0% { width: 0; height: 0; opacity: 0.6; }

@@ -82,6 +82,11 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const comparePrice = parseFloat(product.compare_at_price) || 0;
   const onSale = comparePrice && comparePrice > price;
   const discount = onSale ? Math.round((1 - price / comparePrice) * 100) : 0;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
+  const shareId = product?.id || product?.sku || '';
+  const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
+  const shareText = `Check this out on SnuggleUp: ${product.name || product.product_name || 'this product'} – R${price.toFixed(2)} ${shareLink}`;
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   return (
     <div className="local-product-detail-page">
@@ -184,6 +189,14 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                     <span>Out of stock</span>
                   </>
                 )}
+              </div>
+
+              {/* Share */}
+              <div className="share-row">
+                <a className="whatsapp-share-btn" href={whatsappHref} target="_blank" rel="noreferrer">
+                  <span className="wa-icon">📲</span>
+                  <span>Share on WhatsApp</span>
+                </a>
               </div>
 
               {/* Quantity Selector */}

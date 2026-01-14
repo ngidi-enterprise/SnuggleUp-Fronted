@@ -276,6 +276,40 @@
   font-size: 16px;
 }
 
+/* Share Actions */
+.share-row {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.whatsapp-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #25d366, #1ebe5d);
+  color: white;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.whatsapp-share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.45);
+}
+
+.whatsapp-share-btn:active {
+  transform: translateY(0);
+}
+
+.wa-icon {
+  font-size: 16px;
+}
+
 /* Quantity Selector */
 .quantity-selector {
   display: flex;
