@@ -335,6 +335,44 @@ function App() {
     };
   }, []);
 
+  // Handle ?product=<pid> query parameter for WhatsApp sharing and direct product links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('product');
+    
+    if (productId) {
+      console.log('📱 Product ID found in URL:', productId);
+      
+      // Determine if it's a local product (numeric ID < 1000) or CJ product (long string)
+      const isNumeric = /^\d+$/.test(productId);
+      const numericId = isNumeric ? parseInt(productId, 10) : null;
+      
+      if (numericId && numericId < 1000) {
+        // Local product - fetch and display it
+        console.log('🏠 Loading local product:', numericId);
+        setCatalogView('local');
+        
+        // Fetch the local product details
+        fetchApi(`/api/local-products/${numericId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.product) {
+              setSelectedLocalProductId(data.product);
+            }
+          })
+          .catch(err => console.error('Failed to load local product:', err));
+      } else {
+        // CJ product - use the PID directly
+        console.log('🌍 Loading CJ product:', productId);
+        setCatalogView('cj');
+        setSelectedCjPid(productId);
+      }
+      
+      // Clean up the URL to remove the query parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
