@@ -355,11 +355,12 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
   }
 
   return (
-    <div className="product-detail-page">
-      <div style={{position: 'sticky', top: 0, zIndex: 99, marginBottom: '12px'}}>
+    <div className="local-product-detail-page">
+      <div className="product-detail-header">
         <button className="back-button" onClick={onClose}>← Back to Products</button>
       </div>
-      <div className="product-detail-grid">
+
+      <div className="product-detail-container">
         <div className="product-gallery">
           <div className="main-image">
             {selectedImage ? (
@@ -586,6 +587,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
               </div>
             )}
         </div>
+      </div>
       </div>
 
       {/* Customer Reviews Section */}
