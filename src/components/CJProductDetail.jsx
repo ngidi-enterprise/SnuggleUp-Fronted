@@ -296,7 +296,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
   const isOutOfStock = stockQuantity === 0;
   const isLowStock = stockQuantity > 0 && stockQuantity < 10;
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
-  const shareId = activeProduct?.cj_pid || activeProduct?.id || '';
+  // Use database ID for sharing (numeric), not cj_pid (string)
+  const shareId = product?.id || activeProduct?.id || '';
   const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
   const shareText = `Check this out on SnuggleUp: ${product?.product_name || 'this product'} – R${(Number(price) || 0).toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;

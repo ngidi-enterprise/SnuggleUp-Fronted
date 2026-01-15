@@ -84,7 +84,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const discount = onSale ? Math.round((1 - price / comparePrice) * 100) : 0;
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
   const shareId = product?.id || product?.sku || '';
-  const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
+  const shareLink = shareId ? `${baseUrl}?product=${shareId}&type=local` : baseUrl;
   const shareText = `Check this out on SnuggleUp: ${product.name || product.product_name || 'this product'} – R${price.toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
