@@ -193,9 +193,8 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
 
               {/* Share */}
               <div className="share-row">
-                <a className="whatsapp-share-btn" href={whatsappHref} target="_blank" rel="noreferrer">
-                  <span className="wa-icon">📲</span>
-                  <span>Share on WhatsApp</span>
+                <a className="whatsapp-share-btn" href={whatsappHref} target="_blank" rel="noreferrer" title="Share on WhatsApp">
+                  <span className="wa-icon">💬</span>
                 </a>
               </div>
 

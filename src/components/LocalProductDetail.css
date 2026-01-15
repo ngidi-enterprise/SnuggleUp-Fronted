@@ -286,12 +286,13 @@
 .whatsapp-share-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   background: linear-gradient(135deg, #25d366, #1ebe5d);
   color: white;
-  border-radius: 8px;
-  font-weight: 700;
+  border-radius: 50%;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -307,7 +308,7 @@
 }
 
 .wa-icon {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 /* Quantity Selector */

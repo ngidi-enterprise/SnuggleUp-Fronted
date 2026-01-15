@@ -562,10 +562,10 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                 href={whatsappHref}
                 target="_blank"
                 rel="noreferrer"
+                title="Share on WhatsApp"
                 style={{ textDecoration: 'none' }}
               >
-                <span className="wa-icon">📲</span>
-                <span>Share on WhatsApp</span>
+                <span className="wa-icon">💬</span>
               </a>
               <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
