@@ -339,36 +339,42 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('product');
+    const productType = params.get('type'); // 'local' or empty (CJ)
     
     if (productId) {
-      console.log('📱 Product ID found in URL:', productId);
+      console.log('📱 Product ID found in URL:', productId, 'Type:', productType || 'cj');
       
-      // Determine if it's a local product (numeric ID < 1000) or CJ product (long string)
-      const isNumeric = /^\d+$/.test(productId);
-      const numericId = isNumeric ? parseInt(productId, 10) : null;
+      const numericId = parseInt(productId, 10);
       
-      if (numericId && numericId < 1000) {
-        // Local product - fetch and display it
-        console.log('🏠 Loading local product:', numericId);
-        setCatalogView('local');
-        
-        // Fetch the local product details
-        fetchApi(`/api/local-products/${numericId}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.product) {
-              setSelectedLocalProductId(data.product);
-            }
-          })
-          .catch(err => console.error('Failed to load local product:', err));
-      } else {
-        // CJ product - use the PID directly
-        console.log('🌍 Loading CJ product:', productId);
-        setCatalogView('cj');
-        setSelectedCjPid(productId);
+      if (!isNaN(numericId)) {
+        if (productType === 'local') {
+          // Local product from local_products table
+          console.log('🏠 Loading local product:', numericId);
+          setCatalogView('local');
+          
+          // Fetch the local product details
+          fetchApi(`/api/local-products/${numericId}`)
+            .then(res => {
+              if (!res.ok) throw new Error('Product not found');
+              return res.json();
+            })
+            .then(data => {
+              console.log('✅ Local product loaded:', data);
+              setSelectedLocalProductId(data);
+            })
+            .catch(err => {
+              console.error('❌ Failed to load local product:', err);
+              alert('Product not found or no longer available');
+            });
+        } else {
+          // CJ product from curated_products table (default)
+          console.log('🌍 Loading CJ product:', numericId);
+          setCatalogView('cj');
+          setSelectedCjPid(numericId);
+        }
       }
       
-      // Clean up the URL to remove the query parameter
+      // Clean up the URL to remove the query parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
