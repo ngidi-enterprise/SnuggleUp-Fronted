@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
-const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.svg';
+const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
 import CheckoutSuccess from './CheckoutSuccess';
 import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
@@ -12,10 +12,17 @@ import ResetPassword from './components/ResetPassword';
 import ProductDetail from './components/ProductDetail';
 import CJCatalog from './components/CJCatalog';
 import CJProductDetail from './components/CJProductDetail';
+import LocalProductsCatalog from './components/LocalProductsCatalog';
+import LocalProductDetail from './components/LocalProductDetail';
+import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
 import PromoPopup from './components/PromoPopup';
 import TrustBadges from './components/TrustBadges';
 import ShippingForm from './components/ShippingForm';
+import MaintenanceMode from './components/MaintenanceMode';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import DataDeletion from './pages/DataDeletion';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -48,6 +55,21 @@ function App() {
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [shippingFormData, setShippingFormData] = useState(null);
+  const [backendDown, setBackendDown] = useState(false);
+  const [backendCheckFailed, setBackendCheckFailed] = useState(0);
+  const [lastFailureTime, setLastFailureTime] = useState(0);
+  
+  // Local Products State
+  const [selectedLocalProductId, setSelectedLocalProductId] = useState(null);
+  const [showLocalProductUpload, setShowLocalProductUpload] = useState(false);
+  const [localProductsRefresh, setLocalProductsRefresh] = useState(0);
+  const [catalogView, setCatalogView] = useState('cj'); // 'cj' or 'local'
+  
+  // Wishlist state
+  const [wishlistItems, setWishlistItems] = useState(() => {
+    const saved = localStorage.getItem('wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   const { user, token, isAuthenticated } = useAuth();
 
@@ -73,6 +95,11 @@ function App() {
         const res = await fetch(`${base}${path}`, options);
         if (res.ok) {
           if (apiBaseInUse !== base) setApiBaseInUse(base);
+          // Backend is responding - reset failure counter
+          if (backendCheckFailed > 0) {
+            setBackendCheckFailed(0);
+            setBackendDown(false);
+          }
           return res;
         }
         // gather error and try next base
@@ -86,6 +113,24 @@ function App() {
         lastErr = e;
       }
     }
+    // All bases failed - increment failure counter
+    setBackendCheckFailed(prev => {
+      const newCount = prev + 1;
+      const now = Date.now();
+      
+      // Only show maintenance mode after 5+ consecutive failures
+      // AND at least 10 seconds have passed since first failure
+      if (newCount >= 5 && (now - lastFailureTime) >= 10000) {
+        setBackendDown(true);
+      }
+      
+      // Track first failure time
+      if (newCount === 1) {
+        setLastFailureTime(now);
+      }
+      
+      return newCount;
+    });
     throw lastErr || new Error('All API bases failed');
   };
 
@@ -263,6 +308,15 @@ function App() {
         setAuthView('reset-password');
         setShowAuthModal(true);
         trackPageView('/reset-password', 'Reset Password');
+      } else if (route.startsWith('/privacy')) {
+        setCurrentPage('privacy');
+        trackPageView('/privacy', 'Privacy Policy');
+      } else if (route.startsWith('/terms')) {
+        setCurrentPage('terms');
+        trackPageView('/terms', 'Terms of Service');
+      } else if (route.startsWith('/data-deletion')) {
+        setCurrentPage('data-deletion');
+        trackPageView('/data-deletion', 'Data Deletion');
       } else if (route.startsWith('/cj')) {
         // Treat /cj as home — CJ catalog is the home page now
         setCurrentPage('home');
@@ -279,6 +333,21 @@ function App() {
       window.removeEventListener('hashchange', handleRoute);
       window.removeEventListener('popstate', handleRoute);
     };
+  }, []);
+
+  // Handle ?product=<pid> query parameter for WhatsApp sharing and direct product links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('product');
+    
+    if (productId) {
+      console.log('📱 Product ID found in URL:', productId);
+      // Switch to CJ catalog view and open the product
+      setCatalogView('cj');
+      setSelectedCjPid(productId);
+      // Clean up the URL to remove the query parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   // Check if user is admin
@@ -421,13 +490,94 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Safe route-based early returns after hooks have been declared
-  if (currentPage === 'success') {
-    return <CheckoutSuccess />;
-  }
-  if (currentPage === 'cancel') {
-    return <CheckoutCancel />;
-  }
+  // Fetch real-time shipping quotes from backend (called when cart opens or changes)
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      if (!showCart || cartItems.length === 0) return; // only fetch when cart visible
+      setShippingLoading(true);
+      setShippingError('');
+      try {
+        // DEBUG: Log cart items to see what data we have
+        console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
+        console.log('🛒 Cart items summary:', cartItems.map(ci => ({
+          id: ci.id,
+          name: ci.name?.substring(0, 30),
+          cj_vid: ci.cj_vid,
+          cj_pid: ci.cj_pid,
+          has_cj_vid: !!ci.cj_vid,
+          price: ci.price,
+          quantity: ci.quantity
+        })));
+
+        // Only include items that have a CJ variant id; older cart entries may lack it
+        const itemsWithVid = cartItems
+          .filter(ci => !!ci.cj_vid)
+          .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
+
+        if (itemsWithVid.length === 0) {
+          console.error('❌ NO ITEMS WITH cj_vid!');
+          console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
+          console.log('Full cart data:', cartItems);
+          console.log('This means products were added to cart before being linked to supplier.');
+          console.log('📝 SOLUTION: Clear cart and re-add products from the store.');
+          setShippingOptions([]);
+          setInsuranceData(null);
+          setSelectedShipping(null);
+          setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
+          setShippingLoading(false);
+          return;
+        }
+
+        console.log('✅ Requesting shipping quotes for', itemsWithVid.length, 'items');
+        console.log('📦 Items with VID:', itemsWithVid);
+
+        const body = {
+          items: itemsWithVid,
+          shippingCountry,
+          orderValue: getSubtotal()
+        };
+        
+        console.log('📤 Shipping API request:', body);
+        
+        const res = await fetchApi(`/api/shipping/quote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('❌ Shipping API error:', err);
+          throw new Error(err.error || 'Quote request failed');
+        }
+        const data = await res.json();
+        console.log('📥 Shipping API response:', data);
+        
+        const opts = data.quotes || [];
+        console.log('✅ Received', opts.length, 'shipping quotes');
+        
+        // Add delivery date ranges to quotes
+        const quotesWithDates = opts.map(q => ({
+          ...q,
+          deliveryDates: getDeliveryDateRange(q.deliveryDay)
+        }));
+        
+        setShippingOptions(quotesWithDates);
+        setInsuranceData(data.insurance || null);
+        
+        // Auto-select cheapest option if none chosen yet
+        if (!selectedShipping && quotesWithDates.length > 0) {
+          const cheapest = [...quotesWithDates].sort((a,b) => a.priceZAR - b.priceZAR)[0];
+          setSelectedShipping(cheapest);
+        }
+      } catch (e) {
+        setShippingError(e.message);
+      } finally {
+        setShippingLoading(false);
+      }
+    };
+    fetchQuotes();
+  }, [showCart, cartItems, shippingCountry]);
+
   // Home now shows CJ catalog (handled after helper functions are defined)
 
   const addToCart = (product) => {
@@ -478,6 +628,30 @@ function App() {
       setCartCount(cartCount - (item ? item.quantity : 0));
       if (item) trackRemoveFromCart(item, item.quantity);
     }
+  };
+
+  // Wishlist functions
+  const addToWishlist = (product) => {
+    const alreadyExists = wishlistItems.some(item => item.id === product.id);
+    if (alreadyExists) {
+      alert('This item is already in your wishlist!');
+      return;
+    }
+    
+    const newWishlist = [...wishlistItems, product];
+    setWishlistItems(newWishlist);
+    localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+    alert('Added to wishlist! ❤️');
+  };
+
+  const removeFromWishlist = (productId) => {
+    const newWishlist = wishlistItems.filter(item => item.id !== productId);
+    setWishlistItems(newWishlist);
+    localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+  };
+
+  const isInWishlist = (productId) => {
+    return wishlistItems.some(item => item.id === productId);
   };
 
   // Calculate delivery date range from delivery days string (e.g., "15-25" or "5-7")
@@ -542,26 +716,52 @@ function App() {
 
   const getTotalPrice = () => {
     const total = getSubtotal() + getShippingCost() + getInsuranceCost() - getDiscount();
-    return total > 0 ? total : 0;
+    // Round to 2 decimal places to avoid floating-point precision issues
+    const rounded = Math.round(total * 100) / 100;
+    return rounded > 0 ? rounded : 0;
   };
 
-  const applyVoucher = () => {
-    // Define available vouchers (in production, this would come from backend)
-    const vouchers = {
-      'SAVE10': { code: 'SAVE10', value: 10, description: 'R10 off' },
-      'SAVE50': { code: 'SAVE50', value: 50, description: 'R50 off' },
-      'SAVE100': { code: 'SAVE100', value: 100, description: 'R100 off' },
-      'WELCOME20': { code: 'WELCOME20', value: 20, description: 'R20 off for new customers' }
-    };
+  const applyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError('Please enter a discount code');
+      return;
+    }
 
-    const voucher = vouchers[voucherCode.toUpperCase()];
-    
-    if (voucher) {
-      setAppliedVoucher(voucher);
+    try {
       setVoucherError('');
+      const subtotal = getSubtotal();
+      const orderAmount = subtotal + getShippingCost() + getInsuranceCost();
+
+      const response = await fetch(`${BACKEND_URL}/api/discounts/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: voucherCode.trim(),
+          orderAmount: orderAmount
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.applied) {
+        setVoucherError(data.error || 'Invalid discount code');
+        setAppliedVoucher(null);
+        return;
+      }
+
+      // Successfully applied discount
+      setAppliedVoucher({
+        code: data.code,
+        value: data.discountValue,
+        description: data.discountPercentage 
+          ? `${data.discountPercentage}% off`
+          : `R${data.discountAmount} off`
+      });
       setVoucherCode('');
-    } else {
-      setVoucherError('Invalid voucher code');
+      setVoucherError('');
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      setVoucherError('Failed to apply discount code. Please try again.');
       setAppliedVoucher(null);
     }
   };
@@ -619,46 +819,18 @@ function App() {
       return;
     }
 
-    // Validate stock availability for all cart items
-    try {
-      const stockCheckPromises = cartItems.map(async (item) => {
-        // Extract product ID from cart item ID (format: "curated-123")
-        const productId = item.id.toString().replace('curated-', '');
-        
-        try {
-          const response = await fetchApi(`/api/products/${productId}`);
-          if (!response.ok) return { item, available: false, reason: 'Product not found' };
-          
-          const { product } = await response.json();
-          const stockQuantity = product.stock_quantity || 0;
-          
-          if (stockQuantity === 0) {
-            return { item, available: false, reason: 'Sold Out' };
-          }
-          
-          if (stockQuantity < item.quantity) {
-            return { item, available: false, reason: `Only ${stockQuantity} available, you have ${item.quantity} in cart` };
-          }
-          
-          return { item, available: true };
-        } catch (err) {
-          return { item, available: false, reason: 'Unable to verify stock' };
-        }
-      });
+    // Check cart has items and no obvious stock issues (already validated when adding)
+    const hasOutOfStockItems = cartItems.some(item => {
+      const stockQty = typeof item.stock_quantity === 'number' ? item.stock_quantity : Number(item.stock_quantity || 0);
+      return stockQty === 0;
+    });
 
-      const stockResults = await Promise.all(stockCheckPromises);
-      const unavailableItems = stockResults.filter(r => !r.available);
-
-      if (unavailableItems.length > 0) {
-        const itemsList = unavailableItems.map(r => `• ${r.item.name}: ${r.reason}`).join('\n');
-        alert(`⚠️ Some items in your cart are no longer available:\n\n${itemsList}\n\nPlease update your cart and try again.`);
-        return;
-      }
-    } catch (error) {
-      console.error('Stock validation error:', error);
-      alert('Unable to verify product availability. Please try again.');
+    if (hasOutOfStockItems) {
+      alert('Your cart contains items that are no longer in stock. Please remove them before continuing.');
       return;
     }
+
+    console.log('✅ Checkout validation passed, proceeding to shipping form');
 
     // Track begin checkout event
     trackBeginCheckout(cartItems, getTotalPrice());
@@ -694,12 +866,12 @@ function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          amount: getTotalPrice(),
+          amount: Math.round(getTotalPrice() * 100) / 100,
           email: user.email,
           orderItems: cartItems,
-          subtotal: getSubtotal(),
-          shipping: getShippingCost(),
-          discount: getDiscount(),
+          subtotal: Math.round(getSubtotal() * 100) / 100,
+          shipping: Math.round(getShippingCost() * 100) / 100,
+          discount: Math.round(getDiscount() * 100) / 100,
           shippingMethod: selectedShipping?.logisticName || 'STANDARD',
           shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
           shippingCountry: shippingCountry,
@@ -745,383 +917,8 @@ function App() {
     }
   };
 
-  // Fetch real-time shipping quotes from backend (called when cart opens or changes)
-  useEffect(() => {
-    const fetchQuotes = async () => {
-      if (!showCart || cartItems.length === 0) return; // only fetch when cart visible
-      setShippingLoading(true);
-      setShippingError('');
-      try {
-        // DEBUG: Log cart items to see what data we have
-        console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
-        console.log('🛒 Cart items summary:', cartItems.map(ci => ({
-          id: ci.id,
-          name: ci.name?.substring(0, 30),
-          cj_vid: ci.cj_vid,
-          cj_pid: ci.cj_pid,
-          has_cj_vid: !!ci.cj_vid,
-          price: ci.price,
-          quantity: ci.quantity
-        })));
 
-        // Only include items that have a CJ variant id; older cart entries may lack it
-        const itemsWithVid = cartItems
-          .filter(ci => !!ci.cj_vid)
-          .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
-
-        if (itemsWithVid.length === 0) {
-          console.error('❌ NO ITEMS WITH cj_vid!');
-          console.log('Cart has', cartItems.length, 'items, but none have cj_vid field.');
-          console.log('Full cart data:', cartItems);
-          console.log('This means products were added to cart before being linked to CJ.');
-          console.log('📝 SOLUTION: Clear cart and re-add products from store.');
-          setShippingOptions([]);
-          setInsuranceData(null);
-          setSelectedShipping(null);
-          setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
-          setShippingLoading(false);
-          return;
-        }
-
-        console.log('✅ Requesting shipping quotes for', itemsWithVid.length, 'items');
-        console.log('📦 Items with VID:', itemsWithVid);
-
-        const body = {
-          items: itemsWithVid,
-          shippingCountry,
-          orderValue: getSubtotal()
-        };
-        
-        console.log('📤 Shipping API request:', body);
-        
-        const res = await fetchApi(`/api/shipping/quote`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.error('❌ Shipping API error:', err);
-          throw new Error(err.error || 'Quote request failed');
-        }
-        const data = await res.json();
-        console.log('📥 Shipping API response:', data);
-        
-        const opts = data.quotes || [];
-        console.log('✅ Received', opts.length, 'shipping quotes');
-        
-        // Add delivery date ranges to quotes
-        const quotesWithDates = opts.map(q => ({
-          ...q,
-          deliveryDates: getDeliveryDateRange(q.deliveryDay)
-        }));
-        
-        setShippingOptions(quotesWithDates);
-        setInsuranceData(data.insurance || null);
-        
-        // Auto-select cheapest option if none chosen yet
-        if (!selectedShipping && quotesWithDates.length > 0) {
-          const cheapest = [...quotesWithDates].sort((a,b) => a.priceZAR - b.priceZAR)[0];
-          setSelectedShipping(cheapest);
-        }
-      } catch (e) {
-        setShippingError(e.message);
-      } finally {
-        setShippingLoading(false);
-      }
-    };
-    fetchQuotes();
-  }, [showCart, cartItems, shippingCountry]);
-
-  // If CJ route, render CJ catalog page (now that helpers are defined)
-  if (currentPage === 'cj') {
-    // Local helper to add items to cart while in CJ view
-    const addToCartCj = (product) => {
-      // Check if product is sold out (stock_quantity = 0)
-      const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
-      
-      if (stockQty === 0) {
-        alert('Sorry, this item is currently sold out and cannot be added to your cart.');
-        return;
-      }
-      
-      setCartItems((prev) => {
-        const existing = prev.find((i) => i.id === product.id);
-        
-        // Check if adding would exceed available stock
-        if (existing && existing.quantity >= stockQty) {
-          alert(`Only ${stockQty} available in stock.`);
-          return prev; // Return unchanged cart
-        }
-        
-        if (existing) {
-          return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-        }
-        return [...prev, { ...product, quantity: 1 }];
-      });
-      setCartCount((c) => c + 1);
-    };
-
-    // Fixed brand logo path (no env override)
-    const brandLogoSrc = '/images/snuggleup-logo-new.png';
-
-    return (
-      <div className="app">
-        {/* Header (light) */}
-        <header className="header">
-          <div className="logo-section">
-            <div 
-              className="logo"
-              onClick={() => { 
-                window.location.href = 'https://snuggleup.co.za';
-              }}
-              role="button"
-              tabIndex={0}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  window.location.href = 'https://snuggleup.co.za';
-                }
-              }}
-              aria-label="Go to SnuggleUp home page"
-            >
-              <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" onError={(e) => console.error('Logo failed to load:', e.target.src)} />
-            </div>
-            <div className="brand-info">
-              <h1>SnuggleUp</h1>
-              <p>Baby essentials for modern parents</p>
-            </div>
-          </div>
-          <div className="header-right">
-            <button className="login-btn" onClick={() => { window.location.hash = ''; }}>
-              Home
-            </button>
-            {!isAdmin && (
-              <button className="checkout-btn" onClick={() => setShowCart(true)}>
-                Checkout
-                <div className="cart-count">{cartCount}</div>
-              </button>
-            )}
-          </div>
-        </header>
-
-        {(() => {
-          console.log('🔍 Rendering CJCatalog on CJ route with isAdmin:', isAdmin, 'user:', user?.email);
-          return null;
-        })()}
-        
-        {!showCart && !selectedCjPid && (
-          <CJCatalog 
-            onBack={() => { window.location.hash = ''; }}
-            onOpenProduct={(pid) => setSelectedCjPid(pid)}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {!showCart && selectedCjPid && (
-          <CJProductDetail
-            pid={selectedCjPid}
-            onClose={() => setSelectedCjPid(null)}
-            onAddToCart={addToCartCj}
-          />
-        )}
-
-        {/* Shopping Cart Full Page */}
-        {showCart && (
-          <div className="cart-page">
-            <div className="cart-content">
-              <div className="cart-header">
-                <h3>Shopping Cart ({cartCount} items)</h3>
-                <button className="close-cart" onClick={() => setShowCart(false)}>← Back to Shop</button>
-              </div>
-              <div className="cart-items">
-                {cartItems.length === 0 ? (
-                  <p className="empty-cart">Your cart is empty</p>
-                ) : (
-                  cartItems.map(item => {
-                    const stockQty = item.stock_quantity || 0;
-                    const isOutOfStock = stockQty === 0;
-                    const isLowStock = stockQty > 0 && stockQty < item.quantity;
-                    
-                    return (
-                      <div key={item.id} className="cart-item">
-                        <img src={item.image} alt={item.name} className="cart-item-image" />
-                        <div className="cart-item-details">
-                          <h4>{item.name}</h4>
-                          <p>R{item.price} each</p>
-                          {isOutOfStock && (
-                            <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                              ⚠️ Out of stock
-                            </p>
-                          )}
-                          {isLowStock && (
-                            <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                              ⚠️ Only {stockQty} available
-                            </p>
-                          )}
-                          <div className="quantity-controls">
-                            <button onClick={() => removeFromCart(item.id)}>-</button>
-                            <span>{item.quantity}</span>
-                            <button onClick={() => addToCartCj(item)}>+</button>
-                          </div>
-                        </div>
-                        <div className="cart-item-total">
-                          R{item.price * item.quantity}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              {cartItems.length > 0 && (
-                <div className="cart-footer">
-                  <div className="cart-total">
-                    {/* Country Selector */}
-                    <div style={{marginBottom: '12px'}}>
-                      <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
-                        📍 Ship to:
-                      </label>
-                      <select
-                        value={shippingCountry}
-                        onChange={(e) => setShippingCountry(e.target.value)}
-                        style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
-                      >
-                        <option value="ZA">🇿🇦 South Africa</option>
-                        <option value="US">🇺🇸 United States</option>
-                        <option value="GB">🇬🇧 United Kingdom</option>
-                        <option value="AU">🇦🇺 Australia</option>
-                        <option value="CA">🇨🇦 Canada</option>
-                        <option value="DE">🇩🇪 Germany</option>
-                        <option value="FR">🇫🇷 France</option>
-                      </select>
-                    </div>
-
-                    {/* Real-time shipping options */}
-                    <div style={{marginBottom: '8px'}}>
-                      {shippingLoading ? (
-                        <p>Getting shipping options…</p>
-                      ) : shippingError ? (
-                        <div>
-                          <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
-                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                            Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
-                            {shippingError && ` Error: ${String(shippingError)}`}
-                          </p>
-                        </div>
-                      ) : shippingOptions.length === 0 ? (
-                        <div>
-                          <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
-                          <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                            Our shipping provider doesn’t have delivery methods for these products to your selected destination.
-                            We’ll use an estimated tiered rate based on your subtotal.
-                          </p>
-                        </div>
-                      ) : (
-                        shippingOptions.length > 0 && (
-                          <>
-                            <div style={{marginBottom:'8px'}}>
-                              <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
-                              <select
-                                value={selectedShipping?.logisticName || ''}
-                                onChange={(e) => {
-                                  const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                                  setSelectedShipping(opt || null);
-                                }}
-                                style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
-                              >
-                                {shippingOptions.map(o => (
-                                  <option key={o.logisticName} value={o.logisticName}>
-                                    {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
-                                  </option>
-                                ))}
-                              </select>
-                              {selectedShipping?.deliveryDates && (
-                                <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                  📅 Estimated delivery: {selectedShipping.deliveryDates.text}
-                                </p>
-                              )}
-                              {selectedShipping?.isFallback && (
-                                <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                  ℹ️ Estimated rate applied (no live quote available)
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Insurance Option */}
-                            {insuranceData && insuranceData.available && (
-                              <div style={{
-                                padding: '10px',
-                                background: '#f8f9fa',
-                                borderRadius: '6px',
-                                marginBottom: '8px',
-                                border: '1px solid #e0e0e0'
-                              }}>
-                                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                                  <input
-                                    type="checkbox"
-                                    checked={insuranceSelected}
-                                    onChange={(e) => setInsuranceSelected(e.target.checked)}
-                                    style={{width: '16px', height: '16px'}}
-                                  />
-                                  <span style={{fontSize: '0.9em', flex: 1}}>
-                                    🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
-                                  </span>
-                                </label>
-                                <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
-                                  Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        )
-                      )}
-                    </div>
-                    <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                    <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
-                    {insuranceSelected && insuranceData && (
-                      <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
-                    )}
-                    {appliedVoucher && (
-                      <p style={{marginBottom: '8px', color: '#28a745'}}>
-                        Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
-                        <button 
-                          onClick={removeVoucher}
-                          style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
-                        >
-                          ✕
-                        </button>
-                      </p>
-                    )}
-                    <strong>Total: R{getTotalPrice()}</strong>
-                  </div>
-                  {!appliedVoucher && (
-                    <div style={{marginTop: '12px', marginBottom: '12px'}}>
-                      <input type="text" placeholder="Enter voucher code" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} style={{padding: '8px', width: '60%', border: '1px solid #ccc', borderRadius: '4px'}} />
-                      <button onClick={applyVoucher} style={{padding: '8px 16px', marginLeft: '8px', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>Apply</button>
-                      {voucherError && (<p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>)}
-                    </div>
-                  )}
-                  <button 
-                    className="proceed-checkout" 
-                    onClick={handleCheckout}
-                    disabled={hasStockIssues}
-                    title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
-                    style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
-                  >
-                    Proceed to PayFast Checkout
-                  </button>
-                  {hasStockIssues && (
-                    <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
-                      Please remove or adjust items marked "Out of stock" before continuing.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+  // Note: '/cj' routes are normalized to 'home' in the router.
 
   return (
     <div className="app">
@@ -1131,18 +928,30 @@ function App() {
           <div 
             className="logo" 
             onClick={() => { 
-              window.location.href = 'https://snuggleup.co.za';
+              try {
+                setShowCart(false);
+                setSelectedCjPid(null);
+                setCjQuery('');
+              } catch {}
+              window.location.hash = '';
+              try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
             }}
             role="button"
             tabIndex={0}
             onKeyPress={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                window.location.href = 'https://snuggleup.co.za';
+                try {
+                  setShowCart(false);
+                  setSelectedCjPid(null);
+                  setCjQuery('');
+                } catch {}
+                window.location.hash = '';
+                try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
               }
             }}
             aria-label="Go to SnuggleUp home page"
           >
-            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ width: '150px', height: 'auto', display: 'block' }} loading="eager" />
+            <img src={BRAND_LOGO_SRC} alt="SnuggleUp Baby Store" style={{ height: 'auto', display: 'block' }} loading="eager" />
           </div>
           <div className="brand-info">
             <h1>SnuggleUp</h1>
@@ -1150,400 +959,614 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          {isAuthenticated ? (
-            <button 
-              className="account-btn" 
-              onClick={() => setShowUserAccount(true)}
-              title="My Account"
-            >
-              👤 {user?.name}
-            </button>
-          ) : (
-            <button 
-              className="login-btn" 
+          {/* Login/Account Button */}
+          {!isAuthenticated ? (
+            <button
+              className="login-btn"
               onClick={() => { setAuthView('login'); setShowAuthModal(true); }}
+              title="Login or create an account"
             >
               Login
             </button>
+          ) : (
+            <button
+              className="account-btn"
+              onClick={() => setShowUserAccount(true)}
+              title="Your account"
+            >
+              {user?.email ? user.email.split('@')[0] : 'Account'}
+            </button>
           )}
           {!isAdmin && (
-            <button className="checkout-btn" onClick={toggleCart}>
-              Checkout
-              <div className="cart-count">{cartCount}</div>
-            </button>
+            <>
+              <button
+                className="wishlist-btn"
+                onClick={() => setCurrentPage('wishlist')}
+                aria-label={`View wishlist (${wishlistItems.length} items)`}
+                title="View wishlist"
+              >
+                <svg
+                  className="wishlist-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  />
+                </svg>
+                {wishlistItems.length > 0 && (
+                  <span className="wishlist-count">{wishlistItems.length}</span>
+                )}
+              </button>
+              <button
+                className="checkout-btn"
+                onClick={toggleCart}
+                aria-label={`View cart (${cartCount} items)`}
+                title="View cart"
+              >
+                <svg
+                  className="cart-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.99 5H6.21L5.27 3H2v2h2l3.6 7.59-1.35 2.44C5.52 15.37 6.2 16 7 16h12v-2H7.42l.74-1.33z"
+                  />
+                </svg>
+                <span className="cart-count">{cartCount}</span>
+              </button>
+            </>
           )}
         </div>
       </header>
 
-      {/* Admin Dashboard (overlays store when active) */}
-      {(() => {
-        console.log('📊 showAdminDashboard state:', showAdminDashboard, 'isAdmin:', isAdmin);
-        return null;
-      })()}
-      {showAdminDashboard && (
-        <AdminDashboard 
-          onClose={() => setShowAdminDashboard(false)} 
-          onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
-        />
-      )}
-
-      {/* Show store content ONLY when admin dashboard is showing store preview OR admin is completely closed */}
-      {!showCart && (!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
-        <div style={{
-          marginLeft: showAdminDashboard && isStorePreviewActive ? '260px' : '0',
-          minHeight: 'calc(100vh - 88px)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* Hero Section removed as CJ Catalog is now the homepage */}
-
-          {/* CJ Catalog as main store */}
-          <div id="cj-anchor" style={{ flex: '1 0 auto' }}>
-            {(() => {
-              console.log('🔍 Rendering CJCatalog on main route with isAdmin:', isAdmin, 'user:', user?.email);
-              return null;
-            })()}
-            
-            {!selectedCjPid && (
-              <CJCatalog 
-                query={cjQuery}
-                onQueryChange={setCjQuery}
-                onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                onOpenProduct={(pid) => setSelectedCjPid(pid)}
-                isAdmin={isAdmin}
-              />
-            )}
-
-            {selectedCjPid && (
-              <CJProductDetail
-                pid={selectedCjPid}
-                onClose={() => setSelectedCjPid(null)}
-                onAddToCart={addToCart}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Shopping Cart Full Page */}
-      {showCart && (
-        <div className="cart-page">
-          <div className="cart-content">
-            <div className="cart-header">
-              <h3>Shopping Cart ({cartCount} items)</h3>
-              <button className="close-cart" onClick={toggleCart}>← Back to Shop</button>
+      {currentPage === 'success' ? (
+        <CheckoutSuccess />
+      ) : currentPage === 'cancel' ? (
+        <CheckoutCancel />
+      ) : currentPage === 'wishlist' ? (
+        <div className="wishlist-page">
+          <div className="wishlist-content">
+            <div className="wishlist-header">
+              <h2>My Wishlist ❤️</h2>
+              <button className="back-to-shop" onClick={() => setCurrentPage('home')}>
+                ← Back to Shop
+              </button>
             </div>
-            <div className="cart-items">
-              {cartItems.length === 0 ? (
-                <p className="empty-cart">Your cart is empty</p>
-              ) : (
-                cartItems.map(item => {
-                  const stockQty = item.stock_quantity || 0;
-                  const isOutOfStock = stockQty === 0;
-                  const isLowStock = stockQty > 0 && stockQty < item.quantity;
-                  
-                  return (
-                    <div key={item.id} className="cart-item">
-                      <img src={item.image} alt={item.name} className="cart-item-image" />
-                      <div className="cart-item-details">
-                        <h4>{item.name}</h4>
-                        <p>R{item.price} each</p>
-                        {isOutOfStock && (
-                          <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                            ⚠️ Out of stock
-                          </p>
-                        )}
-                        {isLowStock && (
-                          <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
-                            ⚠️ Only {stockQty} available
-                          </p>
-                        )}
-                        <div className="quantity-controls">
-                          <button onClick={() => removeFromCart(item.id)}>-</button>
-                          <span>{item.quantity}</span>
-                          <button onClick={() => addToCart(item)}>+</button>
-                        </div>
-                      </div>
-                      <div className="cart-item-total">
-                        R{item.price * item.quantity}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            {cartItems.length > 0 && (
-              <div className="cart-footer">
-                <div className="cart-total">
-                  {/* Country Selector */}
-                  <div style={{marginBottom: '12px'}}>
-                    <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
-                      📍 Ship to:
-                    </label>
-                    <select
-                      value={shippingCountry}
-                      onChange={(e) => setShippingCountry(e.target.value)}
-                      style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
-                    >
-                      <option value="ZA">🇿🇦 South Africa</option>
-                      <option value="US">🇺🇸 United States</option>
-                      <option value="GB">🇬🇧 United Kingdom</option>
-                      <option value="AU">🇦🇺 Australia</option>
-                      <option value="CA">🇨🇦 Canada</option>
-                      <option value="DE">🇩🇪 Germany</option>
-                      <option value="FR">🇫🇷 France</option>
-                    </select>
-                  </div>
-
-                  {/* Real-time shipping options */}
-                  <div style={{marginBottom: '8px'}}>
-                    {shippingLoading ? (
-                      <p>Getting shipping options…</p>
-                    ) : shippingError ? (
-                      <div>
-                        <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
-                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                          Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
-                          {shippingError && ` Error: ${String(shippingError)}`}
-                        </p>
-                      </div>
-                    ) : shippingOptions.length === 0 ? (
-                      <div>
-                        <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
-                        <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                          Our shipping provider doesn’t have delivery methods for these products to your selected destination.
-                          We’ll use an estimated tiered rate based on your subtotal.
-                        </p>
-                      </div>
-                    ) : (
-                      shippingOptions.length > 0 && (
-                        <>
-                          <div style={{marginBottom:'8px'}}>
-                            <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
-                            <select
-                              value={selectedShipping?.logisticName || ''}
-                              onChange={(e) => {
-                                const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                                setSelectedShipping(opt || null);
-                              }}
-                              style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
-                            >
-                              {shippingOptions.map(o => (
-                                <option key={o.logisticName} value={o.logisticName}>
-                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                            {selectedShipping?.deliveryDates && (
-                              <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                📅 Estimated delivery: {selectedShipping.deliveryDates.text}
-                              </p>
-                            )}
-                            {selectedShipping?.isFallback && (
-                              <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                ℹ️ Estimated rate applied (no live quote available)
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Insurance Option */}
-                          {insuranceData && insuranceData.available && (
-                            <div style={{
-                              padding: '10px',
-                              background: '#f8f9fa',
-                              borderRadius: '6px',
-                              marginBottom: '8px',
-                              border: '1px solid #e0e0e0'
-                            }}>
-                              <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                                <input
-                                  type="checkbox"
-                                  checked={insuranceSelected}
-                                  onChange={(e) => setInsuranceSelected(e.target.checked)}
-                                  style={{width: '16px', height: '16px'}}
-                                />
-                                <span style={{fontSize: '0.9em', flex: 1}}>
-                                  🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
-                                </span>
-                              </label>
-                              <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
-                                Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
-                              </p>
-                            </div>
-                          )}
-                        </>
-                      )
-                    )}
-                  </div>
-                  <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                  <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
-                  {insuranceSelected && insuranceData && (
-                    <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
-                  )}
-                  {appliedVoucher && (
-                    <p style={{marginBottom: '8px', color: '#28a745'}}>
-                      Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
-                      <button 
-                        onClick={removeVoucher}
-                        style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
-                      >
-                        ✕
-                      </button>
-                    </p>
-                  )}
-                  <strong>Total: R{getTotalPrice()}</strong>
-                </div>
-                
-                {!appliedVoucher && (
-                  <div style={{marginTop: '12px', marginBottom: '12px'}}>
-                    <input
-                      type="text"
-                      placeholder="Enter voucher code"
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value)}
-                      style={{padding: '8px', width: '60%', border: '1px solid #ccc', borderRadius: '4px'}}
-                    />
-                    <button
-                      onClick={applyVoucher}
-                      style={{padding: '8px 16px', marginLeft: '8px', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
-                    >
-                      Apply
-                    </button>
-                    {voucherError && (
-                      <p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>
-                    )}
-                  </div>
-                )}
-                
-                <button 
-                  className="proceed-checkout" 
-                  onClick={handleCheckout}
-                  disabled={hasStockIssues}
-                  title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
-                  style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
-                >
-                  Proceed to PayFast Checkout
+            {wishlistItems.length === 0 ? (
+              <div className="empty-wishlist">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64" fill="#ccc">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                <p>Your wishlist is empty</p>
+                <button className="continue-shopping" onClick={() => setCurrentPage('home')}>
+                  Start Shopping
                 </button>
-                {hasStockIssues && (
-                  <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
-                    Please remove or adjust items marked "Out of stock" before continuing.
-                  </p>
-                )}
+              </div>
+            ) : (
+              <div className="wishlist-grid">
+                {wishlistItems.map(item => (
+                  <div key={item.id} className="wishlist-item">
+                    <button 
+                      className="remove-from-wishlist"
+                      onClick={() => removeFromWishlist(item.id)}
+                      title="Remove from wishlist"
+                    >
+                      ×
+                    </button>
+                    <div 
+                      className="wishlist-item-image"
+                      onClick={() => {
+                        setSelectedCjPid(item.pid || item.id);
+                        setCurrentPage('home');
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <img src={item.image} alt={item.name} />
+                    </div>
+                    <div className="wishlist-item-details">
+                      <h3 
+                        onClick={() => {
+                          setSelectedCjPid(item.pid || item.id);
+                          setCurrentPage('home');
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {item.name}
+                      </h3>
+                      <p className="wishlist-item-price">R {item.price.toFixed(2)}</p>
+                      <button 
+                        className="add-to-cart-from-wishlist"
+                        onClick={() => {
+                          addToCart(item);
+                          removeFromWishlist(item.id);
+                        }}
+                        disabled={item.stock_quantity === 0}
+                      >
+                        {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
-      )}
-
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div
-          className="auth-overlay"
-          onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 'min(560px, 92vw)',
-              maxHeight: '90vh',
-              overflowY: 'auto'
-            }}
-          >
-            {authView === 'login' ? (
-              <Login 
-                onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                onSwitchToRegister={() => setAuthView('register')}
-              />
-            ) : authView === 'register' ? (
-              <Register 
-                onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                onSwitchToLogin={() => setAuthView('login')}
-              />
-            ) : authView === 'forgot-password' ? (
-              <ForgotPassword 
-                onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                onBackToLogin={() => setAuthView('login')}
-              />
-            ) : authView === 'reset-password' ? (
-              <ResetPassword 
-                onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                onBackToLogin={() => setAuthView('login')}
-              />
-            ) : null}
-          </div>
+      ) : currentPage === 'privacy' ? (
+        <div style={{ marginTop: '20px' }}>
+          <PrivacyPolicy />
         </div>
-      )}
-
-      {/* User Account Modal */}
-      {showUserAccount && (
-        <UserAccount onClose={() => setShowUserAccount(false)} />
-      )}
-
-      {/* Promo Popup */}
-      {showPromoPopup && (
-        <PromoPopup 
-          onClose={handlePromoClose}
-          onSignup={handlePromoSignup}
-        />
-      )}
-
-      {/* Footer */}
-      <footer className="footer" style={{ flexShrink: 0 }}>
-        <TrustBadges />
-        <div style={{ marginTop: '1.5rem' }}>
-          <p>© 2025 SnuggleUp</p>
-          <p>Made with <span className="heart">❤️</span> for all parents.</p>
-          <p>Contact: support@snuggleup.co.za </p>
+      ) : currentPage === 'terms' ? (
+        <div style={{ marginTop: '20px' }}>
+          <TermsOfService />
         </div>
-        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
-          <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <img 
-              src="https://www.payfast.co.za/images/logo.png" 
-              alt="PayFast Secure Payments" 
-              style={{ height: '32px', opacity: 0.8 }}
+      ) : currentPage === 'data-deletion' ? (
+        <div style={{ marginTop: '20px' }}>
+          <DataDeletion />
+        </div>
+      ) : (
+        <>
+          {/* Admin Dashboard (overlays store when active) */}
+          {showAdminDashboard && (
+            <AdminDashboard 
+              onClose={() => setShowAdminDashboard(false)} 
+              onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
             />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '4px 12px', background: 'white', borderRadius: '4px' }}>
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
-                alt="Visa" 
-                style={{ height: '20px' }}
-              />
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
-                alt="Mastercard" 
-                style={{ height: '24px' }}
-              />
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
-                alt="American Express" 
-                style={{ height: '20px' }}
-              />
-            </div>
-          </div>
-        </div>
-      </footer>
+          )}
 
-      {/* Shipping Form Modal */}
-      {showShippingForm && (
-        <ShippingForm
-          onSubmit={handleShippingFormSubmit}
-          onCancel={() => {
-            setShowShippingForm(false);
-            setShowCart(true);
-          }}
-          // Prefill with user's name; previously entered values override
-          initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
-        />
+          {/* Show store content ONLY when admin dashboard is showing store preview OR admin is completely closed */}
+          {!showCart && (!showAdminDashboard || (showAdminDashboard && isStorePreviewActive)) && (
+            <div style={{
+              marginLeft: showAdminDashboard && isStorePreviewActive ? '260px' : '0',
+              minHeight: 'calc(100vh - 88px)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Catalog View Tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                padding: '15px 20px',
+                background: '#f9f9f9',
+                borderBottom: '1px solid #eee',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => { setCatalogView('cj'); setSelectedCjPid(null); }}
+                  style={{
+                    padding: '10px 20px',
+                    background: catalogView === 'cj' ? '#ff6b9d' : '#f0f0f0',
+                    color: catalogView === 'cj' ? 'white' : '#333',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🌍 Import Store
+                </button>
+                <button
+                  onClick={() => { setCatalogView('local'); setSelectedLocalProductId(null); }}
+                  style={{
+                    padding: '10px 20px',
+                    background: catalogView === 'local' ? '#ff6b9d' : '#f0f0f0',
+                    color: catalogView === 'local' ? 'white' : '#333',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ⚡ Local Warehouse (Fast Delivery)
+                </button>
+              </div>
+
+              {/* CJ Catalog as main store */}
+              {catalogView === 'cj' && (
+                <div id="cj-anchor" style={{ flex: '1 0 auto' }}>
+                  {!selectedCjPid && (
+                    <CJCatalog 
+                      query={cjQuery}
+                      onQueryChange={setCjQuery}
+                      onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      onOpenProduct={(pid) => setSelectedCjPid(pid)}
+                      isAdmin={isAdmin}
+                    />
+                  )}
+
+                  {selectedCjPid && (
+                    <CJProductDetail
+                      pid={selectedCjPid}
+                      onClose={() => setSelectedCjPid(null)}
+                      onAddToCart={addToCart}
+                      onAddToWishlist={addToWishlist}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Local Products Catalog */}
+              {catalogView === 'local' && (
+                <div id="local-anchor" style={{ flex: '1 0 auto' }}>
+                  {!selectedLocalProductId ? (
+                    <LocalProductsCatalog
+                      query={searchTerm}
+                      onOpenProduct={(product) => setSelectedLocalProductId(product)}
+                      isAdmin={isAdmin}
+                      onShowUpload={() => setShowLocalProductUpload(true)}
+                    />
+                  ) : (
+                    <LocalProductDetail
+                      product={selectedLocalProductId}
+                      onClose={() => setSelectedLocalProductId(null)}
+                      onAddToCart={addToCart}
+                      allProducts={[]}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Shopping Cart Full Page */}
+          {showCart && (
+            <div className="cart-page">
+              <div className="cart-content">
+                <div className="cart-header">
+                  <h3>Shopping Cart ({cartCount} items)</h3>
+                  <button className="close-cart" onClick={toggleCart}>← Back to Shop</button>
+                </div>
+                <div className="cart-items">
+                  {cartItems.length === 0 ? (
+                    <p className="empty-cart">Your cart is empty</p>
+                  ) : (
+                    cartItems.map(item => {
+                      const stockQty = item.stock_quantity || 0;
+                      const isOutOfStock = stockQty === 0;
+                      const isLowStock = stockQty > 0 && stockQty < item.quantity;
+                      
+                      return (
+                        <div key={item.id} className="cart-item">
+                          <img src={item.image} alt={item.name} className="cart-item-image" />
+                          <div className="cart-item-details">
+                            <h4>{item.name}</h4>
+                            <p>R{item.price} each</p>
+                            {isOutOfStock && (
+                              <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                                ⚠️ Sold out
+                              </p>
+                            )}
+                            {isLowStock && (
+                              <p style={{ color: '#f39c12', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
+                                ⚠️ Only {stockQty} available
+                              </p>
+                            )}
+                            <div className="quantity-controls">
+                              <button onClick={() => removeFromCart(item.id)}>-</button>
+                              <span>{item.quantity}</span>
+                              <button onClick={() => addToCart(item)}>+</button>
+                            </div>
+                          </div>
+                          <div className="cart-item-total">
+                            R{item.price * item.quantity}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {cartItems.length > 0 && (
+                  <div className="cart-footer">
+                    <div className="cart-total">
+                      {/* Country Selector */}
+                      <div style={{marginBottom: '12px'}}>
+                        <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
+                          📍 Ship to:
+                        </label>
+                        <select
+                          value={shippingCountry}
+                          onChange={(e) => setShippingCountry(e.target.value)}
+                          style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                        >
+                          <option value="ZA">🇿🇦 South Africa</option>
+                          <option value="US">🇺🇸 United States</option>
+                          <option value="GB">🇬🇧 United Kingdom</option>
+                          <option value="AU">🇦🇺 Australia</option>
+                          <option value="CA">🇨🇦 Canada</option>
+                          <option value="DE">🇩🇪 Germany</option>
+                          <option value="FR">🇫🇷 France</option>
+                        </select>
+                      </div>
+
+                      {/* Real-time shipping options */}
+                      <div style={{marginBottom: '8px'}}>
+                        {shippingLoading ? (
+                          <p>Getting shipping options…</p>
+                        ) : shippingError ? (
+                          <div>
+                            <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                              Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
+                              {shippingError && ` Error: ${String(shippingError)}`}
+                            </p>
+                          </div>
+                        ) : shippingOptions.length === 0 ? (
+                          <div>
+                            <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                              Our shipping provider doesn’t have delivery methods for these products to your selected destination.
+                              We’ll use an estimated tiered rate based on your subtotal.
+                            </p>
+                          </div>
+                        ) : (
+                          shippingOptions.length > 0 && (
+                            <>
+                              <div style={{marginBottom:'8px'}}>
+                                <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
+                                <select
+                                  value={selectedShipping?.logisticName || ''}
+                                  onChange={(e) => {
+                                    const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                    setSelectedShipping(opt || null);
+                                  }}
+                                  style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
+                                >
+                                  {shippingOptions.map(o => (
+                                    <option key={o.logisticName} value={o.logisticName}>
+                                      {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                {selectedShipping?.deliveryDates && (
+                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                    📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                                  </p>
+                                )}
+                                {selectedShipping?.isFallback && (
+                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                    ℹ️ Estimated rate applied (no live quote available)
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Insurance Option */}
+                              {insuranceData && insuranceData.available && (
+                                <div style={{
+                                  padding: '10px',
+                                  background: '#f8f9fa',
+                                  borderRadius: '6px',
+                                  marginBottom: '8px',
+                                  border: '1px solid #e0e0e0'
+                                }}>
+                                  <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                                    <input
+                                      type="checkbox"
+                                      checked={insuranceSelected}
+                                      onChange={(e) => setInsuranceSelected(e.target.checked)}
+                                      style={{width: '16px', height: '16px'}}
+                                    />
+                                    <span style={{fontSize: '0.9em', flex: 1}}>
+                                      🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
+                                    </span>
+                                  </label>
+                                  <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
+                                    Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          )
+                        )}
+                      </div>
+                      <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
+                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
+                      {insuranceSelected && insuranceData && (
+                        <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
+                      )}
+                      {appliedVoucher && (
+                        <p style={{marginBottom: '8px', color: '#28a745'}}>
+                          Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                          <button 
+                            onClick={removeVoucher}
+                            style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
+                          >
+                            ✕
+                          </button>
+                        </p>
+                      )}
+                      <strong>Total: R{getTotalPrice()}</strong>
+                    </div>
+                    
+                    {!appliedVoucher && (
+                      <div style={{marginTop: '12px', marginBottom: '12px'}}>
+                        <input
+                          type="text"
+                          placeholder="Enter voucher code"
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value)}
+                          style={{padding: '8px', width: '60%', border: '1px solid #ccc', borderRadius: '4px'}}
+                        />
+                        <button
+                          onClick={applyVoucher}
+                          style={{padding: '8px 16px', marginLeft: '8px', background: '#BEE7C1', color: '#126F71', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                        >
+                          Apply
+                        </button>
+                        {voucherError && (
+                          <p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <button 
+                      className="proceed-checkout" 
+                      onClick={handleCheckout}
+                      disabled={hasStockIssues}
+                      title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
+                      style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                    >
+                      Proceed to PayFast Checkout
+                    </button>
+                    {hasStockIssues && (
+                      <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
+                        Please remove or adjust items marked "Sold out" before continuing.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Auth Modal */}
+          {showAuthModal && (
+            <div
+              className="auth-overlay"
+              onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.75)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: 'min(560px, 92vw)',
+                  maxHeight: '90vh',
+                  overflowY: 'auto'
+                }}
+              >
+                {authView === 'login' ? (
+                  <Login 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onSwitchToRegister={() => setAuthView('register')}
+                  />
+                ) : authView === 'register' ? (
+                  <Register 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onSwitchToLogin={() => setAuthView('login')}
+                  />
+                ) : authView === 'forgot-password' ? (
+                  <ForgotPassword 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onBackToLogin={() => setAuthView('login')}
+                  />
+                ) : authView === 'reset-password' ? (
+                  <ResetPassword 
+                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
+                    onBackToLogin={() => setAuthView('login')}
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* User Account Modal */}
+          {showUserAccount && (
+            <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
+          )}
+
+          {/* Promo Popup */}
+          {showPromoPopup && (
+            <PromoPopup 
+              onClose={handlePromoClose}
+              onSignup={handlePromoSignup}
+            />
+          )}
+
+          {/* Footer */}
+          <footer className="footer" style={{ flexShrink: 0 }}>
+            <TrustBadges />
+            <div style={{ marginTop: '1.5rem' }}>
+              <p>© 2025 SnuggleUp</p>
+              <p>Made with <span className="heart">❤️</span> for all parents.</p>
+              <p>Contact: support@snuggleup.co.za </p>
+            </div>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
+              <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <img 
+                  src="https://www.payfast.co.za/images/logo.png" 
+                  alt="PayFast Secure Payments" 
+                  style={{ height: '32px', opacity: 0.8 }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '4px 12px', background: 'white', borderRadius: '4px' }}>
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
+                    alt="Visa" 
+                    style={{ height: '20px' }}
+                  />
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
+                    alt="Mastercard" 
+                    style={{ height: '24px' }}
+                  />
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
+                    alt="American Express" 
+                    style={{ height: '20px' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </footer>
+
+          {/* Shipping Form Modal */}
+          {showShippingForm && (
+            <ShippingForm
+              onSubmit={handleShippingFormSubmit}
+              onCancel={() => {
+                setShowShippingForm(false);
+                setShowCart(true);
+              }}
+              // Prefill with user's name; previously entered values override
+              initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
+            />
+          )}
+
+          {/* Local Product Upload Modal */}
+          {showLocalProductUpload && (
+            <LocalProductUpload
+              onClose={() => setShowLocalProductUpload(false)}
+              onProductAdded={(newProduct) => {
+                // Refresh local products by incrementing counter
+                setLocalProductsRefresh(prev => prev + 1);
+              }}
+              token={token}
+            />
+          )}
+
+          {/* Maintenance Mode Overlay */}
+          {backendDown && (
+            <MaintenanceMode 
+              onRetry={() => {
+                setBackendCheckFailed(0);
+                setBackendDown(false);
+                window.location.reload();
+              }}
+            />
+          )}
+        </>
       )}
     </div>
   );
