@@ -308,7 +308,11 @@
 }
 
 .wa-icon {
-  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Quantity Selector */
