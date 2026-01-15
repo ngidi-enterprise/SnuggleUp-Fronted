@@ -397,6 +397,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
 
 /* Inner ripple — perfect circle from true center outward */
 @keyframes rippleInner {
