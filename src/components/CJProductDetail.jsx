@@ -361,7 +361,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
       </div>
 
       <div className="product-detail-container">
-        <div className="product-gallery">
+        <div className="product-detail-body">
+          <div className="product-gallery">
           <div className="main-image">
             {selectedImage ? (
               <img src={selectedImage} alt={activeProduct?.product_name || 'Product'} loading="lazy" />
@@ -587,7 +588,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
               </div>
             )}
         </div>
-      </div>
+        </div>
       </div>
 
       {/* Customer Reviews Section */}
