@@ -69,6 +69,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
     { id: 'furniture', name: 'Nursery Furniture', icon: '🛏️' },
     { id: 'gear', name: 'Baby Gear', icon: '🎒' },
     { id: 'bath', name: 'Bath & Potty', icon: '🛁' },
+    { id: 'bathtime', name: 'Bathtime', icon: '🚿' },
     { id: 'outdoor', name: 'Outdoor & Travel', icon: '⛺' }
   ];
 

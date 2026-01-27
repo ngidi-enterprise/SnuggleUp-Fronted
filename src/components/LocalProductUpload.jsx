@@ -3,7 +3,7 @@ import './LocalProductUpload.css';
 
 const CATEGORIES = [
   'strollers', 'car-seats', 'feeding', 'toys', 'clothing',
-  'safety', 'furniture', 'gear', 'bath', 'outdoor'
+  'safety', 'furniture', 'gear', 'bath', 'bathtime', 'outdoor'
 ];
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
