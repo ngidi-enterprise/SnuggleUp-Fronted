@@ -16,7 +16,7 @@ import LocalProductsCatalog from './components/LocalProductsCatalog';
 import LocalProductDetail from './components/LocalProductDetail';
 import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
-import PromoPopup from './components/PromoPopup';
+ 
 import TrustBadges from './components/TrustBadges';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
@@ -51,7 +51,7 @@ function App() {
   const [selectedCjPid, setSelectedCjPid] = useState(null);
   const [cjQuery, setCjQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showPromoPopup, setShowPromoPopup] = useState(false);
+  
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [shippingFormData, setShippingFormData] = useState(null);
@@ -263,23 +263,7 @@ function App() {
     }
   }, [cartItems, cartLoaded, isAuthenticated, token]);
 
-  // Show promo popup until user makes their first purchase (but not for admins)
-  useEffect(() => {
-    // Check if user is admin
-    const ADMIN_EMAILS = ['support@snuggleup.co.za'];
-    const isUserAdmin = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
-    
-    const hasMadePurchase = localStorage.getItem('hasMadeFirstPurchase');
-    
-    // Don't show popup if user is admin or has made a purchase
-    if (!hasMadePurchase && !isUserAdmin) {
-      // Show popup after 1 second delay for better UX
-      const timer = setTimeout(() => {
-        setShowPromoPopup(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
+  
 
   // SPA routing: update currentPage and authView on navigation
   useEffect(() => {
@@ -821,22 +805,7 @@ function App() {
     );
   };
 
-  const handlePromoSignup = (data) => {
-    // Don't mark as permanently dismissed - let it show again until purchase
-    
-    // Open registration modal with pre-filled email
-    setAuthView('register');
-    setShowAuthModal(true);
-    
-    // Store email for pre-filling (you can access this in Register component via props if needed)
-    sessionStorage.setItem('promoEmail', data.email);
-    sessionStorage.setItem('promoName', `${data.firstName} ${data.lastName}`);
-  };
-
-  const handlePromoClose = () => {
-    // Only close for this session, will show again on next visit until purchase is made
-    setShowPromoPopup(false);
-  };
+  
 
   const handleCheckout = async () => {
     // Check if user is logged in
@@ -1515,13 +1484,7 @@ function App() {
             <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
           )}
 
-          {/* Promo Popup */}
-          {showPromoPopup && (
-            <PromoPopup 
-              onClose={handlePromoClose}
-              onSignup={handlePromoSignup}
-            />
-          )}
+          
 
           {/* Footer */}
           <footer className="footer" style={{ flexShrink: 0 }}>
