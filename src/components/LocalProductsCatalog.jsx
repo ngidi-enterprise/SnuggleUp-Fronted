@@ -105,8 +105,8 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
             className="card-image"
           />
 
-          {/* Fast Shipping Badge */}
-          <div className="card-fast-shipping-badge">⚡ Fast Shipping</div>
+          {/* Fast Delivery Badge */}
+          <div className="card-fast-shipping-badge">⚡ Fast Delivery</div>
 
           {/* Discount Badge */}
           {onSale && discount > 0 && (

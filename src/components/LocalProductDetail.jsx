@@ -122,7 +122,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
             <div className="product-gallery">
               <div className="gallery-main">
                 <div className="local-product-badge">
-                  ⚡ FAST SHIPPING
+                  ⚡ FAST DELIVERY
                 </div>
                 {onSale && discount > 0 && (
                   <div className="discount-badge">-{discount}%</div>
@@ -170,7 +170,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                 )}
               </div>
 
-              {/* Fast Shipping Info */}
+              {/* Fast Delivery Info */}
               <div className="fast-shipping-info">
                 <div className="shipping-badge">⚡ Delivery in 2-3 Working Days</div>
                 <p className="shipping-text">Local warehouse delivery. No international shipping delays.</p>
