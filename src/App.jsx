@@ -1113,7 +1113,7 @@ function App() {
                       >
                         {item.name}
                       </h3>
-                      <p className="wishlist-item-price">R {item.price.toFixed(2)}</p>
+                      <p className="wishlist-item-price">R {Number(item?.price || 0).toFixed(2)}</p>
                       <button 
                         className="add-to-cart-from-wishlist"
                         onClick={() => {
