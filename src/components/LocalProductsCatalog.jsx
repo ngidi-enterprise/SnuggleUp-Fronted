@@ -3,18 +3,20 @@ import './LocalProductsCatalog.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
-function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload }) {
-  const [products, setProducts] = useState([]);
+function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [] }) {
+  const [products, setProducts] = useState(initialProducts || []);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pageNum, setPageNum] = useState(1);
   const [pageSize] = useState(48);
 
-  // Fetch local products
+  // Fetch local products if we don't have initial products
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (!initialProducts || initialProducts.length === 0) {
+      fetchProducts();
+    }
+  }, [initialProducts]);
 
   const fetchProducts = async () => {
     setLoading(true);
