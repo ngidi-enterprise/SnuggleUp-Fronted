@@ -56,6 +56,7 @@ function App() {
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [shippingFormData, setShippingFormData] = useState(null);
   const [backendDown, setBackendDown] = useState(false);
+  const [localProductsCache, setLocalProductsCache] = useState([]);
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
   
@@ -318,6 +319,26 @@ function App() {
       window.removeEventListener('popstate', handleRoute);
     };
   }, []);
+
+  // Prefetch local products in background so switching to Local Warehouse is instant
+  useEffect(() => {
+    let mounted = true;
+    const prefetchLocal = async () => {
+      try {
+        const res = await fetchApi('/api/local-products?limit=200');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+        if (mounted && Array.isArray(data.products)) {
+          setLocalProductsCache(data.products);
+        }
+      } catch (e) {
+        // Ignore prefetch errors silently
+      }
+    };
+
+    prefetchLocal();
+    return () => { mounted = false; };
+  }, [apiBaseInUse]);
 
   // Handle ?product=<pid> query parameter for WhatsApp sharing and direct product links
   useEffect(() => {
@@ -1207,6 +1228,7 @@ function App() {
                       onOpenProduct={(product) => setSelectedLocalProductId(product)}
                       isAdmin={isAdmin}
                       onShowUpload={() => setShowLocalProductUpload(true)}
+                      initialProducts={localProductsCache}
                     />
                   ) : (
                     <LocalProductDetail
