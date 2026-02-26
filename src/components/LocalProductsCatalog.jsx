@@ -3,7 +3,7 @@ import './LocalProductsCatalog.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
-function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [] }) {
+function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [], onAddToCart }) {
   const [products, setProducts] = useState(initialProducts || []);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -151,6 +151,18 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
               <span className="stock-unavailable">Out of stock</span>
             )}
           </div>
+
+          <button
+            className="card-add-to-cart"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart?.(product);
+            }}
+            disabled={!inStock}
+            title={inStock ? 'Add to cart' : 'Out of stock'}
+          >
+            🛒 Add to Cart
+          </button>
         </div>
       </div>
     );

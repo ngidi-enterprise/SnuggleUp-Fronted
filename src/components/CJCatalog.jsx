@@ -42,7 +42,7 @@ function useProductMapping(items) {
   }), [items]);
 }
 
-export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct, isAdmin }) {
+export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct, isAdmin, onAddToCart }) {
   // Default to no filter unless an explicit query is provided by parent
   const [q, setQ] = useState(typeof query === 'string' ? query : '');
   const [pageNum, setPageNum] = useState(1);
@@ -429,6 +429,19 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
               </div>
               <div className="cj-card-body">
                 <div className="cj-name" title={p.name}>{p.name}</div>
+                <div className="cj-add-to-cart-wrapper">
+                  <button
+                    className="cj-add-to-cart"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToCart?.(p);
+                    }}
+                    disabled={p.raw?.stock_quantity === 0}
+                    title={p.raw?.stock_quantity === 0 ? 'Out of stock' : 'Add to cart'}
+                  >
+                    🛒 Add
+                  </button>
+                </div>
                 <div className="cj-price">
                   {p.isValidPrice ? (
                     <>
