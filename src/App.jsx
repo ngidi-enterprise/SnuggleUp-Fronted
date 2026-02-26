@@ -1553,12 +1553,10 @@ function App() {
                     })
                   )}
                 </div>
-                {/* end .cart-items */}
 
               </div>
-              {/* end .cart-content */}
+
             </div>
-            {/* end .cart-page */}
           )}
 
           {/* Auth Modal */}
