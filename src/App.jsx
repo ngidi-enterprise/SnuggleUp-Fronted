@@ -1269,6 +1269,7 @@ function App() {
                       onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       onOpenProduct={(pid) => setSelectedCjPid(pid)}
                       isAdmin={isAdmin}
+                      onAddToCart={addToCart}
                     />
                   )}
 
@@ -1293,6 +1294,7 @@ function App() {
                       isAdmin={isAdmin}
                       onShowUpload={() => setShowLocalProductUpload(true)}
                       initialProducts={localProductsCache}
+                      onAddToCart={addToCart}
                     />
                   ) : (
                     <LocalProductDetail
