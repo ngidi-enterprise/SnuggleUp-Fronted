@@ -524,10 +524,26 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Determine if cart contains only local products (used to disable shipping UI)
+  const cartOnlyLocal = useMemo(() => {
+    return cartItems.length > 0 && cartItems.every(item => item.isLocal);
+  }, [cartItems]);
+
   // Fetch real-time shipping quotes from backend (called when cart opens or changes)
   useEffect(() => {
     const fetchQuotes = async () => {
       if (!showCart || cartItems.length === 0) return; // only fetch when cart visible
+
+      // if we only have local items we don't need supplier quotes
+      if (cartOnlyLocal) {
+        setShippingOptions([]);
+        setInsuranceData(null);
+        setSelectedShipping(null);
+        setShippingError('');
+        setShippingLoading(false);
+        return;
+      }
+
       setShippingLoading(true);
       setShippingError('');
       try {
@@ -729,6 +745,8 @@ function App() {
 
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
+    // local-only orders never use external quotes; shipping is handled separately (assumed zero here)
+    if (cartOnlyLocal) return 0;
     // Only use selected real-time shipping option
     if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
       return selectedShipping.priceZAR;
@@ -1293,106 +1311,110 @@ function App() {
                 {cartItems.length > 0 && (
                   <div className="cart-footer">
                     <div className="cart-total">
-                      {/* Country Selector */}
-                      <div style={{marginBottom: '12px'}}>
-                        <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
-                          📍 Ship to:
-                        </label>
-                        <select
-                          value={shippingCountry}
-                          onChange={(e) => setShippingCountry(e.target.value)}
-                          style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
-                        >
-                          <option value="ZA">🇿🇦 South Africa</option>
-                          <option value="US">🇺🇸 United States</option>
-                          <option value="GB">🇬🇧 United Kingdom</option>
-                          <option value="AU">🇦🇺 Australia</option>
-                          <option value="CA">🇨🇦 Canada</option>
-                          <option value="DE">🇩🇪 Germany</option>
-                          <option value="FR">🇫🇷 France</option>
-                        </select>
-                      </div>
+                      {!cartOnlyLocal && (
+                        <>
+                          {/* Country Selector */}
+                          <div style={{marginBottom: '12px'}}>
+                            <label style={{fontSize:'0.9em', fontWeight: 'bold', display: 'block', marginBottom: '6px'}}>
+                              📍 Ship to:
+                            </label>
+                            <select
+                              value={shippingCountry}
+                              onChange={(e) => setShippingCountry(e.target.value)}
+                              style={{width: '100%', padding:'8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                            >
+                              <option value="ZA">🇿🇦 South Africa</option>
+                              <option value="US">🇺🇸 United States</option>
+                              <option value="GB">🇬🇧 United Kingdom</option>
+                              <option value="AU">🇦🇺 Australia</option>
+                              <option value="CA">🇨🇦 Canada</option>
+                              <option value="DE">🇩🇪 Germany</option>
+                              <option value="FR">🇫🇷 France</option>
+                            </select>
+                          </div>
 
-                      {/* Real-time shipping options */}
-                      <div style={{marginBottom: '8px'}}>
-                        {shippingLoading ? (
-                          <p>Getting shipping options…</p>
-                        ) : shippingError ? (
-                          <div>
-                            <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
-                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                              Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
-                              {shippingError && ` Error: ${String(shippingError)}`}
-                            </p>
-                          </div>
-                        ) : shippingOptions.length === 0 ? (
-                          <div>
-                            <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
-                            <p style={{color:'#6c757d', fontSize:'0.85em'}}>
-                              Our shipping provider doesn’t have delivery methods for these products to your selected destination.
-                              We’ll use an estimated tiered rate based on your subtotal.
-                            </p>
-                          </div>
-                        ) : (
-                          shippingOptions.length > 0 && (
-                            <>
-                              <div style={{marginBottom:'8px'}}>
-                                <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
-                                <select
-                                  value={selectedShipping?.logisticName || ''}
-                                  onChange={(e) => {
-                                    const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                                    setSelectedShipping(opt || null);
-                                  }}
-                                  style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
-                                >
-                                  {shippingOptions.map(o => (
-                                    <option key={o.logisticName} value={o.logisticName}>
-                                      {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                                {selectedShipping?.deliveryDates && (
-                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                    📅 Estimated delivery: {selectedShipping.deliveryDates.text}
-                                  </p>
-                                )}
-                                {selectedShipping?.isFallback && (
-                                  <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
-                                    ℹ️ Estimated rate applied (no live quote available)
-                                  </p>
-                                )}
+                          {/* Real-time shipping options */}
+                          <div style={{marginBottom: '8px'}}>
+                            {shippingLoading ? (
+                              <p>Getting shipping options…</p>
+                            ) : shippingError ? (
+                              <div>
+                                <p style={{color:'#dc3545'}}>⚠️ Shipping quote unavailable</p>
+                                <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                                  Real-time rates aren’t available right now. We’ll use an estimated tiered rate based on your subtotal.
+                                  {shippingError && ` Error: ${String(shippingError)}`}
+                                </p>
                               </div>
+                            ) : shippingOptions.length === 0 ? (
+                              <div>
+                                <p style={{color:'#dc3545'}}>⚠️ No shipping options available</p>
+                                <p style={{color:'#6c757d', fontSize:'0.85em'}}>
+                                  Our shipping provider doesn’t have delivery methods for these products to your selected destination.
+                                  We’ll use an estimated tiered rate based on your subtotal.
+                                </p>
+                              </div>
+                            ) : (
+                              shippingOptions.length > 0 && (
+                                <>
+                                  <div style={{marginBottom:'8px'}}>
+                                    <label style={{fontSize:'0.9em', fontWeight: 'bold'}}>Shipping method:</label>
+                                    <select
+                                      value={selectedShipping?.logisticName || ''}
+                                      onChange={(e) => {
+                                        const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                        setSelectedShipping(opt || null);
+                                      }}
+                                      style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
+                                    >
+                                      {shippingOptions.map(o => (
+                                        <option key={o.logisticName} value={o.logisticName}>
+                                          {o.logisticName} — R{o.priceZAR.toFixed(2)}{o.isFallback ? ' (Estimated)' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {selectedShipping?.deliveryDates && (
+                                      <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                        📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                                      </p>
+                                    )}
+                                    {selectedShipping?.isFallback && (
+                                      <p style={{fontSize: '0.85em', color: '#666', marginTop: '4px'}}>
+                                        ℹ️ Estimated rate applied (no live quote available)
+                                      </p>
+                                    )}
+                                  </div>
 
-                              {/* Insurance Option */}
-                              {insuranceData && insuranceData.available && (
-                                <div style={{
-                                  padding: '10px',
-                                  background: '#f8f9fa',
-                                  borderRadius: '6px',
-                                  marginBottom: '8px',
-                                  border: '1px solid #e0e0e0'
-                                }}>
-                                  <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                                    <input
-                                      type="checkbox"
-                                      checked={insuranceSelected}
-                                      onChange={(e) => setInsuranceSelected(e.target.checked)}
-                                      style={{width: '16px', height: '16px'}}
-                                    />
-                                    <span style={{fontSize: '0.9em', flex: 1}}>
-                                      🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
-                                    </span>
-                                  </label>
-                                  <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
-                                    Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
-                                  </p>
-                                </div>
-                              )}
-                            </>
-                          )
-                        )}
-                      </div>
+                                  {/* Insurance Option */}
+                                  {insuranceData && insuranceData.available && (
+                                    <div style={{
+                                      padding: '10px',
+                                      background: '#f8f9fa',
+                                      borderRadius: '6px',
+                                      marginBottom: '8px',
+                                      border: '1px solid #e0e0e0'
+                                    }}>
+                                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                                        <input
+                                          type="checkbox"
+                                          checked={insuranceSelected}
+                                          onChange={(e) => setInsuranceSelected(e.target.checked)}
+                                          style={{width: '16px', height: '16px'}}
+                                        />
+                                        <span style={{fontSize: '0.9em', flex: 1}}>
+                                          🛡️ Shipping Insurance <strong>(R{insuranceData.costZAR})</strong>
+                                        </span>
+                                      </label>
+                                      <p style={{fontSize: '0.8em', color: '#666', marginTop: '4px', marginLeft: '24px'}}>
+                                        Covers R{insuranceData.coverage.toFixed(2)} • {insuranceData.percentage}% of order value
+                                      </p>
+                                    </div>
+                                  )}
+                                </>
+                              )
+                            )}
+                          </div>
+                        </>
+                      )}
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
                       <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                       {insuranceSelected && insuranceData && (
