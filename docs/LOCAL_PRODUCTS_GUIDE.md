@@ -122,6 +122,9 @@ Local products and CJ products work together:
 - Local products ship immediately
 - CJ products follow dropshipping flow
 
+> **Cart behaviour note:** When a customer’s cart contains *only* local warehouse items, the checkout view hides the “Ship to” country selector and any real‑time shipping quote messages. Since all local deliveries are within South Africa, the shipping cost is treated as R0.00 and the customer simply sees products, subtotal, shipping total and order total.
+
+
 ## 📊 Advantages of Local Inventory
 
 ✅ **Faster delivery** (1-3 days vs 7-14 days)
