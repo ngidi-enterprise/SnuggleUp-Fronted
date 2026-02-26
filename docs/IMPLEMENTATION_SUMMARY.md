@@ -1,314 +1,141 @@
-# SnuggleUp Authentication System - Implementation Summary
+# SnuggleUp Platform — Implementation Summary (Updated 2025-11-14)
 
-## 🎉 What We Built
+This document reflects the current, working system: React + Vite frontend, Express (ESM) backend, PostgreSQL, Supabase Auth, CJ Dropshipping catalog, and PayFast payments. It replaces older SQLite-focused documentation.
 
-A complete user authentication and order management system for the SnuggleUp baby products e-commerce site, featuring:
+## What’s included right now
+- Supabase authentication integrated end-to-end (backend verifies tokens via JWKS RS256 → HS256 fallback → app JWT).
+- CJ catalog browsing/search via the stable /product/list endpoint with proper field mapping and HTTPS image normalization.
+- PayFast checkout flow, with success/cancel handling.
+- Server-side cart persistence backed by PostgreSQL (JSONB) for authenticated users.
+- 30-minute inactivity auto-logout with a 2-minute warning toast and “Stay Logged In” action.
+- Mobile-responsive UI pass (header/grid/cart modal/touch targets).
+- Admin Dashboard with Smart Pricing Assistant (pricing edits, margins/markups), Product Curation, Analytics, Orders, Users.
 
-✅ **User Registration & Login** - Secure account creation with email/password
-✅ **JWT Authentication** - Token-based authentication with 7-day expiry  
-✅ **Order Management** - Full order history and tracking
-✅ **Database Integration** - SQLite database for users and orders
-✅ **Protected Checkout** - Users must login before purchasing
-✅ **User Dashboard** - Profile view and order history in one place
-✅ **Order Status Tracking** - Real-time updates from PayFast webhook
+## Architecture at a glance
+Frontend (Vite/React 18)
+- Auth Context: Supabase session, activity tracking, warning toast
+- Cart state in `App.jsx` with backend sync when authenticated
+- CJ catalog/components with URL normalization
+- Admin Dashboard overlays store for admins
 
-## 📈 User Flow
+Backend (Express, ESM)
+- Auth: `src/middleware/auth.js` (JWKS, HS256 fallback, app JWT)
+- Admin gate: `src/middleware/admin.js` (DB flag or allowlist; auto-provision user row if missing)
+- Data: PostgreSQL via `src/db.js` (idempotent table creates, includes carts)
+- Routes: `routes/admin.js`, `routes/cart.js`, `routes/cj.js`, `routes/payments.js`, `routes/products.js`
 
-### New User Journey
+Key Data
+- Table: `carts(id SERIAL, user_id TEXT UNIQUE, items JSONB, created_at, updated_at)`
+- Curated products table used by admin features (pricing/curation)
+
+## Core user journeys
+New user (guest → buyer)
 ```
-1. Browse Products → Add to Cart
-2. Click "Proceed to Checkout"
-3. Prompted to Login/Register
-4. Create Account (Register)
-5. Automatically Logged In
-6. Checkout Proceeds to PayFast
-7. Payment Processed
-8. Order Saved to Database
-9. View Order in Order History
+1) Browse CJ catalog → add to cart (guest, local state)
+2) Login/Register (Supabase)
+3) On login, cart merges: backend[] ∪ local[]; duplicates prefer higher quantity; merged saved to backend
+4) Proceed to checkout → PayFast
+5) On success: order handled; backend cart can be cleared
 ```
-
-### Returning User Journey
+Returning user
 ```
-1. Click "Login" in Header
-2. Enter Credentials
-3. Logged In (Name Shows in Header)
-4. Browse & Add to Cart
-5. Checkout (No Login Prompt)
-6. Payment Processed
-7. Order Added to History
-8. Click Name → View All Orders
-```
-
-## 🗂️ File Structure
-
-### Backend
-```
-backend/
-├── src/
-│   ├── db.js                    # ✨ NEW: SQLite database setup
-│   ├── server.js                # 🔄 UPDATED: Added auth & order routes
-│   ├── middleware/
-│   │   └── auth.js              # ✨ NEW: JWT verification
-│   ├── routes/
-│   │   ├── payments.js          # 🔄 UPDATED: Order creation integration
-│   │   ├── auth.js              # ✨ NEW: Register/Login endpoints
-│   │   └── orders.js            # ✨ NEW: Order history endpoints
-│   └── snuggleup.db            # ✨ AUTO-CREATED: SQLite database file
-└── package.json                 # 🔄 UPDATED: New dependencies
+1) Login → Admin check runs
+2) Cart loads from backend (autosync on change)
+3) Checkout to PayFast
 ```
 
-### Frontend
-```
-frontend/src/
-├── App.jsx                      # 🔄 UPDATED: Auth integration
-├── main.jsx                     # 🔄 UPDATED: AuthProvider wrapper
-├── App.css                      # 🔄 UPDATED: New button styles
-├── context/
-│   └── AuthContext.jsx          # ✨ NEW: Auth state management
-└── components/
-    ├── Login.jsx                # ✨ NEW: Login form
-    ├── Register.jsx             # ✨ NEW: Registration form
-    ├── UserAccount.jsx          # ✨ NEW: Profile & order history
-    ├── Auth.css                 # ✨ NEW: Auth form styles
-    └── UserAccount.css          # ✨ NEW: Dashboard styles
-```
+## File map (current)
+Backend
+- `backend/src/db.js` — PostgreSQL init (idempotent creates, includes carts)
+- `backend/src/middleware/auth.js` — Supabase token verification (JWKS, HS256 fallback, app JWT)
+- `backend/src/middleware/admin.js` — Admin gate (DB flag or hardcoded allowlist), auto-provision local user
+- `backend/src/services/cjClient.js` — CJ client, throttling, /product/list, field mapping
+- `backend/src/routes/cart.js` — GET/POST/DELETE /api/cart (auth required)
+- `backend/src/routes/admin.js` — Analytics, Curated products (list/update), Orders, Users, CJ helpers
+- `backend/src/routes/payments.js` — PayFast form/signature + notify handling (now splits mixed carts into two orders with suffix -L/-I)
 
-## 🔧 Technical Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Database | SQLite + better-sqlite3 | Store users & orders |
-| Authentication | JWT (jsonwebtoken) | Secure token-based auth |
-| Password Security | bcryptjs | Hash passwords (10 rounds) |
-| Frontend State | React Context | Manage auth state |
-| API Pattern | RESTful | Standard HTTP endpoints |
-| Token Storage | localStorage | Persist sessions |
+Frontend
+- `frontend/src/context/AuthContext.jsx` — Supabase session + 30m inactivity with 28m warning
+- `frontend/src/App.jsx` — Cart state, merge/clear logic, admin gating, PayFast call
+- `frontend/src/components/admin/PricingManager.jsx` — Smart Pricing Assistant UI
+- `frontend/src/components/CJCatalog.jsx`, `frontend/src/lib/cjApi.js` — Catalog UI + URL normalization
+- `frontend/src/App.css` — Responsive styles and mobile/touch affordances
 
-## 🌐 API Endpoints
+## Key endpoints
+Public/optional auth
+- `GET /api/cj/...` (catalog/shipping quotes; shipping requires body)
 
-### Authentication
-- `POST /api/auth/register` - Create new account
-- `POST /api/auth/login` - Login with credentials
-- `GET /api/auth/me` - Check authentication status
+Authenticated
+- `GET /api/cart` — get current cart (JSONB items)
+- `POST /api/cart` — upsert cart items
+- `DELETE /api/cart` — clear cart
+- `POST /api/payments/create` — PayFast initiation (expects totals and items)
 
-### Orders  
-- `GET /api/orders/history` - Get user's order history (protected)
-- `GET /api/orders/:id` - Get single order details (protected)
+Admin (requireAdmin)
+- `GET /api/admin/analytics`
+- `GET /api/admin/products`  |  `PUT /api/admin/products/:id`
+- `GET /api/admin/orders`    |  `PUT /api/admin/orders/:id`
+- `GET /api/admin/users`     |  `PUT /api/admin/users/:id/admin`
 
-### Payments (Updated)
-- `POST /api/payments/create` - Create payment (now requires auth token)
-- `GET /api/payments/success` - Payment success page
-- `GET /api/payments/cancel` - Payment cancel page
-- `POST /api/payments/notify` - PayFast webhook (now updates order status)
+## Cart persistence: contract
+- Inputs: local cart array, backend cart array (JSONB)
+- On login: merged = backend ∪ local; duplicates keep higher quantity; merged saved to backend immediately.
+- On logout: cart is cleared locally.
+- Autosave: when authenticated and cart changes, POST to /api/cart.
+- Edge cases: backend 500s do not clear cart; local state wins.
 
-## 🔒 Security Features
+## Session management
+- 30-minute inactivity timeout.
+- Warning toast at ~28 minutes with “Stay Logged In”.
+- Activity sources: mousedown/keydown/scroll/touchstart.
 
-1. **Password Hashing**: bcryptjs with 10 salt rounds
-2. **JWT Tokens**: 7-day expiry, includes userId and email
-3. **Protected Routes**: Middleware checks token validity
-4. **Input Validation**: Email format, password length (6+ chars)
-5. **CORS Configuration**: Allows frontend domain
-6. **SQL Injection Protection**: Parameterized queries
-7. **Token Storage**: localStorage (client-side)
+## Database highlights
+- `carts` table uses JSONB for flexibility and simple upsert logic.
+- Admin/user records live in `users`; admin status is `is_admin` boolean.
 
-## 💾 Database Schema
+## Admin & Smart Pricing Assistant
+- Access: Admin Dashboard auto-opens for admins post-login.
+- Pricing tab: Lists curated products, shows supplier cost, suggested 2x price, current retail, margin/markup badges; inline edit saves via `/api/admin/products/:id`.
+- Admin checks: backend gate (DB `is_admin` or allowlist); frontend also has a tiny allowlist for UX.
 
-### Users Table
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTO INCREMENT |
-| email | TEXT | UNIQUE, NOT NULL |
-| password | TEXT | NOT NULL (hashed) |
-| name | TEXT | NOT NULL |
-| phone | TEXT | NULL |
-| created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+## Mobile responsiveness
+- Header stacks, product grid adapts (2→1 cols), cart modal full-screen on small viewports.
+- Touch targets sized ≥44px; smooth scrolling; overflow-x hidden.
 
-### Orders Table
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTO INCREMENT |
-| user_id | INTEGER | FOREIGN KEY → users(id) |
-| order_number | TEXT | UNIQUE, NOT NULL |
-| items | TEXT | JSON string of cart items |
-| subtotal | REAL | NOT NULL |
-| shipping | REAL | NOT NULL |
-| discount | REAL | DEFAULT 0 |
-| total | REAL | NOT NULL |
-| status | TEXT | DEFAULT 'pending' |
-| payfast_payment_id | TEXT | NULL |
-| customer_email | TEXT | NULL |
-| created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
-| updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP |
+## How to run (dev)
+- Backend: from `backend/` run `npm run dev` (nodemon on :3000). ESM with explicit `.js` imports.
+- Frontend: from `frontend/` run `npm run dev` (Vite on :5173).
+- PayFast testing: expose backend with `ngrok http 3000`, set `BACKEND_URL` to ngrok URL, `PAYFAST_TEST_MODE=true`.
 
-## 🎨 UI Components
+## Challenges we hit and fixes
+1) CJ API 1600101 “Interface not found”
+- Cause: Using /product/listV2 and wrong fields.
+- Fix: Revert to /product/list, parse `data.list`, fields `pid`, `productNameEn`.
 
-### Header Changes
-- **Before**: Only "Checkout" button
-- **After**: 
-  - Guest users: "Login" + "Checkout"
-  - Logged in users: "👤 Name" + "Checkout"
+2) Guest adds → login dropped items
+- Cause: Merge only ran when backend had items; missed empty-backend case.
+- Fix: Always merge local with backend; prefer higher quantity; save merged.
 
-### New Modals
-1. **Login Modal**: Email + Password form
-2. **Register Modal**: Name + Email + Phone + Password + Confirm Password
-3. **User Account Modal**: Profile info + Order history tabs
+3) Cart not clearing on logout
+- Fix: In `App.jsx` effect, when `!isAuthenticated && cartLoaded`, clear cart state.
 
-### Order History Display
-- **List View**: All orders with status badges
-- **Details**: Items, quantities, pricing breakdown
-- **Status Colors**: Green (completed), Orange (pending), Red (failed)
-- **Timestamps**: Formatted dates for each order
+4) 500s on /api/cart
+- Cause: `req.user.id` used while middleware sets `req.user.userId`.
+- Fix: Use `userId || id || sub` in cart routes.
 
-## 📱 User Experience
+## Quality gates (current)
+- Build: PASS
+- Lint/Typecheck: PASS (manual review; no strict config)
+- Tests: Manual verification for recent changes (add focused tests next)
 
-### Registration
-- Simple 5-field form
-- Real-time validation
-- Auto-login after registration
-- Error messages for duplicate email
+## Next steps
+1) Promote your live login email to admin (SQL in AI_HANDOFF_NOTES.md) and verify dashboard loads.
+2) Add 2–3 front-end tests around cart merge and logout clearing.
+3) Harden shipping quotes (retry/backoff on 429/5xx; better UI messaging).
+4) Prepare PayFast production mode checklist (keys, domain allowlists, notify URL).
 
-### Login
-- Email + Password
-- "Remember me" via localStorage
-- Persistent sessions (7 days)
-- Clear error messages
-
-### Checkout
-- **Blocked for guests**: Alert + auto-open login modal
-- **Seamless for users**: Direct to PayFast with user email
-- **Order creation**: Automatic database record
-
-### Order History
-- **Easy access**: Click user name in header
-- **Two tabs**: Profile + Order History
-- **Detailed view**: See every item, price, status
-- **Real-time updates**: Status changes after payment
-
-## 🚀 Deployment Requirements
-
-### Backend (Render)
-```bash
-# Dependencies auto-installed from package.json
-npm install
-
-# Environment variables required:
-JWT_SECRET=your-secret-key
-PAYFAST_MERCHANT_ID=10042854
-PAYFAST_MERCHANT_KEY=bmvnyjivavg1a
-PAYFAST_TEST_MODE=true
-```
-
-### Frontend (StackBlitz)
-```bash
-# No additional dependencies
-# Just upload new files and update existing ones
-# Ensure backend URL is correct:
-https://snuggleup-backend.onrender.com
-```
-
-## 📊 Testing Scenarios
-
-### Scenario 1: New User Registration
-1. Click "Login" → "Register here"
-2. Fill: John Doe, john@example.com, +27123456789, password123
-3. Submit → See "👤 John Doe" in header
-4. Add items → Checkout → PayFast opens
-5. Complete payment → Check order history
-
-### Scenario 2: Returning User
-1. Click "Login"
-2. Enter email + password
-3. Logged in → Add to cart → Checkout
-4. No login prompt, direct to PayFast
-
-### Scenario 3: Guest Checkout Attempt
-1. Don't login
-2. Add to cart → Click checkout
-3. See alert: "Please login or create an account"
-4. Login modal opens automatically
-
-### Scenario 4: Order Tracking
-1. Login → Make purchase
-2. Click name → "Order History" tab
-3. See order with "⏳ Pending" status
-4. After PayFast webhook → Status changes to "✓ Completed"
-
-## 🐛 Known Limitations
-
-1. **SQLite on Free Tier**: Database may reset when Render service sleeps
-2. **No Password Reset**: Email-based password recovery not implemented
-3. **No Email Notifications**: Order confirmation emails not sent
-4. **No Address Book**: Only one shipping address (future feature)
-5. **Basic Validation**: Could add more robust email/phone validation
-6. **Token Expiry**: No refresh token mechanism (must re-login after 7 days)
-
-## 🔮 Future Enhancements
-
-### Phase 1 (Quick Wins)
-- [ ] Password reset via email
-- [ ] Order confirmation emails
-- [ ] Profile editing (name, phone update)
-- [ ] Remember last shipping address
-
-### Phase 2 (Medium Priority)
-- [ ] Address book (multiple addresses)
-- [ ] Order cancellation
-- [ ] Shipment tracking integration
-- [ ] Wish list / Save for later
-
-### Phase 3 (Advanced)
-- [ ] Product reviews & ratings
-- [ ] Admin dashboard
-- [ ] Inventory management
-- [ ] Sales analytics
-- [ ] Promotional emails
-- [ ] Loyalty points system
-
-## 🎓 Key Learnings
-
-1. **SQLite is great for MVPs**: Easy setup, no external service
-2. **JWT tokens simplify auth**: Stateless, easy to implement
-3. **React Context is powerful**: Clean state management across app
-4. **localStorage persists sessions**: Great UX, users stay logged in
-5. **Protected routes are essential**: Security first approach
-6. **Order tracking adds value**: Users love seeing their history
-
-## 📞 Support & Documentation
-
-- **Full Documentation**: See USER_AUTH_README.md
-- **Testing Guide**: See TESTING_GUIDE.md
-- **Deployment Guide**: See RENDER_DEPLOYMENT_GUIDE.md
-- **PayFast Docs**: backend/payfast_README.md
-
-## ✅ Success Metrics
-
-**Authentication System**: ✅ Fully Functional
-- Registration: ✅ Working
-- Login: ✅ Working  
-- Token Persistence: ✅ Working
-- Logout: ✅ Working
-
-**Order Management**: ✅ Fully Functional
-- Order Creation: ✅ Working
-- Order History: ✅ Working
-- Status Tracking: ✅ Working
-- PayFast Integration: ✅ Working
-
-**User Experience**: ✅ Seamless
-- Login Required for Checkout: ✅ Enforced
-- User Dashboard: ✅ Functional
-- Order Details Display: ✅ Complete
-- Responsive Design: ✅ Mobile-friendly
-
----
-
-## 🎉 Congratulations!
-
-You now have a complete e-commerce authentication system with:
-- ✅ Secure user accounts
-- ✅ Order management & tracking
-- ✅ Protected checkout flow
-- ✅ User-friendly dashboard
-- ✅ Production-ready code
-
-**Ready to deploy and test!** 🚀
+## References
+- Quick agent rules: `.github/copilot-instructions.md`
+- Handoff summary: `AI_HANDOFF_NOTES.md`
+- Admin/analytics, CJ token help: `backend/src/routes/admin.js`

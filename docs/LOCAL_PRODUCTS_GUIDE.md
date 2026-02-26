@@ -122,7 +122,10 @@ Local products and CJ products work together:
 - Local products ship immediately
 - CJ products follow dropshipping flow
 
-> **Cart behaviour note:** When a customer’s cart contains *only* local warehouse items, the checkout view hides the “Ship to” country selector and any real‑time shipping quote messages. Since all local deliveries are within South Africa, the shipping cost is treated as R0.00 and the customer simply sees products, subtotal, shipping total and order total.
+> **Cart behaviour notes:**
+> 
+> * When a customer’s cart contains *only* local warehouse items, the checkout view hides the “Ship to” country selector and any real‑time shipping quote messages. Since all local deliveries are within South Africa, the shipping cost is treated as R0.00 and the customer simply sees products, subtotal, shipping total and order total.
+> * If the cart mixes local and imported (CJ) products the UI splits into two sections: **Cart 1 – Fast delivery** (local) and **Cart 2 – Import**. Each section shows its own subtotal and applicable shipping info; a grand total panel appears to the right showing the combined amount. The two groups are processed as separate orders in the backend (suffix `-L` and `-I` on the order numbers) but the user pays once in a single checkout step.
 
 
 ## 📊 Advantages of Local Inventory
