@@ -801,6 +801,14 @@ function App() {
     return 0;
   };
 
+  const getLocalShippingCost = () => {
+    // Free shipping for local products if subtotal > R550, otherwise R99
+    if (localSubtotal > 550) {
+      return 0;
+    }
+    return 99;
+  };
+
   const getDiscount = () => {
     return appliedVoucher ? appliedVoucher.value : 0;
   };
@@ -813,7 +821,8 @@ function App() {
   };
 
   const getTotalPrice = () => {
-    const total = getSubtotal() + getShippingCost() + getInsuranceCost() - getDiscount();
+    const localShippingCost = hasLocal ? getLocalShippingCost() : 0;
+    const total = getSubtotal() + getShippingCost() + getInsuranceCost() + localShippingCost - getDiscount();
     // Round to 2 decimal places to avoid floating-point precision issues
     const rounded = Math.round(total * 100) / 100;
     return rounded > 0 ? rounded : 0;
@@ -1333,8 +1342,8 @@ function App() {
                           <div className="cart-footer">
                             <div className="cart-total">
                               <p>Subtotal: R{localSubtotal.toFixed(2)}</p>
-                              <p>Shipping: R0.00</p>
-                              <strong>Total: R{localSubtotal.toFixed(2)}</strong>
+                              <p>Shipping: R{getLocalShippingCost().toFixed(2)}{localSubtotal > 550 ? ' (Free!)' : ''}</p>
+                              <strong>Total: R{(localSubtotal + getLocalShippingCost()).toFixed(2)}</strong>
                             </div>
                           </div>
                         </div>
@@ -1560,7 +1569,11 @@ function App() {
                   <div className="cart-footer">
                     <div className="cart-total">
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
+                      {cartOnlyLocal ? (
+                        <p style={{marginBottom: '8px'}}>Shipping: R{getLocalShippingCost().toFixed(2)}{getSubtotal() > 550 ? ' (Free!)' : ''}</p>
+                      ) : (
+                        <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
+                      )}
                       {insuranceSelected && insuranceData && (
                         <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                       )}
