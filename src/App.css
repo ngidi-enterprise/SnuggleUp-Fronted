@@ -651,6 +651,36 @@ body {
   transform: translateY(-2px);
 }
 
+/* Cart groups (for mixed local/import layout) */
+.cart-groups-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.cart-group {
+  flex: 1 1 300px;
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 6px;
+  background: white;
+}
+
+.cart-grand-total {
+  flex: 1 1 240px;
+  border: 2px solid #333;
+  padding: 16px;
+  border-radius: 6px;
+  background: #f9f9f9;
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  .cart-groups-container {
+    flex-direction: column;
+  }
+}
+
 /* Footer */
 .footer {
   background: #333;
