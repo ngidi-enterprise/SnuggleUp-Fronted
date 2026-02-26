@@ -1554,6 +1554,66 @@ function App() {
                   )}
                 </div>
 
+                {cartItems.length > 0 && !mixedCarts && (
+                  <div className="cart-footer">
+                    <div className="cart-total">
+                      <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
+                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
+                      {insuranceSelected && insuranceData && (
+                        <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
+                      )}
+                      {appliedVoucher && (
+                        <p style={{marginBottom: '8px', color: '#28a745'}}>
+                          Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                          <button 
+                            onClick={removeVoucher}
+                            style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
+                          >
+                            ✕
+                          </button>
+                        </p>
+                      )}
+                      <strong>Total: R{getTotalPrice().toFixed(2)}</strong>
+                    </div>
+                    
+                    {!appliedVoucher && (
+                      <div style={{marginTop: '12px', marginBottom: '12px'}}>
+                        <input
+                          type="text"
+                          placeholder="Enter voucher code"
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value)}
+                          style={{padding: '8px', width: '60%', border: '1px solid #ccc', borderRadius: '4px'}}
+                        />
+                        <button
+                          onClick={applyVoucher}
+                          style={{padding: '8px 16px', marginLeft: '8px', background: '#BEE7C1', color: '#126F71', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+                        >
+                          Apply
+                        </button>
+                        {voucherError && (
+                          <p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <button 
+                      className="proceed-checkout" 
+                      onClick={handleCheckout}
+                      disabled={hasStockIssues}
+                      title={hasStockIssues ? 'Update cart: some items are out of stock or exceed available quantity' : 'Proceed to PayFast Checkout'}
+                      style={hasStockIssues ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                    >
+                      Proceed to PayFast Checkout
+                    </button>
+                    {hasStockIssues && (
+                      <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
+                        Please remove or adjust items marked "Sold out" before continuing.
+                      </p>
+                    )}
+                  </div>
+                )}
+
               </div>
 
             </div>
