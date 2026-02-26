@@ -1552,8 +1552,10 @@ function App() {
                       );
                     })
                   )}
-                </div>
+                </div>  {/* end .cart-items */}
 
+              </div>  {/* end .cart-content */}
+            </div>    {/* end .cart-page */}
           )}
 
           {/* Auth Modal */}
