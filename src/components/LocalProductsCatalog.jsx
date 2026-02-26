@@ -156,7 +156,10 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
             className="card-add-to-cart"
             onClick={(e) => {
               e.stopPropagation();
-              onAddToCart?.(product);
+              onAddToCart?.({
+                ...product,
+                isLocal: true
+              });
             }}
             disabled={!inStock}
             title={inStock ? 'Add to cart' : 'Out of stock'}

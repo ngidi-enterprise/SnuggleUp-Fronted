@@ -403,7 +403,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
                         image: p.image,
                         stock_quantity: p.raw?.stock_quantity || 999,
                         cj_vid: p.raw?.cj_vid,
-                        isImport: true
+                        isLocal: false
                       });
                     }}
                     title="Add to cart"
