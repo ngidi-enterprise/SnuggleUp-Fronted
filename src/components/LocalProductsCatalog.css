@@ -453,6 +453,31 @@
   box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
 }
 
+/* Horizontal category tabs bar */
+.local-categories-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.local-categories-bar .category-tab {
+  background: #f0f0f0;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.local-categories-bar .category-tab.active,
+.local-categories-bar .category-tab:hover {
+  background: var(--brand);
+  color: white;
+}
+
 /* Mobile Responsive */
 @media (max-width: 600px) {
   .local-products-catalog {
