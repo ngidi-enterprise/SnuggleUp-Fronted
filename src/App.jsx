@@ -1304,6 +1304,7 @@ function App() {
                       onShowUpload={() => setShowLocalProductUpload(true)}
                       initialProducts={localProductsCache}
                       onAddToCart={addToCart}
+                      onSearch={setSearchTerm}
                     />
                   ) : (
                     <LocalProductDetail
