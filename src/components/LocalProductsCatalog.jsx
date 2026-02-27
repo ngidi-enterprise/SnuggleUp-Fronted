@@ -3,13 +3,20 @@ import './LocalProductsCatalog.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
-function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [], onAddToCart }) {
+function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [], onAddToCart, onSearch }) {
   const [products, setProducts] = useState(initialProducts || []);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pageNum, setPageNum] = useState(1);
   const [pageSize] = useState(48);
+
+  // toolbar/search state (mirrors CJCatalog layout)
+  const [q, setQ] = useState(query || '');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState('relevance');
+
   // category filtering state
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,17 +59,43 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
   };
 
   // Filter products by search query and category
+  // keep q in sync with external query prop so header search and toolbar stay aligned
+  useEffect(() => {
+    setQ(query || '');
+  }, [query]);
+
+  const runSearch = (page = 1) => {
+    setPageNum(page);
+    if (onSearch) {
+      onSearch(q);
+    }
+  };
+
   useEffect(() => {
     let list = products;
-    if (query) {
-      const q = query.toLowerCase();
+
+    // apply text search (either toolbar q or external query)
+    const term = (q || query || '').toLowerCase().trim();
+    if (term) {
       list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.category?.toLowerCase().includes(q) ||
-        (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q)))
+        p.name.toLowerCase().includes(term) ||
+        p.description?.toLowerCase().includes(term) ||
+        p.category?.toLowerCase().includes(term) ||
+        (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(term)))
       );
     }
+
+    // price filters
+    if (minPrice) {
+      const minVal = parseFloat(minPrice) || 0;
+      list = list.filter(p => parseFloat(p.price) >= minVal);
+    }
+    if (maxPrice) {
+      const maxVal = parseFloat(maxPrice) || 0;
+      list = list.filter(p => parseFloat(p.price) <= maxVal);
+    }
+
+    // category filtering
     if (selectedCategory && selectedCategory !== 'all') {
       const cat = selectedCategory;
       list = list.filter(p => {
@@ -83,9 +116,17 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
         }
       });
     }
+
+    // sorting
+    if (sortBy === 'price_asc') {
+      list.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    } else if (sortBy === 'price_desc') {
+      list.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    }
+
     setFilteredProducts(list);
     setPageNum(1);
-  }, [query, products, selectedCategory]);
+  }, [q, query, products, selectedCategory, minPrice, maxPrice, sortBy]);
 
   // Normalize image URL
   const normalizeImageUrl = (url) => {
@@ -243,6 +284,37 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
   return (
     <div className="local-products-catalog">
 
+      {/* Toolbar (search/min-max/sort) */}
+      <div className="local-toolbar">
+        <input
+          className="local-input"
+          placeholder="Search products..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && runSearch(1)}
+        />
+        <input
+          className="local-input local-input-small"
+          placeholder="Min R"
+          value={minPrice}
+          onChange={(e) => setMinPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+        />
+        <input
+          className="local-input local-input-small"
+          placeholder="Max R"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+        />
+        <button className="local-btn" onClick={() => runSearch(1)} disabled={loading}>
+          {loading ? 'Searching…' : 'Search'}
+        </button>
+        <select className="local-input local-input-small" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="relevance">Sort: Relevance</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+        </select>
+      </div>
+
       {/* Delivery information */}
       <p style={{fontSize:'1rem', color:'#555', margin:'12px 0', textAlign: 'center'}}>
         Products from our warehouse - delivered in 2 working days
@@ -254,9 +326,9 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
       </button>
 
       {/* Search Results Info */}
-      {query && (
+      {(query || q) && (
         <div className="search-results-info">
-          <p>Search results for "<strong>{query}</strong>" ({filteredProducts.length} products)</p>
+          <p>Search results for "<strong>{q || query}</strong>" ({filteredProducts.length} products)</p>
         </div>
       )}
 

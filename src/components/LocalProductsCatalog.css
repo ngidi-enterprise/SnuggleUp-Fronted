@@ -58,6 +58,36 @@
   gap: 24px;
 }
 
+/* Toolbar for local search (mirrors CJCatalog) */
+.local-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.local-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.local-input-small {
+  width: 120px;
+  flex: 0 0 auto;
+}
+.local-btn {
+  padding: 10px 14px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.local-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Products Grid */
 .products-grid {
   display: grid;
