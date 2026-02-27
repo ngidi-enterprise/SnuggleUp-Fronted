@@ -64,7 +64,7 @@ function App() {
   const [selectedLocalProductId, setSelectedLocalProductId] = useState(null);
   const [showLocalProductUpload, setShowLocalProductUpload] = useState(false);
   const [localProductsRefresh, setLocalProductsRefresh] = useState(0);
-  const [catalogView, setCatalogView] = useState('cj'); // 'cj' or 'local'
+  const [catalogView, setCatalogView] = useState('local'); // 'cj' or 'local'
   
   // Wishlist state
   const [wishlistItems, setWishlistItems] = useState(() => {
