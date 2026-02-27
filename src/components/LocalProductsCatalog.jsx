@@ -243,6 +243,11 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
   return (
     <div className="local-products-catalog">
 
+      {/* Delivery information */}
+      <p style={{fontSize:'1rem', color:'#555', margin:'12px 0'}}>
+        Products from our warehouse - delivered in 2 working days
+      </p>
+
       {/* Category toggle */}
       <button className="category-toggle-mobile" onClick={() => setSidebarOpen(true)}>
         📂 Categories
