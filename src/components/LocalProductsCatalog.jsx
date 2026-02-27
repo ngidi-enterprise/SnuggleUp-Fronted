@@ -272,18 +272,6 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
         </div>
       )}
 
-      {/* Horizontal category tabs (fallback/desktop) */}
-      <div className="local-categories-bar">
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            className={`category-tab ${selectedCategory === cat.id ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(cat.id === 'all' ? null : cat.id)}
-          >
-            {cat.name}
-          </button>
-        ))}
-      </div>
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
