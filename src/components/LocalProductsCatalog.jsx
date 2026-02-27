@@ -157,8 +157,13 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
             onClick={(e) => {
               e.stopPropagation();
               onAddToCart?.({
-                ...product,
-                isLocal: true
+                id: product.id,
+                name: product.name,
+                price: parseFloat(product.price) || 0,
+                image: normalizeImageUrl(product.images?.[0] || ''),
+                stock_quantity: product.stock_quantity || 0,
+                isLocal: true,
+                raw: product
               });
             }}
             disabled={!inStock}
