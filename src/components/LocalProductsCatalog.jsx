@@ -242,16 +242,6 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
 
   return (
     <div className="local-products-catalog">
-      {/* Header */}
-      <div className="catalog-header">
-        <h2>⚡ Local Products - Fast Delivery</h2>
-        <p>Products from our warehouse • Delivered in 2-3 working days</p>
-        {isAdmin && (
-          <button className="btn-upload-new" onClick={onShowUpload}>
-            📸 Upload New Product
-          </button>
-        )}
-      </div>
 
       {/* Category toggle */}
       <button className="category-toggle-mobile" onClick={() => setSidebarOpen(true)}>
