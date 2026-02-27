@@ -244,7 +244,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
     <div className="local-products-catalog">
 
       {/* Delivery information */}
-      <p style={{fontSize:'1rem', color:'#555', margin:'12px 0'}}>
+      <p style={{fontSize:'1rem', color:'#555', margin:'12px 0', textAlign: 'center'}}>
         Products from our warehouse - delivered in 2 working days
       </p>
 
