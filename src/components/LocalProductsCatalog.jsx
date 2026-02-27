@@ -10,6 +10,23 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
   const [error, setError] = useState('');
   const [pageNum, setPageNum] = useState(1);
   const [pageSize] = useState(48);
+  // category filtering state
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const categories = [
+    { id: 'all', name: 'All Products', icon: '🛍️' },
+    { id: 'strollers', name: 'Strollers & Prams', icon: '👶' },
+    { id: 'car-seats', name: 'Car Seats', icon: '🚗' },
+    { id: 'feeding', name: 'Feeding & Nursing', icon: '🍼' },
+    { id: 'toys', name: 'Toys & Games', icon: '🧸' },
+    { id: 'clothing', name: 'Baby Clothing', icon: '👕' },
+    { id: 'safety', name: 'Safety & Health', icon: '🛡️' },
+    { id: 'furniture', name: 'Nursery Furniture', icon: '🛏️' },
+    { id: 'gear', name: 'Baby Gear', icon: '🎒' },
+    { id: 'bath', name: 'Bath & Potty', icon: '🛁' },
+    { id: 'bathtime', name: 'Bathtime', icon: '🚿' },
+    { id: 'outdoor', name: 'Outdoor & Travel', icon: '⛺' }
+  ];
 
   // Fetch local products if we don't have initial products
   useEffect(() => {
@@ -34,23 +51,41 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
     }
   };
 
-  // Filter products by search query
+  // Filter products by search query and category
   useEffect(() => {
-    if (!query) {
-      setFilteredProducts(products);
-    } else {
+    let list = products;
+    if (query) {
       const q = query.toLowerCase();
-      setFilteredProducts(
-        products.filter(p =>
-          p.name.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q) ||
-          p.category?.toLowerCase().includes(q) ||
-          (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q)))
-        )
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q) ||
+        (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(q)))
       );
     }
+    if (selectedCategory && selectedCategory !== 'all') {
+      const cat = selectedCategory;
+      list = list.filter(p => {
+        const category = (p.category || '').toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        switch(cat) {
+          case 'strollers': return category.includes('stroller') || category.includes('pram') || name.includes('stroller');
+          case 'car-seats': return category.includes('car seat') || name.includes('car seat');
+          case 'feeding': return category.includes('feeding') || category.includes('bottle') || name.includes('bottle') || name.includes('feeding');
+          case 'toys': return category.includes('toy') || name.includes('toy');
+          case 'clothing': return category.includes('clothing') || category.includes('apparel') || name.includes('clothing');
+          case 'safety': return category.includes('safety') || category.includes('health') || name.includes('safety');
+          case 'furniture': return category.includes('furniture') || name.includes('crib') || name.includes('furniture');
+          case 'gear': return category.includes('gear') || name.includes('carrier') || name.includes('gear');
+          case 'bath': return category.includes('bath') || name.includes('bath') || name.includes('potty');
+          case 'outdoor': return category.includes('outdoor') || category.includes('travel') || name.includes('outdoor');
+          default: return true;
+        }
+      });
+    }
+    setFilteredProducts(list);
     setPageNum(1);
-  }, [query, products]);
+  }, [query, products, selectedCategory]);
 
   // Normalize image URL
   const normalizeImageUrl = (url) => {
@@ -218,6 +253,11 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
         )}
       </div>
 
+      {/* Category toggle */}
+      <button className="category-toggle-mobile" onClick={() => setSidebarOpen(true)}>
+        📂 Categories
+      </button>
+
       {/* Search Results Info */}
       {query && (
         <div className="search-results-info">
@@ -225,12 +265,39 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
         </div>
       )}
 
+      {/* Filtering info */}
+      {selectedCategory && selectedCategory !== 'all' && (
+        <div className="search-results-info">
+          <p>Filtering by <strong>{categories.find(c => c.id === selectedCategory)?.name}</strong></p>
+        </div>
+      )}
+
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <>
+          <div className="catalog-layout">
+          {/* Category sidebar */}
+          <div className={`category-sidebar ${sidebarOpen ? 'open' : ''}`}>
+            <button className="category-close-mobile" onClick={() => setSidebarOpen(false)}>✕</button>
+            <ul className="category-list">
+              {categories.map(cat => (
+                <li
+                  key={cat.id}
+                  className={`category-item ${selectedCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedCategory(cat.id === 'all' ? null : cat.id);
+                    setSidebarOpen(false);
+                  }}
+                >
+                  <span className="category-name">{cat.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="products-grid">
             {paginatedProducts.map(renderProductCard)}
           </div>
+        </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
