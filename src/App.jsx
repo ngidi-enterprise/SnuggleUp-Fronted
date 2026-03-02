@@ -24,6 +24,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import DataDeletion from './pages/DataDeletion';
 import ShippingPolicy from './pages/ShippingPolicy';
+import ReturnsPolicy from './pages/ReturnsPolicy';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -74,7 +75,7 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
   
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated, logout } = useAuth();
 
   // determine whether to show the post-purchase account creation prompt
   useEffect(() => {
@@ -169,6 +170,10 @@ function App() {
       
       if (!response.ok) {
         console.warn('⚠️ Failed to save cart to backend (status:', response.status, ')');
+        if (response.status === 403) {
+          console.warn('Token invalid while saving cart - logging out');
+          try { logout(); } catch {};
+        }
       } else {
         console.log('✅ Cart saved to backend successfully');
       }
@@ -979,13 +984,19 @@ function App() {
         discount: getDiscount()
       }));
 
-      const response = await fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      // build headers; only include auth when the framework says user is authenticated
+      const baseHeaders = { 'Content-Type': 'application/json' };
+      const authHeaders = (isAuthenticated && token)
+        ? { Authorization: `Bearer ${token}` }
+        : {};
+      let headers = { ...baseHeaders, ...authHeaders };
+
+      // helper to actually post the payment data
+      const postPayment = async (hdrs) => {
+        return fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
+          method: 'POST',
+          headers: hdrs,
+          body: JSON.stringify({
           amount: Math.round(getTotalPrice() * 100) / 100,
           email: user?.email || shippingDetails.email,
           orderItems: cartItems,
@@ -1007,6 +1018,16 @@ function App() {
           }
         })
       });
+
+      // post once with current headers
+      let response = await postPayment(headers);
+      // if we attempted with auth but got forbidden, drop login and retry
+      if (response.status === 403 && isAuthenticated) {
+        console.warn('Auth token rejected during checkout, clearing session and retrying as guest');
+        try { logout(); } catch {};
+        headers = { ...baseHeaders };
+        response = await postPayment(headers);
+      }
 
       if (!response.ok) {
         // Try to read JSON error if available
@@ -1237,6 +1258,10 @@ function App() {
       ) : currentPage === 'shipping' ? (
         <div style={{ marginTop: '20px' }}>
           <ShippingPolicy />
+        </div>
+      ) : currentPage === 'returns' ? (
+        <div style={{ marginTop: '20px' }}>
+          <ReturnsPolicy />
         </div>
       ) : currentPage === 'terms' ? (
         <div style={{ marginTop: '20px' }}>
@@ -1740,6 +1765,7 @@ function App() {
               <p style={{ marginTop: '0.5rem' }}>
                 <a href="#" onClick={() => setCurrentPage('privacy')} style={{ color: '#999', marginRight: '1rem' }}>Privacy Policy</a>
                 <a href="#" onClick={() => setCurrentPage('shipping')} style={{ color: '#999', marginRight: '1rem' }}>Shipping Policy</a>
+                <a href="#" onClick={() => setCurrentPage('returns')} style={{ color: '#999', marginRight: '1rem' }}>Returns Policy</a>
                 <a href="#" onClick={() => setCurrentPage('terms')} style={{ color: '#999', marginRight: '1rem' }}>Terms of Service</a>
                 <a href="#" onClick={() => setCurrentPage('data-deletion')} style={{ color: '#999' }}>Data Deletion</a>
               </p>
