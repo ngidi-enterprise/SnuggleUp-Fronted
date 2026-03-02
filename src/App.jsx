@@ -23,6 +23,7 @@ import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import DataDeletion from './pages/DataDeletion';
+import ShippingPolicy from './pages/ShippingPolicy';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 
@@ -59,6 +60,7 @@ function App() {
   const [localProductsCache, setLocalProductsCache] = useState([]);
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   
   // Local Products State
   const [selectedLocalProductId, setSelectedLocalProductId] = useState(null);
@@ -73,6 +75,22 @@ function App() {
   });
   
   const { user, token, isAuthenticated } = useAuth();
+
+  // determine whether to show the post-purchase account creation prompt
+  useEffect(() => {
+    if (!isAuthenticated) {
+      try {
+        const madeFirst = localStorage.getItem('hasMadeFirstPurchase');
+        if (madeFirst === 'true') {
+          setShowAccountPrompt(true);
+        }
+      } catch {};
+    } else {
+      // user logged in – no need to prompt and clear flag
+      setShowAccountPrompt(false);
+      try { localStorage.removeItem('hasMadeFirstPurchase'); } catch {};
+    }
+  }, [isAuthenticated]);
 
   // Prefill shipping name from user profile when available (editable by user)
   const defaultCustomerName = (
@@ -296,6 +314,9 @@ function App() {
       } else if (route.startsWith('/privacy')) {
         setCurrentPage('privacy');
         trackPageView('/privacy', 'Privacy Policy');
+      } else if (route.startsWith('/shipping')) {
+        setCurrentPage('shipping');
+        trackPageView('/shipping', 'Shipping Policy');
       } else if (route.startsWith('/terms')) {
         setCurrentPage('terms');
         trackPageView('/terms', 'Terms of Service');
@@ -902,13 +923,10 @@ function App() {
   
 
   const handleCheckout = async () => {
-    // Check if user is logged in
+    // guests are allowed; email will be collected in the shipping form
     if (!isAuthenticated) {
-      setShowCart(false);
-      setAuthView('login');
-      setShowAuthModal(true);
-      alert('Please login or create an account to continue with checkout.');
-      return;
+      // optional: show friendly notice
+      alert('You can checkout as a guest. Please enter your email on the next step to receive order confirmation.');
     }
 
     // Check cart has items and no obvious stock issues (already validated when adding)
@@ -933,8 +951,18 @@ function App() {
   };
 
   const handleShippingFormSubmit = async (shippingDetails) => {
-    setShippingFormData(shippingDetails);
+    // combine name parts for backend convenience
+    const detailsWithName = {
+      ...shippingDetails,
+      customerName: `${shippingDetails.firstName || ''} ${shippingDetails.lastName || ''}`.trim()
+    };
+    setShippingFormData(detailsWithName);
     setShowShippingForm(false);
+
+    // if guest entered email, capture for marketing/abandoned-cart flows
+    if (!isAuthenticated && detailsWithName?.email) {
+      console.log('📧 Guest checkout email captured for marketing:', detailsWithName.email);
+    }
 
     try {
       // Save cart to localStorage for recovery if payment fails
@@ -959,7 +987,7 @@ function App() {
         },
         body: JSON.stringify({
           amount: Math.round(getTotalPrice() * 100) / 100,
-          email: user.email,
+          email: user?.email || shippingDetails.email,
           orderItems: cartItems,
           subtotal: Math.round(getSubtotal() * 100) / 100,
           shipping: Math.round(getShippingCost() * 100) / 100,
@@ -1016,6 +1044,14 @@ function App() {
     <div className="app">
       {/* Header */}
       <header className="header">
+        {showAccountPrompt && (
+          <div className="account-prompt-banner">
+            <span>Create an account &amp; get 3% off your next purchase!</span>
+            <button className="btn-small" onClick={() => { setAuthView('register'); setShowAuthModal(true); }}>
+              Register Now
+            </button>
+          </div>
+        )}
         <div className="logo-section">
           <div 
             className="logo" 
@@ -1197,6 +1233,10 @@ function App() {
       ) : currentPage === 'privacy' ? (
         <div style={{ marginTop: '20px' }}>
           <PrivacyPolicy />
+        </div>
+      ) : currentPage === 'shipping' ? (
+        <div style={{ marginTop: '20px' }}>
+          <ShippingPolicy />
         </div>
       ) : currentPage === 'terms' ? (
         <div style={{ marginTop: '20px' }}>
@@ -1697,8 +1737,13 @@ function App() {
               <p>© 2025 SnuggleUp</p>
               <p>Made with <span className="heart">❤️</span> for all parents.</p>
               <p>Contact: support@snuggleup.co.za </p>
+              <p style={{ marginTop: '0.5rem' }}>
+                <a href="#" onClick={() => setCurrentPage('privacy')} style={{ color: '#999', marginRight: '1rem' }}>Privacy Policy</a>
+                <a href="#" onClick={() => setCurrentPage('shipping')} style={{ color: '#999', marginRight: '1rem' }}>Shipping Policy</a>
+                <a href="#" onClick={() => setCurrentPage('terms')} style={{ color: '#999', marginRight: '1rem' }}>Terms of Service</a>
+                <a href="#" onClick={() => setCurrentPage('data-deletion')} style={{ color: '#999' }}>Data Deletion</a>
+              </p>
             </div>
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #555' }}>
               <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <img 
@@ -1735,8 +1780,14 @@ function App() {
                 setShowShippingForm(false);
                 setShowCart(true);
               }}
-              // Prefill with user's name; previously entered values override
-              initialData={{ customerName: defaultCustomerName, ...(shippingFormData || {}) }}
+              // Prefill with user's name & email; previously entered values override
+              initialData={{
+                firstName: defaultCustomerName.split(' ')[0] || '',
+                lastName: defaultCustomerName.split(' ').slice(1).join(' ') || '',
+                email: user?.email,
+                ...(shippingFormData || {})
+              }}
+              readonlyEmail={!!user?.email}
             />
           )}
 

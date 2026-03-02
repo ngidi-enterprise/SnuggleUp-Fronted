@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from './context/AuthContext';
 
 function CheckoutSuccess() {
   const goHome = () => {
@@ -51,6 +52,9 @@ function CheckoutSuccess() {
   } catch (e) {
     console.error('Checkout storage cleanup error:', e);
   }
+
+  const { isAuthenticated, user } = useAuth();
+  const showIncentive = !isAuthenticated;
 
   return (
     <div style={{
@@ -113,6 +117,34 @@ function CheckoutSuccess() {
           </ul>
         </div>
         
+        {showIncentive && (
+          <div style={{
+            background: '#fff3cd',
+            padding: '20px',
+            margin: '20px 0',
+            borderRadius: '6px',
+            border: '1px solid #ffeeba'
+          }}>
+            <p style={{ margin: 0, color: '#856404' }}>
+              Did you enjoy your first purchase? <strong>Create an account now</strong> and get 3% off your next order!
+            </p>
+            <button
+              onClick={() => window.location.href = '/register'}
+              style={{
+                marginTop: '10px',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
+
         <button
           onClick={goHome}
           style={{

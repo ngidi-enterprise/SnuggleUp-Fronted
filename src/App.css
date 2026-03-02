@@ -496,6 +496,28 @@ body {
 }
 
 /* Shopping Cart Full Page Display */
+/* banner shown to guests after first purchase */
+.account-prompt-banner {
+  background: #fff3cd;
+  color: #856404;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.account-prompt-banner .btn-small {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .cart-page {
   background: #fdf5f3;
   min-height: calc(100vh - 88px - 200px); /* Account for header and footer */
