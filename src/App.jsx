@@ -1769,7 +1769,6 @@ function App() {
                   />
                 </div>
               </div>
-            </div>
           </footer>
 
           {/* Shipping Form Modal */}
