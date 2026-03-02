@@ -20,20 +20,24 @@ const isValidSouthAfricanId = (value) => {
   return checkDigit === nums[12];
 };
 
-export default function ShippingForm({ onSubmit, onCancel, initialData }) {
+export default function ShippingForm({ onSubmit, onCancel, initialData, readonlyEmail = false }) {
   // Be resilient to null/undefined initialData
   const safeInit = initialData ?? {};
   const [formData, setFormData] = useState({
-    customerName: safeInit.customerName || '',
+    email: safeInit.email || '',
+    firstName: safeInit.firstName || '',
+    lastName: safeInit.lastName || '',
     address: safeInit.address || '',
     city: safeInit.city || '',
     province: safeInit.province || 'Gauteng',
     postalCode: safeInit.postalCode || '',
-    phone: safeInit.phone || '',
-    idNumber: safeInit.idNumber || ''
+    phone: safeInit.phone || ''
   });
 
   const [errors, setErrors] = useState({});
+
+  // helper to assemble full name for parent
+  const getCustomerName = () => `${formData.firstName} ${formData.lastName}`.trim();
 
   const provinces = [
     'Gauteng',
@@ -50,8 +54,17 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.customerName.trim()) {
-      newErrors.customerName = 'Full name is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
     }
 
     if (!formData.address.trim()) {
@@ -69,19 +82,9 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = 'Mobile number is required';
     } else if (!/^0\d{9}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Phone number must be 10 digits starting with 0';
-    }
-
-    // South African ID number (13 digits)
-    const idDigits = formData.idNumber.replace(/\D/g, '');
-    if (!idDigits) {
-      newErrors.idNumber = 'South African ID number is required';
-    } else if (!/^\d{13}$/.test(idDigits)) {
-      newErrors.idNumber = 'ID number must be exactly 13 digits';
-    } else if (!isValidSouthAfricanId(idDigits)) {
-      newErrors.idNumber = 'ID number checksum is invalid';
+      newErrors.phone = 'Mobile number must be 10 digits starting with 0';
     }
 
     setErrors(newErrors);
@@ -90,11 +93,8 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Restrict idNumber to digits only while typing
-    const nextValue = name === 'idNumber' ? value.replace(/\D/g, '') : value;
-    setFormData(prev => ({ ...prev, [name]: nextValue }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -117,20 +117,56 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
         </div>
 
         <form onSubmit={handleSubmit} className="shipping-form">
+          {/* Email required even for guest checkout */}
           <div className="form-group">
-            <label htmlFor="customerName">
-              Full Name <span className="required">*</span>
+            <label htmlFor="email">
+              Email Address <span className="required">*</span>
             </label>
             <input
-              type="text"
-              id="customerName"
-              name="customerName"
-              value={formData.customerName}
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
-              placeholder="e.g., John Smith"
-              className={errors.customerName ? 'error' : ''}
+              placeholder="e.g., you@example.com"
+              className={errors.email ? 'error' : ''}
+              disabled={readonlyEmail}
             />
-            {errors.customerName && <span className="error-message">{errors.customerName}</span>}
+            {errors.email && <span className="error-message">{errors.email}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="firstName">
+                First Name <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="e.g., John"
+                className={errors.firstName ? 'error' : ''}
+              />
+              {errors.firstName && <span className="error-message">{errors.firstName}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="lastName">
+                Last Name <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="e.g., Smith"
+                className={errors.lastName ? 'error' : ''}
+              />
+              {errors.lastName && <span className="error-message">{errors.lastName}</span>}
+            </div>
           </div>
 
           <div className="form-group">
@@ -149,23 +185,6 @@ export default function ShippingForm({ onSubmit, onCancel, initialData }) {
             {errors.phone && <span className="error-message">{errors.phone}</span>}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="idNumber">
-              South African ID Number <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="idNumber"
-              name="idNumber"
-              value={formData.idNumber}
-              onChange={handleChange}
-              placeholder="13 digits"
-              maxLength="13"
-              className={errors.idNumber ? 'error' : ''}
-            />
-            {errors.idNumber && <span className="error-message">{errors.idNumber}</span>}
-            <small className="helper-text">Required for delivery verification and customs.</small>
-          </div>
 
           <div className="form-group">
             <label htmlFor="address">
