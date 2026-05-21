@@ -997,27 +997,28 @@ function App() {
           method: 'POST',
           headers: hdrs,
           body: JSON.stringify({
-          amount: Math.round(getTotalPrice() * 100) / 100,
-          email: user?.email || shippingDetails.email,
-          orderItems: cartItems,
-          subtotal: Math.round(getSubtotal() * 100) / 100,
-          shipping: Math.round(getShippingCost() * 100) / 100,
-          discount: Math.round(getDiscount() * 100) / 100,
-          shippingMethod: selectedShipping?.logisticName || 'STANDARD',
-          shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
-          shippingCountry: shippingCountry,
-          shippingDetails: shippingDetails,
-          insurance: insuranceSelected ? {
-            selected: true,
-            cost: getInsuranceCost(),
-            coverage: insuranceData?.coverage || getSubtotal(),
-            percentage: insuranceData?.percentage || 3
-          } : {
-            selected: false,
-            cost: 0
-          }
-        })
-      });
+            amount: Math.round(getTotalPrice() * 100) / 100,
+            email: user?.email || shippingDetails.email,
+            orderItems: cartItems,
+            subtotal: Math.round(getSubtotal() * 100) / 100,
+            shipping: Math.round(getShippingCost() * 100) / 100,
+            discount: Math.round(getDiscount() * 100) / 100,
+            shippingMethod: selectedShipping?.logisticName || 'STANDARD',
+            shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
+            shippingCountry: shippingCountry,
+            shippingDetails: shippingDetails,
+            insurance: insuranceSelected ? {
+              selected: true,
+              cost: getInsuranceCost(),
+              coverage: insuranceData?.coverage || getSubtotal(),
+              percentage: insuranceData?.percentage || 3
+            } : {
+              selected: false,
+              cost: 0
+            }
+          })
+        });
+      };
 
       // post once with current headers
       let response = await postPayment(headers);
