@@ -812,6 +812,7 @@ function App() {
           items: localItems,
           destination: {
             address: shippingDetails.address,
+            suburb: shippingDetails.suburb,
             city: shippingDetails.city,
             province: shippingDetails.province,
             postalCode: shippingDetails.postalCode,
