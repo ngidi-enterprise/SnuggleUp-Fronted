@@ -78,6 +78,27 @@ function App() {
   
   const { user, token, isAuthenticated, logout } = useAuth();
 
+  const normalizeCartItem = (product, quantity = 1) => {
+    const safeId = product?.id ?? product?.sku ?? product?.pid ?? product?.name;
+    const isLocal = Boolean(
+      product?.isLocal ||
+      product?.is_local ||
+      product?.source === 'local' ||
+      product?.type === 'local' ||
+      product?.warehouseType === 'local'
+    );
+    return {
+      ...product,
+      id: safeId,
+      name: product?.name || product?.product_name || 'Product',
+      price: Number(product?.price || 0),
+      image: product?.image || product?.images?.[0] || product?.product_image || '',
+      stock_quantity: Number(product?.stock_quantity || product?.stock || 0),
+      quantity: Math.max(1, Number(quantity || product?.quantity || 1)),
+      isLocal
+    };
+  };
+
   // determine whether to show the post-purchase account creation prompt
   useEffect(() => {
     if (!isAuthenticated) {
@@ -183,6 +204,35 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const normalized = parsed.map(item => normalizeCartItem(item, item.quantity || 1));
+          setCartItems(normalized);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to restore cart from localStorage:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cart', JSON.stringify(cartItems));
+    } catch (error) {
+      console.warn('⚠️ Failed to save cart to localStorage:', error);
+    }
+  }, [cartItems]);
+
+  useEffect(() => {
+    setCartCount(
+      cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+    );
+  }, [cartItems]);
+
   // Load cart from backend (authenticated users only)
   const loadCartFromBackend = async () => {
     if (!isAuthenticated || !token) return null;
@@ -229,21 +279,24 @@ function App() {
           // Add all backend items first (if any)
           if (backendCart && Array.isArray(backendCart) && backendCart.length > 0) {
             backendCart.forEach(item => {
-              mergedCart.push(item);
-              seenIds.add(item.id);
+              const normalizedItem = normalizeCartItem(item, item.quantity || 1);
+              mergedCart.push(normalizedItem);
+              seenIds.add(String(normalizedItem.id));
             });
           }
           
           // Add local items that aren't already in the merged cart
           localCart.forEach(localItem => {
-            if (!seenIds.has(localItem.id)) {
-              mergedCart.push(localItem);
-              seenIds.add(localItem.id);
+            const normalizedLocalItem = normalizeCartItem(localItem, localItem.quantity || 1);
+            const localId = String(normalizedLocalItem.id);
+            if (!seenIds.has(localId)) {
+              mergedCart.push(normalizedLocalItem);
+              seenIds.add(localId);
             } else {
               // If item exists in both, prefer higher quantity
-              const existingIndex = mergedCart.findIndex(item => item.id === localItem.id);
-              if (existingIndex !== -1 && localItem.quantity > mergedCart[existingIndex].quantity) {
-                mergedCart[existingIndex].quantity = localItem.quantity;
+              const existingIndex = mergedCart.findIndex(item => String(item.id) === localId);
+              if (existingIndex !== -1 && normalizedLocalItem.quantity > mergedCart[existingIndex].quantity) {
+                mergedCart[existingIndex].quantity = normalizedLocalItem.quantity;
               }
             }
           });
@@ -755,53 +808,56 @@ function App() {
   // Home now shows CJ catalog (handled after helper functions are defined)
 
   const addToCart = (product) => {
-    // Check if product is sold out (stock_quantity = 0)
-    const stockQty = typeof product.stock_quantity === 'number' ? product.stock_quantity : Number(product.stock_quantity || 0);
-    
+    const normalizedProduct = normalizeCartItem(product, 1);
+    const stockQty = Number(normalizedProduct.stock_quantity || 0);
+
     if (stockQty === 0) {
       alert('Sorry, this item is currently sold out and cannot be added to your cart.');
       return;
     }
-    
-    const existingItem = cartItems.find(item => item.id === product.id);
-    
-    // Check if adding would exceed available stock
-    if (existingItem && existingItem.quantity >= stockQty) {
-      alert(`Only ${stockQty} available in stock.`);
-      return;
-    }
-    
-    if (existingItem) {
-      setCartItems(cartItems.map(item => 
-        item.id === product.id 
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCartItems([...cartItems, { ...product, quantity: 1 }]);
-    }
-    
-    setCartCount(cartCount + 1);
-    
-    // Track add to cart event
-    trackAddToCart(product, 1);
+
+    setCartItems(prevItems => {
+      const existingIndex = prevItems.findIndex(item => String(item.id) === String(normalizedProduct.id));
+
+      if (existingIndex >= 0) {
+        const existingItem = prevItems[existingIndex];
+        if (existingItem.quantity >= stockQty) {
+          alert(`Only ${stockQty} available in stock.`);
+          return prevItems;
+        }
+
+        const updatedItems = [...prevItems];
+        updatedItems[existingIndex] = {
+          ...existingItem,
+          quantity: existingItem.quantity + 1
+        };
+        return updatedItems;
+      }
+
+      return [...prevItems, normalizedProduct];
+    });
+
+    trackAddToCart(normalizedProduct, 1);
   };
 
   const removeFromCart = (productId) => {
-    const item = cartItems.find(item => item.id === productId);
-    if (item && item.quantity > 1) {
-      setCartItems(cartItems.map(item => 
-        item.id === productId 
-          ? { ...item, quantity: item.quantity - 1 }
-          : item
-      ));
-      setCartCount(cartCount - 1);
-      trackRemoveFromCart(item, 1);
-    } else {
-      setCartItems(cartItems.filter(item => item.id !== productId));
-      setCartCount(cartCount - (item ? item.quantity : 0));
-      if (item) trackRemoveFromCart(item, item.quantity);
-    }
+    setCartItems(prevItems => {
+      const item = prevItems.find(item => String(item.id) === String(productId));
+      if (!item) return prevItems;
+
+      if (item.quantity > 1) {
+        const updated = prevItems.map(item =>
+          String(item.id) === String(productId)
+            ? { ...item, quantity: item.quantity - 1 }
+            : item
+        );
+        trackRemoveFromCart(item, 1);
+        return updated;
+      }
+
+      trackRemoveFromCart(item, item.quantity || 0);
+      return prevItems.filter(item => String(item.id) !== String(productId));
+    });
   };
 
   // Wishlist functions
@@ -1686,9 +1742,9 @@ function App() {
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
                       {cartOnlyLocal ? (
                         <>
-                          <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isBob ? ' • Bob Go' : ''}</p>
+                          <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
                           <p style={{fontSize: '0.85em', color: '#666', marginBottom: '8px'}}>
-                            Bob Go rates apply to local warehouse items only.
+                            Shipping rates apply to local warehouse items only.
                           </p>
                         </>
                       ) : (
@@ -1757,12 +1813,12 @@ function App() {
                           />
                         </div>
                         {shippingLoading ? (
-                          <p>Getting Bob Go shipping options…</p>
+                          <p>Getting shipping options…</p>
                         ) : shippingError ? (
                           <p style={{color:'#dc3545', fontSize:'0.9em'}}>{shippingError}</p>
                         ) : shippingOptions.length > 0 ? (
                           <div>
-                            <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Bob Go shipping method:</label>
+                            <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Shipping method:</label>
                             <select
                               value={selectedShipping?.logisticName || ''}
                               onChange={(e) => {
