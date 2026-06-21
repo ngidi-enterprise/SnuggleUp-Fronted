@@ -26,7 +26,16 @@ export default function ShippingForm({
   initialData,
   readonlyEmail = false,
   orderSummary = {},
-  shippingLabel = 'Delivery'
+  shippingLabel = 'Delivery',
+  hasLocalItems = false,
+  localDeliveryMode = 'economy',
+  localShippingQuotes = [],
+  selectedLocalShipping = null,
+  localShippingLoading = false,
+  localShippingError = '',
+  onLocalDeliveryModeChange,
+  onLocalShippingSelect,
+  onCheckLocalShippingRates
 }) {
   // Be resilient to null/undefined initialData
   const safeInit = initialData ?? {};
@@ -42,6 +51,7 @@ export default function ShippingForm({
   });
 
   const [errors, setErrors] = useState({});
+  const [deliverySelectionError, setDeliverySelectionError] = useState('');
 
   // helper to assemble full name for parent
   const getCustomerName = () => `${formData.firstName} ${formData.lastName}`.trim();
@@ -105,15 +115,36 @@ export default function ShippingForm({
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+
+    if (hasLocalItems && localDeliveryMode !== 'economy') {
+      onLocalShippingSelect?.(null);
+      setDeliverySelectionError('');
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      onSubmit(formData);
+    if (!validateForm()) return;
+
+    if (hasLocalItems && localDeliveryMode !== 'economy' && !selectedLocalShipping) {
+      setDeliverySelectionError('Choose a Bob Go live rate before continuing to payment.');
+      return;
     }
+
+    onSubmit(formData);
   };
+
+  const requestLocalShippingRates = () => {
+    if (!validateForm()) return;
+    setDeliverySelectionError('');
+    onCheckLocalShippingRates?.({
+      ...formData,
+      customerName: getCustomerName()
+    });
+  };
+
+  const matchingLocalRates = localShippingQuotes.filter(rate => rate.type === localDeliveryMode);
 
   return (
     <div className="shipping-form-overlay">
@@ -278,6 +309,115 @@ export default function ShippingForm({
               ))}
             </select>
           </div>
+
+          {hasLocalItems && (
+            <div className="form-group">
+              <label>Local Delivery Method</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLocalDeliveryModeChange?.('economy');
+                    onLocalShippingSelect?.(null);
+                    setDeliverySelectionError('');
+                  }}
+                  className="btn-cancel"
+                  style={{
+                    borderColor: localDeliveryMode === 'economy' ? '#126F71' : undefined,
+                    background: localDeliveryMode === 'economy' ? '#e8f6f3' : undefined
+                  }}
+                >
+                  Economy - R100 flat rate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLocalDeliveryModeChange?.('express');
+                    onLocalShippingSelect?.(null);
+                    setDeliverySelectionError('');
+                  }}
+                  className="btn-cancel"
+                  style={{
+                    borderColor: localDeliveryMode === 'express' ? '#126F71' : undefined,
+                    background: localDeliveryMode === 'express' ? '#e8f6f3' : undefined
+                  }}
+                >
+                  Express live rate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLocalDeliveryModeChange?.('pickup');
+                    onLocalShippingSelect?.(null);
+                    setDeliverySelectionError('');
+                  }}
+                  className="btn-cancel"
+                  style={{
+                    borderColor: localDeliveryMode === 'pickup' ? '#126F71' : undefined,
+                    background: localDeliveryMode === 'pickup' ? '#e8f6f3' : undefined
+                  }}
+                >
+                  Pick-up point live rate
+                </button>
+              </div>
+
+              {localDeliveryMode !== 'economy' && (
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn-cancel"
+                    onClick={requestLocalShippingRates}
+                    disabled={localShippingLoading}
+                  >
+                    {localShippingLoading ? 'Checking Bob Go test rates...' : 'Get Bob Go test rates'}
+                  </button>
+
+                  {localShippingError && (
+                    <span className="error-message" style={{ display: 'block', marginTop: '8px' }}>
+                      {localShippingError}
+                    </span>
+                  )}
+
+                  {matchingLocalRates.length > 0 && (
+                    <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
+                      {matchingLocalRates.map(rate => (
+                        <button
+                          key={rate.id}
+                          type="button"
+                          onClick={() => {
+                            onLocalShippingSelect?.(rate);
+                            setDeliverySelectionError('');
+                          }}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '10px',
+                            border: selectedLocalShipping?.id === rate.id ? '2px solid #126F71' : '1px solid #ddd',
+                            background: selectedLocalShipping?.id === rate.id ? '#e8f6f3' : '#fff',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span>
+                            <strong>{rate.label}</strong>
+                            {rate.deliveryEstimate && <small style={{ display: 'block' }}>{rate.deliveryEstimate}</small>}
+                          </span>
+                          <strong>R{Number(rate.priceZAR).toFixed(2)}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {deliverySelectionError && (
+                <span className="error-message" style={{ display: 'block', marginTop: '8px' }}>
+                  {deliverySelectionError}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="form-actions">
             <button type="button" onClick={onCancel} className="btn-cancel">
