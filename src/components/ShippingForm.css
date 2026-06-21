@@ -54,6 +54,35 @@
   font-size: 14px;
 }
 
+.shipping-order-summary {
+  background: #f8faf8;
+  border-bottom: 1px solid #e6eee3;
+  padding: 18px 24px;
+  display: grid;
+  gap: 10px;
+}
+
+.shipping-order-summary div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shipping-order-summary span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.shipping-order-summary strong {
+  color: #111827;
+  font-size: 0.98rem;
+}
+
+.summary-total strong {
+  color: #126F71;
+  font-size: 1rem;
+}
+
 .shipping-form {
   padding: 30px;
 }

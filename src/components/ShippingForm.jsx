@@ -20,7 +20,14 @@ const isValidSouthAfricanId = (value) => {
   return checkDigit === nums[12];
 };
 
-export default function ShippingForm({ onSubmit, onCancel, initialData, readonlyEmail = false }) {
+export default function ShippingForm({
+  onSubmit,
+  onCancel,
+  initialData,
+  readonlyEmail = false,
+  orderSummary = {},
+  shippingLabel = 'Delivery'
+}) {
   // Be resilient to null/undefined initialData
   const safeInit = initialData ?? {};
   const [formData, setFormData] = useState({
@@ -114,6 +121,25 @@ export default function ShippingForm({ onSubmit, onCancel, initialData, readonly
         <div className="shipping-form-header">
           <h2>📦 Shipping Details</h2>
           <p>Please provide your delivery address</p>
+        </div>
+
+        <div className="shipping-order-summary">
+          <div>
+            <span>{orderSummary.itemCount || 0} item(s)</span>
+            <strong>{shippingLabel}</strong>
+          </div>
+          <div>
+            <span>Subtotal</span>
+            <strong>R{Number(orderSummary.subtotal || 0).toFixed(2)}</strong>
+          </div>
+          <div>
+            <span>Shipping</span>
+            <strong>R{Number(orderSummary.shipping || 0).toFixed(2)}</strong>
+          </div>
+          <div className="summary-total">
+            <span>Total</span>
+            <strong>R{Number(orderSummary.total || 0).toFixed(2)}</strong>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="shipping-form">
