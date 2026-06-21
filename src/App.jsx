@@ -42,6 +42,7 @@ function App() {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState('');
   const [shippingCountry, setShippingCountry] = useState('ZA');
+  const [shippingPostalCode, setShippingPostalCode] = useState('');
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [insuranceData, setInsuranceData] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -604,22 +605,83 @@ function App() {
   // Fetch real-time shipping quotes from backend (called when cart opens or changes)
   useEffect(() => {
     const fetchQuotes = async () => {
-      if (!showCart || cartItems.length === 0) return; // only fetch when cart visible
-
-      // if we only have local items we don't need supplier quotes
-      if (cartOnlyLocal) {
-        setShippingOptions([]);
-        setInsuranceData(null);
-        setSelectedShipping(null);
-        setShippingError('');
-        setShippingLoading(false);
-        return;
-      }
+      if (!showCart || cartItems.length === 0) return;
 
       setShippingLoading(true);
       setShippingError('');
+      setInsuranceData(null);
+      setSelectedShipping(null);
+
       try {
-        // DEBUG: Log cart items to see what data we have
+        if (cartOnlyLocal) {
+          const bobPayload = {
+            items: localItems.map(item => ({
+              id: item.id,
+              sku: item.sku || item.id,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price
+            })),
+            destination: {
+              country: shippingCountry,
+              postalCode: shippingPostalCode || undefined
+            },
+            orderValue: getSubtotal()
+          };
+
+          console.log('📦 Bob shipping request payload:', bobPayload);
+
+          const res = await fetchApi(`/api/bob/rates`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bobPayload)
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Bob shipping quote request failed');
+          }
+
+          const data = await res.json();
+          console.log('📥 Bob shipping API response:', data);
+
+          const rawRates = data.rates || data.data?.rates || data.result?.rates || data.options || data.quotes || data.data || [];
+          const rateList = Array.isArray(rawRates)
+            ? rawRates
+            : (rawRates && Array.isArray(rawRates.items)
+              ? rawRates.items
+              : (rawRates && typeof rawRates === 'object' ? [rawRates] : []));
+
+          const opts = rateList
+            .map((q, index) => ({
+              ...q,
+              logisticName: q.logisticName || q.name || q.service || q.provider || `Bob Option ${index + 1}`,
+              priceZAR: Number(q.priceZAR ?? q.price ?? q.total ?? q.amount ?? q.cost ?? q.rate ?? q.shippingPrice ?? 0),
+              deliveryDay: q.deliveryDay || q.delivery_days || q.estimatedDays || q.days || q.deliveryTime || '',
+              isBob: true
+            }))
+            .filter(q => Number.isFinite(q.priceZAR));
+
+          const quotesWithDates = opts.map(q => ({
+            ...q,
+            deliveryDates: getDeliveryDateRange(q.deliveryDay)
+          }));
+
+          setShippingOptions(quotesWithDates);
+          setInsuranceData(data.insurance || data.shippingInsurance || null);
+
+          if (!selectedShipping && quotesWithDates.length > 0) {
+            const cheapest = [...quotesWithDates].sort((a, b) => a.priceZAR - b.priceZAR)[0];
+            setSelectedShipping(cheapest);
+          }
+
+          if (quotesWithDates.length === 0) {
+            setShippingError(data.error || 'No Bob shipping options available for this cart.');
+          }
+          return;
+        }
+
+        // Import-only cart flow stays unchanged and continues to use the CJ shipping endpoint.
         console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
         console.log('🛒 Cart items summary:', cartItems.map(ci => ({
           id: ci.id,
@@ -631,7 +693,6 @@ function App() {
           quantity: ci.quantity
         })));
 
-        // Only include non-local items that have a CJ variant id; older cart entries may lack it
         const itemsWithVid = cartItems
           .filter(ci => !ci.isLocal && !!ci.cj_vid)
           .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
@@ -646,49 +707,40 @@ function App() {
           setInsuranceData(null);
           setSelectedShipping(null);
           setShippingError(`⚠️ Cart items missing supplier data. Please clear cart and re-add products from the store.`);
-          setShippingLoading(false);
           return;
         }
-
-        console.log('✅ Requesting shipping quotes for', itemsWithVid.length, 'items');
-        console.log('📦 Items with VID:', itemsWithVid);
 
         const body = {
           items: itemsWithVid,
           shippingCountry,
+          postalCode: shippingPostalCode || undefined,
           orderValue: getSubtotal()
         };
-        
-        console.log('📤 Shipping API request:', body);
-        
+
         const res = await fetchApi(`/api/shipping/quote`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
+
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           console.error('❌ Shipping API error:', err);
           throw new Error(err.error || 'Quote request failed');
         }
+
         const data = await res.json();
-        console.log('📥 Shipping API response:', data);
-        
         const opts = data.quotes || [];
-        console.log('✅ Received', opts.length, 'shipping quotes');
-        
-        // Add delivery date ranges to quotes
         const quotesWithDates = opts.map(q => ({
           ...q,
           deliveryDates: getDeliveryDateRange(q.deliveryDay)
         }));
-        
+
         setShippingOptions(quotesWithDates);
         setInsuranceData(data.insurance || null);
-        
-        // Auto-select cheapest option if none chosen yet
+
         if (!selectedShipping && quotesWithDates.length > 0) {
-          const cheapest = [...quotesWithDates].sort((a,b) => a.priceZAR - b.priceZAR)[0];
+          const cheapest = [...quotesWithDates].sort((a, b) => a.priceZAR - b.priceZAR)[0];
           setSelectedShipping(cheapest);
         }
       } catch (e) {
@@ -698,7 +750,7 @@ function App() {
       }
     };
     fetchQuotes();
-  }, [showCart, cartItems, shippingCountry]);
+  }, [showCart, cartItems, cartOnlyLocal, localItems, shippingCountry, shippingPostalCode, selectedShipping]);
 
   // Home now shows CJ catalog (handled after helper functions are defined)
 
@@ -817,13 +869,9 @@ function App() {
 
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
-    // local-only orders never use external quotes; shipping is handled separately (assumed zero here)
-    if (cartOnlyLocal) return 0;
-    // Only use selected real-time shipping option
     if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
       return selectedShipping.priceZAR;
     }
-    // No fallback rate - must have quote
     return 0;
   };
 
@@ -847,7 +895,7 @@ function App() {
   };
 
   const getTotalPrice = () => {
-    const localShippingCost = hasLocal ? getLocalShippingCost() : 0;
+    const localShippingCost = hasLocal && !cartOnlyLocal ? getLocalShippingCost() : 0;
     const total = getSubtotal() + getShippingCost() + getInsuranceCost() + localShippingCost - getDiscount();
     // Round to 2 decimal places to avoid floating-point precision issues
     const rounded = Math.round(total * 100) / 100;
@@ -1637,7 +1685,12 @@ function App() {
                     <div className="cart-total">
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
                       {cartOnlyLocal ? (
-                        <p style={{marginBottom: '8px'}}>Shipping: R{getLocalShippingCost().toFixed(2)}{getSubtotal() > 550 ? ' (Free!)' : ''}</p>
+                        <>
+                          <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isBob ? ' • Bob Go' : ''}</p>
+                          <p style={{fontSize: '0.85em', color: '#666', marginBottom: '8px'}}>
+                            Bob Go rates apply to local warehouse items only.
+                          </p>
+                        </>
                       ) : (
                         <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
                       )}
@@ -1676,6 +1729,61 @@ function App() {
                         {voucherError && (
                           <p style={{color: '#dc3545', fontSize: '0.85em', marginTop: '4px'}}>{voucherError}</p>
                         )}
+                      </div>
+                    )}
+
+                    {cartOnlyLocal && (
+                      <div style={{marginTop: '12px', marginBottom: '12px'}}>
+                        <div style={{marginBottom: '10px'}}>
+                          <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>📍 Ship to:</label>
+                          <select
+                            value={shippingCountry}
+                            onChange={(e) => setShippingCountry(e.target.value)}
+                            style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
+                          >
+                            <option value="ZA">🇿🇦 South Africa</option>
+                            <option value="US">🇺🇸 United States</option>
+                            <option value="GB">🇬🇧 United Kingdom</option>
+                          </select>
+                        </div>
+                        <div style={{marginBottom: '10px'}}>
+                          <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Postal code (optional):</label>
+                          <input
+                            type="text"
+                            value={shippingPostalCode}
+                            onChange={(e) => setShippingPostalCode(e.target.value)}
+                            placeholder="e.g. 2196"
+                            style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
+                          />
+                        </div>
+                        {shippingLoading ? (
+                          <p>Getting Bob Go shipping options…</p>
+                        ) : shippingError ? (
+                          <p style={{color:'#dc3545', fontSize:'0.9em'}}>{shippingError}</p>
+                        ) : shippingOptions.length > 0 ? (
+                          <div>
+                            <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Bob Go shipping method:</label>
+                            <select
+                              value={selectedShipping?.logisticName || ''}
+                              onChange={(e) => {
+                                const opt = shippingOptions.find(o => o.logisticName === e.target.value);
+                                setSelectedShipping(opt || null);
+                              }}
+                              style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
+                            >
+                              {shippingOptions.map(o => (
+                                <option key={o.logisticName} value={o.logisticName}>
+                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                            {selectedShipping?.deliveryDates && (
+                              <p style={{fontSize:'0.85em', color:'#666', marginTop:'4px'}}>
+                                📅 Estimated delivery: {selectedShipping.deliveryDates.text}
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     )}
                     
