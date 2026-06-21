@@ -44,6 +44,7 @@ export default function ShippingForm({
     firstName: safeInit.firstName || '',
     lastName: safeInit.lastName || '',
     address: safeInit.address || '',
+    suburb: safeInit.suburb || '',
     city: safeInit.city || '',
     province: safeInit.province || 'Gauteng',
     postalCode: safeInit.postalCode || '',
@@ -86,6 +87,10 @@ export default function ShippingForm({
 
     if (!formData.address.trim()) {
       newErrors.address = 'Street address is required';
+    }
+
+    if (!formData.suburb.trim()) {
+      newErrors.suburb = 'Suburb is required';
     }
 
     if (!formData.city.trim()) {
@@ -257,6 +262,22 @@ export default function ShippingForm({
               className={errors.address ? 'error' : ''}
             />
             {errors.address && <span className="error-message">{errors.address}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="suburb">
+              Suburb <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="suburb"
+              name="suburb"
+              value={formData.suburb}
+              onChange={handleChange}
+              placeholder="e.g., Crown City"
+              className={errors.suburb ? 'error' : ''}
+            />
+            {errors.suburb && <span className="error-message">{errors.suburb}</span>}
           </div>
 
           <div className="form-row">
