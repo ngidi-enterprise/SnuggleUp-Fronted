@@ -41,6 +41,7 @@ function App() {
   const [selectedShipping, setSelectedShipping] = useState(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState('');
+  const [shippingMode, setShippingMode] = useState('economy');
   const [shippingCountry, setShippingCountry] = useState('ZA');
   const [shippingPostalCode, setShippingPostalCode] = useState('');
   const [insuranceSelected, setInsuranceSelected] = useState(false);
@@ -98,6 +99,54 @@ function App() {
       isLocal
     };
   };
+
+  const defaultDropBoxOptions = [
+    {
+      id: 'dropbox-rosebank',
+      name: 'Rosebank Pickup Point',
+      location: 'Rosebank, Johannesburg',
+      priceZAR: 55,
+      note: 'Open Mon–Sat · 8:00–18:00'
+    },
+    {
+      id: 'dropbox-midrand',
+      name: 'Midrand Pickup Point',
+      location: 'Midrand, Gauteng',
+      priceZAR: 65,
+      note: 'Open Mon–Sat · 8:00–17:00'
+    },
+    {
+      id: 'dropbox-cape-town',
+      name: 'Cape Town Collection Hub',
+      location: 'Goodwood, Cape Town',
+      priceZAR: 75,
+      note: 'Open Mon–Sat · 9:00–18:00'
+    }
+  ];
+
+  const shippingProfileOptions = [
+    {
+      key: 'economy',
+      label: 'Economy',
+      subtitle: 'BobGo flat rate',
+      priceZAR: 100,
+      meta: 'Best value · 3–5 business days'
+    },
+    {
+      key: 'express',
+      label: 'Express',
+      subtitle: 'Overnight delivery',
+      priceZAR: 180,
+      meta: 'Next business day · courier handoff'
+    },
+    {
+      key: 'dropbox',
+      label: 'Drop box',
+      subtitle: 'Collection point',
+      priceZAR: 55,
+      meta: 'Pick up at a partner location'
+    }
+  ];
 
   // determine whether to show the post-purchase account creation prompt
   useEffect(() => {
@@ -667,70 +716,10 @@ function App() {
 
       try {
         if (cartOnlyLocal) {
-          const bobPayload = {
-            items: localItems.map(item => ({
-              id: item.id,
-              sku: item.sku || item.id,
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price
-            })),
-            destination: {
-              country: shippingCountry,
-              postalCode: shippingPostalCode || undefined
-            },
-            orderValue: getSubtotal()
-          };
-
-          console.log('📦 Bob shipping request payload:', bobPayload);
-
-          const res = await fetchApi(`/api/bob/rates`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bobPayload)
-          });
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || 'Bob shipping quote request failed');
-          }
-
-          const data = await res.json();
-          console.log('📥 Bob shipping API response:', data);
-
-          const rawRates = data.rates || data.data?.rates || data.result?.rates || data.options || data.quotes || data.data || [];
-          const rateList = Array.isArray(rawRates)
-            ? rawRates
-            : (rawRates && Array.isArray(rawRates.items)
-              ? rawRates.items
-              : (rawRates && typeof rawRates === 'object' ? [rawRates] : []));
-
-          const opts = rateList
-            .map((q, index) => ({
-              ...q,
-              logisticName: q.logisticName || q.name || q.service || q.provider || `Bob Option ${index + 1}`,
-              priceZAR: Number(q.priceZAR ?? q.price ?? q.total ?? q.amount ?? q.cost ?? q.rate ?? q.shippingPrice ?? 0),
-              deliveryDay: q.deliveryDay || q.delivery_days || q.estimatedDays || q.days || q.deliveryTime || '',
-              isBob: true
-            }))
-            .filter(q => Number.isFinite(q.priceZAR));
-
-          const quotesWithDates = opts.map(q => ({
-            ...q,
-            deliveryDates: getDeliveryDateRange(q.deliveryDay)
-          }));
-
-          setShippingOptions(quotesWithDates);
-          setInsuranceData(data.insurance || data.shippingInsurance || null);
-
-          if (!selectedShipping && quotesWithDates.length > 0) {
-            const cheapest = [...quotesWithDates].sort((a, b) => a.priceZAR - b.priceZAR)[0];
-            setSelectedShipping(cheapest);
-          }
-
-          if (quotesWithDates.length === 0) {
-            setShippingError(data.error || 'No Bob shipping options available for this cart.');
-          }
+          setShippingOptions([]);
+          setInsuranceData(null);
+          setShippingError('');
+          setShippingLoading(false);
           return;
         }
 
@@ -925,14 +914,20 @@ function App() {
 
   const getShippingCost = () => {
     if (cartItems.length === 0) return 0;
-    if (selectedShipping && typeof selectedShipping.priceZAR === 'number') {
-      return selectedShipping.priceZAR;
+
+    if (shippingMode === 'dropbox') {
+      const chosen = defaultDropBoxOptions.find(opt => opt.id === selectedShipping?.id);
+      return chosen?.priceZAR || defaultDropBoxOptions[0].priceZAR;
     }
-    return 0;
+
+    if (shippingMode === 'express') {
+      return 180;
+    }
+
+    return 100;
   };
 
   const getLocalShippingCost = () => {
-    // Free shipping for local products if subtotal > R550, otherwise R99
     if (localSubtotal > 550) {
       return 0;
     }
@@ -1078,9 +1073,15 @@ function App() {
       localStorage.setItem('cart', JSON.stringify(cartItems));
       
       // Save insurance and shipping data for order creation
+      const shippingLabel = shippingMode === 'dropbox'
+        ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
+        : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy';
+
       localStorage.setItem('checkoutData', JSON.stringify({
         shippingCountry,
-        shippingMethod: selectedShipping?.logisticName || 'STANDARD',
+        shippingMethod: shippingLabel,
+        shippingMode,
+        selectedDropBox: shippingMode === 'dropbox' ? selectedShipping : null,
         insuranceSelected,
         insuranceData: insuranceSelected ? insuranceData : null,
         subtotal: getSubtotal(),
@@ -1107,8 +1108,10 @@ function App() {
             subtotal: Math.round(getSubtotal() * 100) / 100,
             shipping: Math.round(getShippingCost() * 100) / 100,
             discount: Math.round(getDiscount() * 100) / 100,
-            shippingMethod: selectedShipping?.logisticName || 'STANDARD',
-            shippingQuoted: selectedShipping?.priceZAR || getShippingCost(),
+            shippingMethod: shippingMode === 'dropbox'
+              ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
+              : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy',
+            shippingQuoted: getShippingCost(),
             shippingCountry: shippingCountry,
             shippingDetails: shippingDetails,
             insurance: insuranceSelected ? {
@@ -1740,19 +1743,7 @@ function App() {
                   <div className="cart-footer">
                     <div className="cart-total">
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                      {cartOnlyLocal ? (
-                        <>
-                          <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
-                          <p style={{fontSize: '0.85em', color: '#666', marginBottom: '8px'}}>
-                            Shipping rates apply to local warehouse items only.
-                          </p>
-                        </>
-                      ) : (
-                        <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}{selectedShipping?.isFallback ? ' • Estimated' : ''}</p>
-                      )}
-                      {insuranceSelected && insuranceData && (
-                        <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
-                      )}
+                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
                       {appliedVoucher && (
                         <p style={{marginBottom: '8px', color: '#28a745'}}>
                           Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
@@ -1788,60 +1779,57 @@ function App() {
                       </div>
                     )}
 
-                    {cartOnlyLocal && (
-                      <div style={{marginTop: '12px', marginBottom: '12px'}}>
-                        <div style={{marginBottom: '10px'}}>
-                          <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>📍 Ship to:</label>
-                          <select
-                            value={shippingCountry}
-                            onChange={(e) => setShippingCountry(e.target.value)}
-                            style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
-                          >
-                            <option value="ZA">🇿🇦 South Africa</option>
-                            <option value="US">🇺🇸 United States</option>
-                            <option value="GB">🇬🇧 United Kingdom</option>
-                          </select>
-                        </div>
-                        <div style={{marginBottom: '10px'}}>
-                          <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Postal code (optional):</label>
-                          <input
-                            type="text"
-                            value={shippingPostalCode}
-                            onChange={(e) => setShippingPostalCode(e.target.value)}
-                            placeholder="e.g. 2196"
-                            style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
-                          />
-                        </div>
-                        {shippingLoading ? (
-                          <p>Getting shipping options…</p>
-                        ) : shippingError ? (
-                          <p style={{color:'#dc3545', fontSize:'0.9em'}}>{shippingError}</p>
-                        ) : shippingOptions.length > 0 ? (
-                          <div>
-                            <label style={{fontSize:'0.9em', fontWeight:'bold', display:'block', marginBottom:'6px'}}>Shipping method:</label>
-                            <select
-                              value={selectedShipping?.logisticName || ''}
-                              onChange={(e) => {
-                                const opt = shippingOptions.find(o => o.logisticName === e.target.value);
-                                setSelectedShipping(opt || null);
-                              }}
-                              style={{width:'100%', padding:'8px', borderRadius:'4px', border:'1px solid #ddd'}}
-                            >
-                              {shippingOptions.map(o => (
-                                <option key={o.logisticName} value={o.logisticName}>
-                                  {o.logisticName} — R{o.priceZAR.toFixed(2)}
-                                </option>
-                              ))}
-                            </select>
-                            {selectedShipping?.deliveryDates && (
-                              <p style={{fontSize:'0.85em', color:'#666', marginTop:'4px'}}>
-                                📅 Estimated delivery: {selectedShipping.deliveryDates.text}
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
+                    <div className="shipping-selector-card">
+                      <div className="shipping-selector-header">
+                        <h4>Choose delivery</h4>
+                        <span>{shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy'}</span>
                       </div>
-                    )}
+                      <div className="shipping-option-tabs">
+                        {shippingProfileOptions.map(option => (
+                          <button
+                            key={option.key}
+                            className={`shipping-tab ${shippingMode === option.key ? 'active' : ''}`}
+                            onClick={() => {
+                              setShippingMode(option.key);
+                              if (option.key !== 'dropbox') {
+                                setSelectedShipping(null);
+                              } else if (!selectedShipping) {
+                                setSelectedShipping(defaultDropBoxOptions[0]);
+                              }
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="shipping-option-body">
+                        {shippingMode === 'dropbox' ? (
+                          <div className="dropbox-list">
+                            {defaultDropBoxOptions.map(option => (
+                              <button
+                                key={option.id}
+                                className={`dropbox-card ${selectedShipping?.id === option.id ? 'selected' : ''}`}
+                                onClick={() => setSelectedShipping(option)}
+                              >
+                                <div>
+                                  <strong>{option.name}</strong>
+                                  <p>{option.location}</p>
+                                </div>
+                                <span>R{option.priceZAR}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="shipping-summary-card">
+                            <div>
+                              <strong>{shippingProfileOptions.find(o => o.key === shippingMode)?.label}</strong>
+                              <p>{shippingProfileOptions.find(o => o.key === shippingMode)?.meta}</p>
+                            </div>
+                            <span>R{shippingProfileOptions.find(o => o.key === shippingMode)?.priceZAR}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     
                     <button 
                       className="proceed-checkout" 
@@ -1970,6 +1958,15 @@ function App() {
                 setShowShippingForm(false);
                 setShowCart(true);
               }}
+              orderSummary={{
+                itemCount: cartCount,
+                subtotal: getSubtotal(),
+                shipping: getShippingCost(),
+                total: getTotalPrice()
+              }}
+              shippingLabel={shippingMode === 'dropbox'
+                ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
+                : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy'}
               // Prefill with user's name & email; previously entered values override
               initialData={{
                 firstName: defaultCustomerName.split(' ')[0] || '',

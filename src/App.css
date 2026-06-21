@@ -670,9 +670,104 @@ body {
 
 .cart-total {
   text-align: center;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   margin-bottom: 1rem;
   color: #333;
+}
+
+.shipping-selector-card {
+  background: #f8faf8;
+  border: 1px solid #dfeee1;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.shipping-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.shipping-selector-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.shipping-selector-header span {
+  font-size: 0.85rem;
+  color: #126F71;
+  font-weight: 600;
+}
+
+.shipping-option-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.shipping-tab {
+  border: 1px solid #d7d7d7;
+  background: white;
+  border-radius: 999px;
+  padding: 10px 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.shipping-tab.active {
+  background: #126F71;
+  color: white;
+  border-color: #126F71;
+}
+
+.shipping-option-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.shipping-summary-card,
+.dropbox-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid #e4e4e4;
+}
+
+.shipping-summary-card strong,
+.dropbox-card strong {
+  display: block;
+  color: #333;
+}
+
+.shipping-summary-card p,
+.dropbox-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.dropbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dropbox-card {
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropbox-card.selected {
+  border-color: #126F71;
+  background: #eef8f7;
 }
 
 .proceed-checkout {
@@ -747,6 +842,16 @@ body {
 @media (max-width: 768px) {
   .cart-groups-container {
     flex-direction: column;
+  }
+
+  .shipping-option-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-selector-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 
