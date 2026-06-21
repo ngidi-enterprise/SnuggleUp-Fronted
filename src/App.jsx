@@ -828,7 +828,9 @@ function App() {
 
       if (matchingRates.length === 0) {
         const label = localDeliveryMode === 'pickup' ? 'pick-up point' : 'express';
-        setLocalShippingError(`Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`);
+        setLocalShippingError(
+          data.message || `Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`
+        );
       }
     } catch (error) {
       setLocalShippingQuotes([]);
