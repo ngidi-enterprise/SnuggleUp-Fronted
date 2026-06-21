@@ -41,9 +41,13 @@ function App() {
   const [selectedShipping, setSelectedShipping] = useState(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState('');
-  const [shippingMode, setShippingMode] = useState('economy');
   const [shippingCountry, setShippingCountry] = useState('ZA');
   const [shippingPostalCode, setShippingPostalCode] = useState('');
+  const [localDeliveryMode, setLocalDeliveryMode] = useState('economy');
+  const [localShippingQuotes, setLocalShippingQuotes] = useState([]);
+  const [selectedLocalShipping, setSelectedLocalShipping] = useState(null);
+  const [localShippingLoading, setLocalShippingLoading] = useState(false);
+  const [localShippingError, setLocalShippingError] = useState('');
   const [insuranceSelected, setInsuranceSelected] = useState(false);
   const [insuranceData, setInsuranceData] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -124,26 +128,26 @@ function App() {
     }
   ];
 
-  const shippingProfileOptions = [
+  const localDeliveryOptions = [
     {
       key: 'economy',
       label: 'Economy',
-      subtitle: 'BobGo flat rate',
+      subtitle: 'Flat rate',
       priceZAR: 100,
       meta: 'Best value · 3–5 business days'
     },
     {
       key: 'express',
       label: 'Express',
-      subtitle: 'Overnight delivery',
-      priceZAR: 180,
+      subtitle: 'Bob Go live quote',
+      priceZAR: null,
       meta: 'Next business day · courier handoff'
     },
     {
-      key: 'dropbox',
-      label: 'Drop box',
-      subtitle: 'Collection point',
-      priceZAR: 55,
+      key: 'pickup',
+      label: 'Pick-up point',
+      subtitle: 'Bob Go live quote',
+      priceZAR: null,
       meta: 'Pick up at a partner location'
     }
   ];
@@ -707,7 +711,14 @@ function App() {
   // Fetch real-time shipping quotes from backend (called when cart opens or changes)
   useEffect(() => {
     const fetchQuotes = async () => {
-      if (!showCart || cartItems.length === 0) return;
+      if (!showCart || !hasImport) {
+        setShippingOptions([]);
+        setSelectedShipping(null);
+        setShippingError('');
+        setShippingLoading(false);
+        setInsuranceData(null);
+        return;
+      }
 
       setShippingLoading(true);
       setShippingError('');
@@ -715,14 +726,6 @@ function App() {
       setSelectedShipping(null);
 
       try {
-        if (cartOnlyLocal) {
-          setShippingOptions([]);
-          setInsuranceData(null);
-          setShippingError('');
-          setShippingLoading(false);
-          return;
-        }
-
         // Import-only cart flow stays unchanged and continues to use the CJ shipping endpoint.
         console.log('🛒 Cart items for shipping (FULL DATA):', JSON.stringify(cartItems, null, 2));
         console.log('🛒 Cart items summary:', cartItems.map(ci => ({
@@ -735,7 +738,7 @@ function App() {
           quantity: ci.quantity
         })));
 
-        const itemsWithVid = cartItems
+        const itemsWithVid = importItems
           .filter(ci => !ci.isLocal && !!ci.cj_vid)
           .map(ci => ({ cj_vid: ci.cj_vid, quantity: ci.quantity }));
 
@@ -792,7 +795,48 @@ function App() {
       }
     };
     fetchQuotes();
-  }, [showCart, cartItems, cartOnlyLocal, localItems, shippingCountry, shippingPostalCode, selectedShipping]);
+  }, [showCart, hasImport, importItems, shippingCountry, shippingPostalCode]);
+
+  const fetchLocalShippingQuotes = async (shippingDetails) => {
+    if (!hasLocal || localDeliveryMode === 'economy') return;
+
+    setLocalShippingLoading(true);
+    setLocalShippingError('');
+    setSelectedLocalShipping(null);
+
+    try {
+      const response = await fetchApi('/api/bob/checkout-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: localItems,
+          destination: {
+            address: shippingDetails.address,
+            city: shippingDetails.city,
+            province: shippingDetails.province,
+            postalCode: shippingDetails.postalCode,
+          },
+          orderValue: localSubtotal,
+        }),
+      });
+
+      const data = await response.json();
+      const rates = Array.isArray(data.rates) ? data.rates : [];
+      const matchingRates = rates.filter(rate => rate.type === localDeliveryMode);
+
+      setLocalShippingQuotes(rates);
+
+      if (matchingRates.length === 0) {
+        const label = localDeliveryMode === 'pickup' ? 'pick-up point' : 'express';
+        setLocalShippingError(`Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`);
+      }
+    } catch (error) {
+      setLocalShippingQuotes([]);
+      setLocalShippingError(error.message || 'Unable to load Bob Go test rates');
+    } finally {
+      setLocalShippingLoading(false);
+    }
+  };
 
   // Home now shows CJ catalog (handled after helper functions are defined)
 
@@ -912,26 +956,29 @@ function App() {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const getShippingCost = () => {
-    if (cartItems.length === 0) return 0;
-
-    if (shippingMode === 'dropbox') {
-      const chosen = defaultDropBoxOptions.find(opt => opt.id === selectedShipping?.id);
-      return chosen?.priceZAR || defaultDropBoxOptions[0].priceZAR;
-    }
-
-    if (shippingMode === 'express') {
-      return 180;
-    }
-
-    return 100;
+  const getImportShippingCost = () => {
+    if (!hasImport) return 0;
+    return Number(selectedShipping?.priceZAR || 0);
   };
 
+  // Backward-compatible alias for legacy import-cart display code.
+  const getShippingCost = () => getImportShippingCost();
+
   const getLocalShippingCost = () => {
-    if (localSubtotal > 550) {
-      return 0;
-    }
-    return 99;
+    if (!hasLocal) return 0;
+    if (localDeliveryMode === 'economy') return 100;
+    return Number(selectedLocalShipping?.priceZAR || 0);
+  };
+
+  const getLocalShippingMethod = () => {
+    if (!hasLocal) return null;
+    if (localDeliveryMode === 'economy') return 'Economy delivery - R100 flat rate';
+    return selectedLocalShipping?.label || null;
+  };
+
+  const getImportShippingMethod = () => {
+    if (!hasImport) return null;
+    return selectedShipping?.logisticName || null;
   };
 
   const getDiscount = () => {
@@ -946,8 +993,11 @@ function App() {
   };
 
   const getTotalPrice = () => {
-    const localShippingCost = hasLocal && !cartOnlyLocal ? getLocalShippingCost() : 0;
-    const total = getSubtotal() + getShippingCost() + getInsuranceCost() + localShippingCost - getDiscount();
+    const total = getSubtotal()
+      + getImportShippingCost()
+      + getLocalShippingCost()
+      + getInsuranceCost()
+      - getDiscount();
     // Round to 2 decimal places to avoid floating-point precision issues
     const rounded = Math.round(total * 100) / 100;
     return rounded > 0 ? rounded : 0;
@@ -962,7 +1012,7 @@ function App() {
     try {
       setVoucherError('');
       const subtotal = getSubtotal();
-      const orderAmount = subtotal + getShippingCost() + getInsuranceCost();
+      const orderAmount = subtotal + getImportShippingCost() + getLocalShippingCost() + getInsuranceCost();
 
       const response = await fetch(`${BACKEND_URL}/api/discounts/apply`, {
         method: 'POST',
@@ -1046,6 +1096,11 @@ function App() {
 
     console.log('✅ Checkout validation passed, proceeding to shipping form');
 
+    if (hasImport && !selectedShipping) {
+      alert('Please wait for, then select, an import shipping option before checkout.');
+      return;
+    }
+
     // Track begin checkout event
     trackBeginCheckout(cartItems, getTotalPrice());
 
@@ -1061,6 +1116,12 @@ function App() {
       customerName: `${shippingDetails.firstName || ''} ${shippingDetails.lastName || ''}`.trim()
     };
     setShippingFormData(detailsWithName);
+
+    if (hasLocal && localDeliveryMode !== 'economy' && !selectedLocalShipping) {
+      await fetchLocalShippingQuotes(detailsWithName);
+      return;
+    }
+
     setShowShippingForm(false);
 
     // if guest entered email, capture for marketing/abandoned-cart flows
@@ -1073,19 +1134,22 @@ function App() {
       localStorage.setItem('cart', JSON.stringify(cartItems));
       
       // Save insurance and shipping data for order creation
-      const shippingLabel = shippingMode === 'dropbox'
-        ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
-        : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy';
+      const importShipping = getImportShippingCost();
+      const localShipping = getLocalShippingCost();
+      const importShippingMethod = getImportShippingMethod();
+      const localShippingMethod = getLocalShippingMethod();
 
       localStorage.setItem('checkoutData', JSON.stringify({
         shippingCountry,
-        shippingMethod: shippingLabel,
-        shippingMode,
-        selectedDropBox: shippingMode === 'dropbox' ? selectedShipping : null,
+        shippingMethod: importShippingMethod,
+        localShippingMethod,
+        localDeliveryMode,
+        selectedLocalShipping,
         insuranceSelected,
         insuranceData: insuranceSelected ? insuranceData : null,
         subtotal: getSubtotal(),
-        shipping: getShippingCost(),
+        importShipping,
+        localShipping,
         discount: getDiscount()
       }));
 
@@ -1106,14 +1170,14 @@ function App() {
             email: user?.email || shippingDetails.email,
             orderItems: cartItems,
             subtotal: Math.round(getSubtotal() * 100) / 100,
-            shipping: Math.round(getShippingCost() * 100) / 100,
+            shipping: Math.round(importShipping * 100) / 100,
+            localShipping: Math.round(localShipping * 100) / 100,
             discount: Math.round(getDiscount() * 100) / 100,
-            shippingMethod: shippingMode === 'dropbox'
-              ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
-              : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy',
-            shippingQuoted: getShippingCost(),
+            shippingMethod: importShippingMethod,
+            localShippingMethod,
+            shippingQuoted: importShipping,
             shippingCountry: shippingCountry,
-            shippingDetails: shippingDetails,
+            shippingDetails: detailsWithName,
             insurance: insuranceSelected ? {
               selected: true,
               cost: getInsuranceCost(),
@@ -1165,6 +1229,104 @@ function App() {
       alert(error.message || 'Connection error. Please check if the backend server is running.');
     }
   };
+
+  const renderLocalDeliverySelector = () => {
+    const matchingRates = localShippingQuotes.filter(rate => rate.type === localDeliveryMode);
+    const hasLiveSelection = localDeliveryMode === 'economy' || Boolean(selectedLocalShipping);
+
+    return (
+      <div className="shipping-selector-card">
+        <div className="shipping-selector-header">
+          <h4>Local delivery</h4>
+          <span>{hasLiveSelection ? 'Selected' : 'Address required for live quote'}</span>
+        </div>
+        <div className="shipping-option-tabs">
+          {localDeliveryOptions.map(option => (
+            <button
+              key={option.key}
+              className={`shipping-tab ${localDeliveryMode === option.key ? 'active' : ''}`}
+              onClick={() => {
+                setLocalDeliveryMode(option.key);
+                setSelectedLocalShipping(null);
+                setLocalShippingError('');
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="shipping-option-body">
+          {localDeliveryMode === 'economy' ? (
+            <div className="shipping-summary-card">
+              <div>
+                <strong>Economy delivery</strong>
+                <p>R100 flat rate</p>
+              </div>
+              <span>R100.00</span>
+            </div>
+          ) : (
+            <>
+              {!shippingFormData?.postalCode && (
+                <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
+                  Enter your delivery address at checkout to see Bob Go test rates.
+                </p>
+              )}
+              {shippingFormData?.postalCode && !selectedLocalShipping && (
+                <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
+                  Continue to the delivery form, then request a live Bob Go rate.
+                </p>
+              )}
+              {selectedLocalShipping && (
+                <div className="shipping-summary-card">
+                  <div>
+                    <strong>{selectedLocalShipping.label}</strong>
+                    <p>{selectedLocalShipping.deliveryEstimate || 'Bob Go test rate'}</p>
+                  </div>
+                  <span>R{Number(selectedLocalShipping.priceZAR).toFixed(2)}</span>
+                </div>
+              )}
+              {matchingRates.length > 0 && !selectedLocalShipping && (
+                <p style={{ margin: 0, fontSize: '0.85em', color: '#666' }}>
+                  A live rate is ready to select in the delivery form.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderImportShippingSelector = () => (
+    <div className="shipping-selector-card">
+      <div className="shipping-selector-header">
+        <h4>Import delivery</h4>
+        <span>{selectedShipping ? 'Selected' : 'Choose a rate'}</span>
+      </div>
+      {shippingLoading ? (
+        <p style={{ margin: 0 }}>Getting supplier shipping options...</p>
+      ) : shippingError ? (
+        <p style={{ margin: 0, color: '#dc3545' }}>{shippingError}</p>
+      ) : shippingOptions.length === 0 ? (
+        <p style={{ margin: 0, color: '#dc3545' }}>No import shipping options are available for this cart.</p>
+      ) : (
+        <select
+          value={selectedShipping?.logisticName || ''}
+          onChange={(event) => {
+            const option = shippingOptions.find(rate => rate.logisticName === event.target.value);
+            setSelectedShipping(option || null);
+          }}
+          style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+        >
+          {shippingOptions.map(option => (
+            <option key={option.logisticName} value={option.logisticName}>
+              {option.logisticName} - R{Number(option.priceZAR).toFixed(2)}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
 
 
   // Note: '/cj' routes are normalized to 'home' in the router.
@@ -1511,12 +1673,13 @@ function App() {
                           <h4>Cart 1 – Fast delivery</h4>
                           <p style={{fontSize:'0.9em', color:'#555', margin:'4px 0 8px'}}>
                             Items stocked locally – delivered in 2–3 business days.
-                          </p>
-                          {localItems.map(renderItemRow)}
-                          <div className="cart-footer">
-                            <div className="cart-total">
-                              <p>Subtotal: R{localSubtotal.toFixed(2)}</p>
-                              <p>Shipping: R{getLocalShippingCost().toFixed(2)}{localSubtotal > 550 ? ' (Free!)' : ''}</p>
+                           </p>
+                           {localItems.map(renderItemRow)}
+                           {renderLocalDeliverySelector()}
+                           <div className="cart-footer">
+                             <div className="cart-total">
+                               <p>Subtotal: R{localSubtotal.toFixed(2)}</p>
+                               <p>Shipping: R{getLocalShippingCost().toFixed(2)}</p>
                               <strong>Total: R{(localSubtotal + getLocalShippingCost()).toFixed(2)}</strong>
                             </div>
                           </div>
@@ -1643,7 +1806,7 @@ function App() {
                               {insuranceSelected && insuranceData && (
                                 <p style={{marginBottom: '8px'}}>Insurance: R{getInsuranceCost().toFixed(2)}</p>
                               )}
-                              <strong>Total: R{(importSubtotal + getShippingCost() + (insuranceSelected ? getInsuranceCost() : 0)).toFixed(2)}</strong>
+                              <strong>Total: R{(importSubtotal + getImportShippingCost() + (insuranceSelected ? getInsuranceCost() : 0)).toFixed(2)}</strong>
                             </div>
                           </div>
                         </div>
@@ -1743,7 +1906,7 @@ function App() {
                   <div className="cart-footer">
                     <div className="cart-total">
                       <p style={{marginBottom: '8px'}}>Subtotal: R{getSubtotal().toFixed(2)}</p>
-                      <p style={{marginBottom: '8px'}}>Shipping: R{getShippingCost().toFixed(2)}</p>
+                      <p style={{marginBottom: '8px'}}>Shipping: R{(cartOnlyLocal ? getLocalShippingCost() : getImportShippingCost()).toFixed(2)}</p>
                       {appliedVoucher && (
                         <p style={{marginBottom: '8px', color: '#28a745'}}>
                           Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
@@ -1779,57 +1942,7 @@ function App() {
                       </div>
                     )}
 
-                    <div className="shipping-selector-card">
-                      <div className="shipping-selector-header">
-                        <h4>Choose delivery</h4>
-                        <span>{shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy'}</span>
-                      </div>
-                      <div className="shipping-option-tabs">
-                        {shippingProfileOptions.map(option => (
-                          <button
-                            key={option.key}
-                            className={`shipping-tab ${shippingMode === option.key ? 'active' : ''}`}
-                            onClick={() => {
-                              setShippingMode(option.key);
-                              if (option.key !== 'dropbox') {
-                                setSelectedShipping(null);
-                              } else if (!selectedShipping) {
-                                setSelectedShipping(defaultDropBoxOptions[0]);
-                              }
-                            }}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="shipping-option-body">
-                        {shippingMode === 'dropbox' ? (
-                          <div className="dropbox-list">
-                            {defaultDropBoxOptions.map(option => (
-                              <button
-                                key={option.id}
-                                className={`dropbox-card ${selectedShipping?.id === option.id ? 'selected' : ''}`}
-                                onClick={() => setSelectedShipping(option)}
-                              >
-                                <div>
-                                  <strong>{option.name}</strong>
-                                  <p>{option.location}</p>
-                                </div>
-                                <span>R{option.priceZAR}</span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="shipping-summary-card">
-                            <div>
-                              <strong>{shippingProfileOptions.find(o => o.key === shippingMode)?.label}</strong>
-                              <p>{shippingProfileOptions.find(o => o.key === shippingMode)?.meta}</p>
-                            </div>
-                            <span>R{shippingProfileOptions.find(o => o.key === shippingMode)?.priceZAR}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    {cartOnlyLocal ? renderLocalDeliverySelector() : renderImportShippingSelector()}
                     
                     <button 
                       className="proceed-checkout" 
@@ -1961,12 +2074,10 @@ function App() {
               orderSummary={{
                 itemCount: cartCount,
                 subtotal: getSubtotal(),
-                shipping: getShippingCost(),
+                shipping: getImportShippingCost() + getLocalShippingCost(),
                 total: getTotalPrice()
               }}
-              shippingLabel={shippingMode === 'dropbox'
-                ? (selectedShipping?.name || defaultDropBoxOptions[0].name)
-                : shippingProfileOptions.find(o => o.key === shippingMode)?.label || 'Economy'}
+              shippingLabel={getLocalShippingMethod() || getImportShippingMethod() || 'Delivery'}
               // Prefill with user's name & email; previously entered values override
               initialData={{
                 firstName: defaultCustomerName.split(' ')[0] || '',
@@ -1975,6 +2086,22 @@ function App() {
                 ...(shippingFormData || {})
               }}
               readonlyEmail={!!user?.email}
+              hasLocalItems={hasLocal}
+              localDeliveryMode={localDeliveryMode}
+              localShippingQuotes={localShippingQuotes}
+              selectedLocalShipping={selectedLocalShipping}
+              localShippingLoading={localShippingLoading}
+              localShippingError={localShippingError}
+              onLocalDeliveryModeChange={(mode) => {
+                setLocalDeliveryMode(mode);
+                setSelectedLocalShipping(null);
+                setLocalShippingError('');
+              }}
+              onLocalShippingSelect={(rate) => {
+                setSelectedLocalShipping(rate);
+                setLocalShippingError('');
+              }}
+              onCheckLocalShippingRates={fetchLocalShippingQuotes}
             />
           )}
 
