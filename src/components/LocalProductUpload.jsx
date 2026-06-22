@@ -8,6 +8,24 @@ const CATEGORIES = [
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
+const dimensionsFromForm = (formData) => {
+  const entries = [formData.length_cm, formData.width_cm, formData.height_cm];
+  const dimensions = {
+    length_cm: Number(formData.length_cm),
+    width_cm: Number(formData.width_cm),
+    height_cm: Number(formData.height_cm)
+  };
+  const hasAnyValue = entries.some((value) => String(value).trim() !== '');
+  const hasCompleteValues = Object.values(dimensions)
+    .every((value) => Number.isFinite(value) && value > 0);
+
+  return {
+    dimensions: hasCompleteValues ? dimensions : null,
+    hasAnyValue,
+    hasCompleteValues
+  };
+};
+
 export default function LocalProductUpload({ onClose, onProductAdded, token }) {
   const [step, setStep] = useState('details'); // details | images | review
   const [loading, setLoading] = useState(false);
@@ -25,7 +43,9 @@ export default function LocalProductUpload({ onClose, onProductAdded, token }) {
     category: 'toys',
     tags: '',
     weight_kg: '',
-    dimensions: '',
+    length_cm: '',
+    width_cm: '',
+    height_cm: '',
     is_featured: false
   });
 
@@ -117,6 +137,11 @@ export default function LocalProductUpload({ onClose, onProductAdded, token }) {
       setError('At least one product image is required');
       return false;
     }
+    const shippingDimensions = dimensionsFromForm(formData);
+    if (shippingDimensions.hasAnyValue && !shippingDimensions.hasCompleteValues) {
+      setError('Enter length, width, and height together');
+      return false;
+    }
     return true;
   };
 
@@ -139,7 +164,7 @@ export default function LocalProductUpload({ onClose, onProductAdded, token }) {
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         images: images, // base64 data URLs
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-        dimensions: formData.dimensions.trim() || null,
+        dimensions: dimensionsFromForm(formData).dimensions,
         is_featured: formData.is_featured,
         is_active: true
       };
@@ -308,16 +333,46 @@ export default function LocalProductUpload({ onClose, onProductAdded, token }) {
         </div>
       </div>
 
-      <div className="form-group">
-        <label>Dimensions</label>
-        <input
-          type="text"
-          name="dimensions"
-          value={formData.dimensions}
-          onChange={handleInputChange}
-          placeholder="e.g., 100cm x 50cm x 80cm"
-          maxLength={100}
-        />
+      <div className="form-row">
+        <div className="form-group">
+          <label>Length (cm)</label>
+          <input
+            type="number"
+            name="length_cm"
+            value={formData.length_cm}
+            onChange={handleInputChange}
+            placeholder="30"
+            step="0.1"
+            min="0.1"
+          />
+        </div>
+        <div className="form-group">
+          <label>Width (cm)</label>
+          <input
+            type="number"
+            name="width_cm"
+            value={formData.width_cm}
+            onChange={handleInputChange}
+            placeholder="20"
+            step="0.1"
+            min="0.1"
+          />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Height (cm)</label>
+          <input
+            type="number"
+            name="height_cm"
+            value={formData.height_cm}
+            onChange={handleInputChange}
+            placeholder="15"
+            step="0.1"
+            min="0.1"
+          />
+        </div>
       </div>
 
       <button className="btn-next" onClick={() => setStep('images')}>
