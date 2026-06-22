@@ -10,6 +10,38 @@ const API_BASE = (import.meta.env.VITE_API_BASE)
         ? 'https://snuggleup-backend.onrender.com'
         : 'http://localhost:3000');
 
+const dimensionsFromProduct = (rawDimensions) => {
+  if (!rawDimensions) return {};
+  if (typeof rawDimensions === 'object' && !Array.isArray(rawDimensions)) return rawDimensions;
+
+  try {
+    const parsed = JSON.parse(rawDimensions);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const dimensionValue = (dimensions, keys) => {
+  const value = keys.map((key) => dimensions[key]).find((entry) => entry !== undefined && entry !== null);
+  return value ?? '';
+};
+
+const dimensionsFromForm = (formData) => {
+  const entries = [formData.length_cm, formData.width_cm, formData.height_cm];
+  const dimensions = {
+    length_cm: Number(formData.length_cm),
+    width_cm: Number(formData.width_cm),
+    height_cm: Number(formData.height_cm)
+  };
+
+  const values = Object.values(dimensions);
+  const hasAnyValue = entries.some((value) => String(value).trim() !== '');
+  const hasCompleteValues = values.every((value) => Number.isFinite(value) && value > 0);
+
+  return { dimensions: hasCompleteValues ? dimensions : null, hasAnyValue, hasCompleteValues };
+};
+
 export default function LocalProductManager() {
   const { token } = useAuth(); // Get token from auth context
   const [products, setProducts] = useState([]);
@@ -27,7 +59,9 @@ export default function LocalProductManager() {
     tags: '',
     images: '',
     weight_kg: '',
-    dimensions: '',
+    length_cm: '',
+    width_cm: '',
+    height_cm: '',
     is_featured: false,
     is_active: true
   });
@@ -64,15 +98,10 @@ export default function LocalProductManager() {
     }
 
     try {
-      // Validate Dimensions JSON
-      let parsedDimensions = null;
-      if (formData.dimensions && formData.dimensions.trim()) {
-        try {
-          parsedDimensions = JSON.parse(formData.dimensions);
-        } catch (err) {
-          setMessage('Error: Dimensions must be valid JSON. Example: {"length": 30, "width": 20, "height": 10}');
-          return;
-        }
+      const shippingDimensions = dimensionsFromForm(formData);
+      if (shippingDimensions.hasAnyValue && !shippingDimensions.hasCompleteValues) {
+        setMessage('Error: Enter length, width, and height together.');
+        return;
       }
 
       // Prevent duplicate SKU (must be unique)
@@ -81,15 +110,16 @@ export default function LocalProductManager() {
         return;
       }
 
+      const { length_cm, width_cm, height_cm, ...productData } = formData;
       const payload = {
-        ...formData,
+        ...productData,
         price: parseFloat(formData.price),
         compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
         stock_quantity: parseInt(formData.stock_quantity),
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
         images: formData.images ? formData.images.split('\n').filter(url => url.trim()) : [],
-        dimensions: parsedDimensions
+        dimensions: shippingDimensions.dimensions
       };
 
       const url = editingId 
@@ -128,6 +158,7 @@ export default function LocalProductManager() {
   };
 
   const handleEdit = (product) => {
+    const dimensions = dimensionsFromProduct(product.dimensions);
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -139,7 +170,9 @@ export default function LocalProductManager() {
       tags: Array.isArray(product.tags) ? product.tags.join(', ') : '',
       images: Array.isArray(product.images) ? product.images.join('\n') : '',
       weight_kg: product.weight_kg || '',
-      dimensions: product.dimensions ? JSON.stringify(product.dimensions) : '',
+      length_cm: dimensionValue(dimensions, ['length_cm', 'length', 'l']),
+      width_cm: dimensionValue(dimensions, ['width_cm', 'width', 'w']),
+      height_cm: dimensionValue(dimensions, ['height_cm', 'height', 'h']),
       is_featured: product.is_featured,
       is_active: product.is_active
     });
@@ -182,7 +215,9 @@ export default function LocalProductManager() {
       tags: '',
       images: '',
       weight_kg: '',
-      dimensions: '',
+      length_cm: '',
+      width_cm: '',
+      height_cm: '',
       is_featured: false,
       is_active: true
     });
@@ -419,12 +454,11 @@ export default function LocalProductManager() {
               />
             </div>
             <div className="form-group">
-              <label>Stock Quantity *</label>
+              <label>Stock Quantity</label>
               <input
                 type="number"
                 value={formData.stock_quantity}
                 onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                required
               />
             </div>
           </div>
@@ -511,14 +545,40 @@ export default function LocalProductManager() {
             <small>Drop files to auto-upload to CDN, or paste URLs manually</small>
           </div>
 
-          <div className="form-group">
-            <label>Dimensions (JSON)</label>
-            <input
-              type="text"
-              value={formData.dimensions}
-              onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
-              placeholder='{"length": 30, "width": 20, "height": 10}'
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Length (cm)</label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={formData.length_cm}
+                onChange={(e) => setFormData({ ...formData, length_cm: e.target.value })}
+                placeholder="30"
+              />
+            </div>
+            <div className="form-group">
+              <label>Width (cm)</label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={formData.width_cm}
+                onChange={(e) => setFormData({ ...formData, width_cm: e.target.value })}
+                placeholder="20"
+              />
+            </div>
+            <div className="form-group">
+              <label>Height (cm)</label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={formData.height_cm}
+                onChange={(e) => setFormData({ ...formData, height_cm: e.target.value })}
+                placeholder="15"
+              />
+            </div>
           </div>
 
           <div className="form-checkboxes">
