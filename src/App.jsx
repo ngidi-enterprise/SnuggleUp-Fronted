@@ -831,7 +831,7 @@ function App() {
         const label = localDeliveryMode === 'pickup' ? 'pick-up point' : 'express';
         const outsideGauteng = String(shippingDetails.province || '').trim().toLowerCase() !== 'gauteng';
         const expressCoverageMessage = localDeliveryMode === 'express' && outsideGauteng
-          ? 'Express delivery is currently available for Gauteng addresses only. We are growing our delivery network and look forward to bringing this option to more areas soon. Economy delivery remains available at checkout.'
+          ? 'Express delivery is currently available for Gauteng addresses only. We are growing our delivery network and look forward to bringing this option to more areas soon. Normal delivery times remain available at checkout.'
           : '';
         setLocalShippingError(
           expressCoverageMessage || data.message || `Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`
