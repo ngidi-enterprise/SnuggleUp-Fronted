@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './LocalProductDetail.css';
+import WhatsAppIcon from './WhatsAppIcon.jsx';
 
 function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const [quantity, setQuantity] = useState(1);
@@ -230,7 +231,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
               {/* Share */}
               <div className="share-row">
                 <a className="whatsapp-share-btn" href={whatsappHref} target="_blank" rel="noreferrer" title="Share on WhatsApp">
-                  <img src="/whatsapp-icon.svg" alt="WhatsApp" className="wa-icon" />
+                  <WhatsAppIcon className="wa-icon" />
                 </a>
               </div>
 

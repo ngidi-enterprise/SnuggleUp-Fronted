@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './ProductDetail.css';
 import ProductReviews from './ProductReviews.jsx';
+import WhatsAppIcon from './WhatsAppIcon.jsx';
 import { trackProductView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -568,7 +569,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                 title="Share on WhatsApp"
                 style={{ textDecoration: 'none' }}
               >
-                <img src="/whatsapp-icon.svg" alt="WhatsApp" className="wa-icon" />
+                <WhatsAppIcon className="wa-icon" />
               </a>
               <button className="add-to-wishlist-btn" onClick={onClose}>Close</button>
             </div>
