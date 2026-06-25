@@ -963,6 +963,12 @@ function App() {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const hasFreeLocalDelivery = () => (
+    hasLocal &&
+    getSubtotal() > 600 &&
+    ['economy', 'pickup'].includes(localDeliveryMode)
+  );
+
   const getImportShippingCost = () => {
     if (!hasImport) return 0;
     return Number(selectedShipping?.priceZAR || 0);
@@ -973,14 +979,22 @@ function App() {
 
   const getLocalShippingCost = () => {
     if (!hasLocal) return 0;
+    if (hasFreeLocalDelivery()) return 0;
     if (localDeliveryMode === 'economy') return 100;
     return Number(selectedLocalShipping?.priceZAR || 0);
   };
 
   const getLocalShippingMethod = () => {
     if (!hasLocal) return null;
-    if (localDeliveryMode === 'economy') return 'Economy delivery - R100 flat rate';
-    return selectedLocalShipping?.label || null;
+    if (localDeliveryMode === 'economy') {
+      return hasFreeLocalDelivery()
+        ? 'Economy delivery - Free over R600'
+        : 'Economy delivery - R100 flat rate';
+    }
+    if (!selectedLocalShipping) return null;
+    return hasFreeLocalDelivery()
+      ? `${selectedLocalShipping.label} - Free over R600`
+      : selectedLocalShipping.label;
   };
 
   const getImportShippingMethod = () => {
@@ -1150,7 +1164,7 @@ function App() {
         shippingCountry,
         shippingMethod: importShippingMethod,
         localShippingMethod,
-        localDeliveryMode,
+      localDeliveryMode,
         selectedLocalShipping,
         insuranceSelected,
         insuranceData: insuranceSelected ? insuranceData : null,
@@ -1182,6 +1196,7 @@ function App() {
             discount: Math.round(getDiscount() * 100) / 100,
             shippingMethod: importShippingMethod,
             localShippingMethod,
+            localDeliveryMode,
             shippingQuoted: importShipping,
             shippingCountry: shippingCountry,
             shippingDetails: detailsWithName,
@@ -1263,13 +1278,13 @@ function App() {
           ))}
         </div>
         <div className="shipping-option-body">
-          {localDeliveryMode === 'economy' ? (
+              {localDeliveryMode === 'economy' ? (
             <div className="shipping-summary-card">
               <div>
                 <strong>Economy delivery</strong>
-                <p>R100 flat rate</p>
+                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : 'R100 flat rate'}</p>
               </div>
-              <span>R100.00</span>
+              <span>{hasFreeLocalDelivery() ? 'Free' : 'R100.00'}</span>
             </div>
           ) : (
             <>
@@ -1289,7 +1304,7 @@ function App() {
                     <strong>{selectedLocalShipping.label}</strong>
                     <p>{selectedLocalShipping.deliveryEstimate || 'Bob Go test rate'}</p>
                   </div>
-                  <span>R{Number(selectedLocalShipping.priceZAR).toFixed(2)}</span>
+                  <span>{hasFreeLocalDelivery() ? 'Free' : `R${Number(selectedLocalShipping.priceZAR).toFixed(2)}`}</span>
                 </div>
               )}
               {matchingRates.length > 0 && !selectedLocalShipping && (
@@ -2095,6 +2110,7 @@ function App() {
               readonlyEmail={!!user?.email}
               hasLocalItems={hasLocal}
               localDeliveryMode={localDeliveryMode}
+              localFreeDeliveryEligible={hasLocal && getSubtotal() > 600}
               localShippingQuotes={localShippingQuotes}
               selectedLocalShipping={selectedLocalShipping}
               localShippingLoading={localShippingLoading}
