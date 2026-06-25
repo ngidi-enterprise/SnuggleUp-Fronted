@@ -29,6 +29,7 @@ export default function ShippingForm({
   shippingLabel = 'Delivery',
   hasLocalItems = false,
   localDeliveryMode = 'economy',
+  localFreeDeliveryEligible = false,
   localShippingQuotes = [],
   selectedLocalShipping = null,
   localShippingLoading = false,
@@ -150,6 +151,7 @@ export default function ShippingForm({
   };
 
   const matchingLocalRates = localShippingQuotes.filter(rate => rate.type === localDeliveryMode);
+  const localDeliveryIsFree = localFreeDeliveryEligible && ['economy', 'pickup'].includes(localDeliveryMode);
 
   return (
     <div className="shipping-form-overlay">
@@ -348,7 +350,7 @@ export default function ShippingForm({
                     background: localDeliveryMode === 'economy' ? '#e8f6f3' : undefined
                   }}
                 >
-                  Economy - R100 flat rate
+                  {localFreeDeliveryEligible ? 'Economy - Free delivery' : 'Economy - R100 flat rate'}
                 </button>
                 <button
                   type="button"
@@ -378,7 +380,7 @@ export default function ShippingForm({
                     background: localDeliveryMode === 'pickup' ? '#e8f6f3' : undefined
                   }}
                 >
-                  Pick-up point live rate
+                  {localFreeDeliveryEligible ? 'Pick-up point - Free delivery' : 'Pick-up point live rate'}
                 </button>
               </div>
 
@@ -424,7 +426,7 @@ export default function ShippingForm({
                             <strong>{rate.label}</strong>
                             {rate.deliveryEstimate && <small style={{ display: 'block' }}>{rate.deliveryEstimate}</small>}
                           </span>
-                          <strong>R{Number(rate.priceZAR).toFixed(2)}</strong>
+                          <strong>{localDeliveryMode === 'pickup' && localDeliveryIsFree ? 'Free' : `R${Number(rate.priceZAR).toFixed(2)}`}</strong>
                         </button>
                       ))}
                     </div>
