@@ -77,6 +77,42 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
     }
   };
 
+  const formatDimensions = (input) => {
+    if (!input) return '';
+
+    if (typeof input === 'string') {
+      const trimmed = input.trim();
+      if (!trimmed) return '';
+
+      try {
+        return formatDimensions(JSON.parse(trimmed));
+      } catch (e) {
+        return trimmed;
+      }
+    }
+
+    if (typeof input !== 'object') {
+      return String(input);
+    }
+
+    const valueFrom = (keys) => keys
+      .map((key) => input[key])
+      .find((value) => value !== undefined && value !== null && value !== '');
+    const length = valueFrom(['length_cm', 'length', 'l']);
+    const width = valueFrom(['width_cm', 'width', 'w']);
+    const height = valueFrom(['height_cm', 'height', 'h']);
+
+    if (length && width && height) {
+      return `${length} x ${width} x ${height} cm`;
+    }
+
+    return Object.entries(input)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
+      .join(', ');
+  };
+
+  const displayDimensions = formatDimensions(product.dimensions);
   const inStock = product.stock_quantity > 0;
   const price = parseFloat(product.price) || 0;
   const comparePrice = parseFloat(product.compare_at_price) || 0;
@@ -245,10 +281,10 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                   </div>
                 )}
 
-                {product.dimensions && (
+                {displayDimensions && (
                   <div className="meta-row">
                     <span className="meta-label">📏 Dimensions:</span>
-                    <span className="meta-value">{product.dimensions}</span>
+                    <span className="meta-value">{displayDimensions}</span>
                   </div>
                 )}
 
