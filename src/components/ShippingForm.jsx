@@ -350,7 +350,7 @@ export default function ShippingForm({
                     background: localDeliveryMode === 'economy' ? '#e8f6f3' : undefined
                   }}
                 >
-                  {localFreeDeliveryEligible ? 'Economy - Free delivery' : 'Economy - R100 flat rate'}
+                  {localFreeDeliveryEligible ? 'Standard delivery - Free' : 'Standard delivery - R99'}
                 </button>
                 <button
                   type="button"
