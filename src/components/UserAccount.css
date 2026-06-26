@@ -101,6 +101,64 @@
   padding: 24px;
 }
 
+.tracking-lookup-modal {
+  max-width: 620px;
+}
+
+.tracking-lookup-form {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.tracking-lookup-form .form-group {
+  margin: 0;
+}
+
+.tracking-lookup-form label {
+  display: block;
+  color: #333;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.tracking-lookup-form input {
+  width: 100%;
+  border: 1px solid #d8dde0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.tracking-lookup-form input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(18, 111, 113, 0.12);
+}
+
+.tracking-submit-btn {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tracking-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.tracking-result-card {
+  margin-top: 18px;
+}
+
 .profile-section {
   background: #f9f9f9;
   padding: 20px;
@@ -201,6 +259,156 @@
   font-size: 14px;
 }
 
+.delivery-tracking {
+  border: 1px solid #dbe8e4;
+  background: #f7fbfa;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.delivery-tracking.pending-tracking {
+  background: #fbfaf7;
+  border-color: #eee2c9;
+}
+
+.tracking-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tracking-topline strong {
+  color: #1f2933;
+  font-size: 14px;
+}
+
+.tracking-topline p {
+  margin: 4px 0 0;
+  color: #5f6f73;
+  font-size: 13px;
+}
+
+.tracking-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  background: var(--brand);
+  color: white;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tracking-progress {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tracking-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #9aa5a8;
+  text-align: center;
+}
+
+.tracking-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: calc(50% + 10px);
+  right: calc(-50% + 10px);
+  height: 2px;
+  background: #d7dee0;
+}
+
+.tracking-step.active {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.tracking-step.active:not(:last-child)::after {
+  background: var(--brand);
+}
+
+.tracking-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #d7dee0;
+  border: 3px solid #f7fbfa;
+  box-shadow: 0 0 0 1px #d7dee0;
+  z-index: 1;
+}
+
+.tracking-step.active .tracking-dot {
+  background: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+
+.tracking-step small {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.tracking-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tracking-meta span {
+  background: white;
+  border: 1px solid #dbe8e4;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: #42575b;
+  font-size: 12px;
+}
+
+.tracking-events {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.tracking-event {
+  background: white;
+  border: 1px solid #e6eeee;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.tracking-event span {
+  display: block;
+  color: #7c8a8d;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.tracking-event strong {
+  display: block;
+  color: #1f2933;
+  font-size: 13px;
+}
+
+.tracking-event p {
+  margin: 3px 0 0;
+  color: #5f6f73;
+  font-size: 12px;
+}
+
 .order-items {
   margin-bottom: 16px;
 }
@@ -291,4 +499,23 @@
   padding-top: 8px;
   border-top: 1px solid #ddd;
   margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .tracking-topline {
+    flex-direction: column;
+  }
+
+  .tracking-link {
+    width: 100%;
+  }
+
+  .tracking-progress {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+
+  .tracking-step small {
+    font-size: 10px;
+  }
 }

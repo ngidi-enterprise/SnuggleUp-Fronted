@@ -8,6 +8,7 @@ function UserAccount({ onClose, isAdmin }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   useEffect(() => {
     if (activeTab === 'orders') {
@@ -19,7 +20,7 @@ function UserAccount({ onClose, isAdmin }) {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('https://snuggleup-backend.onrender.com/api/orders/history', {
+      const response = await fetch(`${API_BASE}/api/orders/history`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -78,6 +79,7 @@ function UserAccount({ onClose, isAdmin }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return '#28a745';
+      case 'paid': return '#126f71';
       case 'pending': return '#ff6600';
       case 'failed': return '#dc3545';
       default: return '#666';
@@ -91,6 +93,47 @@ function UserAccount({ onClose, isAdmin }) {
       case 'failed': return '✗ Failed';
       default: return status;
     }
+  };
+
+  const getCustomerStatusText = (status) => {
+    if (status === 'paid') return 'Payment confirmed';
+    return getStatusText(status);
+  };
+
+  const trackingStatusText = (status) => {
+    switch (String(status || '').toLowerCase()) {
+      case 'pending-collection': return 'Waiting for collection';
+      case 'collected': return 'Collected by courier';
+      case 'in-transit': return 'In transit';
+      case 'out-for-delivery': return 'Out for delivery';
+      case 'delivered': return 'Delivered';
+      case 'exception':
+      case 'failed':
+      case 'failed-will-retry': return 'Needs attention';
+      default: return status ? String(status).replace(/-/g, ' ') : 'Preparing shipment';
+    }
+  };
+
+  const trackingStepIndex = (status, orderStatus) => {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'delivered' || orderStatus === 'completed') return 4;
+    if (normalized === 'out-for-delivery') return 3;
+    if (normalized === 'in-transit' || normalized === 'collected') return 2;
+    if (normalized === 'pending-collection' || orderStatus === 'paid') return 1;
+    return 0;
+  };
+
+  const normalizedTrackingEvents = (order) => {
+    const events = Array.isArray(order.bob_tracking_events) ? order.bob_tracking_events : [];
+    return events
+      .filter(event => event && typeof event === 'object')
+      .slice()
+      .sort((a, b) => {
+        const aTime = Date.parse(a.time || '');
+        const bTime = Date.parse(b.time || '');
+        if (Number.isFinite(aTime) && Number.isFinite(bTime)) return bTime - aTime;
+        return 0;
+      });
   };
 
   const handleLogout = () => {
@@ -181,9 +224,67 @@ function UserAccount({ onClose, isAdmin }) {
                         className="order-status"
                         style={{ color: getStatusColor(order.status) }}
                       >
-                        {getStatusText(order.status)}
+                        {getCustomerStatusText(order.status)}
                       </span>
                     </div>
+
+                    {(() => {
+                      const events = normalizedTrackingEvents(order);
+                      const trackingUrl = order.bob_tracking_url || order.cj_tracking_url;
+                      const trackingRef = order.bob_tracking_reference || order.cj_tracking_number;
+                      const trackingStatus = order.bob_tracking_status || order.cj_status;
+                      const hasTracking = Boolean(trackingRef || trackingStatus || trackingUrl || events.length);
+                      const activeStep = trackingStepIndex(trackingStatus, order.status);
+                      const steps = ['Order placed', 'Verified', 'With courier', 'Out for delivery', 'Delivered'];
+
+                      return (
+                        <div className={`delivery-tracking ${hasTracking ? 'has-tracking' : 'pending-tracking'}`}>
+                          <div className="tracking-topline">
+                            <div>
+                              <strong>Delivery tracking</strong>
+                              <p>{hasTracking ? trackingStatusText(trackingStatus) : 'Tracking will appear here once your shipment is booked.'}</p>
+                            </div>
+                            {trackingUrl && (
+                              <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="tracking-link">
+                                Track parcel
+                              </a>
+                            )}
+                          </div>
+
+                          <div className="tracking-progress">
+                            {steps.map((step, index) => (
+                              <div key={step} className={`tracking-step ${index <= activeStep ? 'active' : ''}`}>
+                                <span className="tracking-dot" />
+                                <small>{step}</small>
+                              </div>
+                            ))}
+                          </div>
+
+                          {hasTracking && (
+                            <div className="tracking-meta">
+                              {order.bob_courier_name && <span>{order.bob_courier_name}</span>}
+                              {order.bob_service_level && <span>{order.bob_service_level}</span>}
+                              {trackingRef && <span>Ref: {trackingRef}</span>}
+                              {order.bob_tracking_updated_at && (
+                                <span>Updated {new Date(order.bob_tracking_updated_at).toLocaleDateString('en-ZA')}</span>
+                              )}
+                            </div>
+                          )}
+
+                          {events.length > 0 && (
+                            <div className="tracking-events">
+                              {events.slice(0, 4).map((event, idx) => (
+                                <div key={idx} className="tracking-event">
+                                  <span>{event.time ? new Date(event.time).toLocaleString('en-ZA') : 'Update'}</span>
+                                  <strong>{trackingStatusText(event.status)}</strong>
+                                  <p>{event.description || event.location || 'Tracking updated'}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     
                     <div className="order-items">
                       {(order.items || []).map((item, idx) => (
