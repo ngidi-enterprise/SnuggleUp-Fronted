@@ -7,6 +7,7 @@ import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
 import Register from './components/Register';
 import UserAccount from './components/UserAccount';
+import OrderTrackingLookup from './components/OrderTrackingLookup';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ProductDetail from './components/ProductDetail';
@@ -53,6 +54,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
   const [showUserAccount, setShowUserAccount] = useState(false);
+  const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [isStorePreviewActive, setIsStorePreviewActive] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -1400,6 +1402,13 @@ function App() {
           </div>
         </div>
         <div className="header-right">
+          <button
+            className="track-order-btn"
+            onClick={() => setShowOrderTracking(true)}
+            title="Track an order"
+          >
+            Track Order
+          </button>
           {/* Login/Account Button */}
           {!isAuthenticated ? (
             <button
@@ -2039,6 +2048,10 @@ function App() {
           {/* User Account Modal */}
           {showUserAccount && (
             <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
+          )}
+
+          {showOrderTracking && (
+            <OrderTrackingLookup onClose={() => setShowOrderTracking(false)} />
           )}
 
           
