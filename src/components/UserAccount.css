@@ -105,6 +105,23 @@
   max-width: 620px;
 }
 
+.tracking-close-button {
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.tracking-close-button:hover {
+  background: rgba(255, 255, 255, 0.28);
+  color: white;
+}
+
 .tracking-lookup-form {
   display: grid;
   gap: 16px;

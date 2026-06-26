@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './UserAccount.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -50,6 +50,15 @@ export default function OrderTrackingLookup({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const submit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -86,9 +95,11 @@ export default function OrderTrackingLookup({ onClose }) {
   const steps = ['Order placed', 'Verified', 'With courier', 'Out for delivery', 'Delivered'];
 
   return (
-    <div className="user-account-modal">
-      <div className="user-account-content tracking-lookup-modal">
-        <button className="close-account" onClick={onClose}>x</button>
+    <div className="user-account-modal" onClick={onClose}>
+      <div className="user-account-content tracking-lookup-modal" onClick={(event) => event.stopPropagation()}>
+        <button className="close-account tracking-close-button" onClick={onClose} aria-label="Close tracking">
+          ×
+        </button>
         <div className="account-header">
           <h2>Track your order</h2>
           <p>Use the email address from checkout.</p>
