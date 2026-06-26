@@ -133,9 +133,9 @@ function App() {
   const localDeliveryOptions = [
     {
       key: 'economy',
-      label: 'Economy',
+      label: 'Standard',
       subtitle: 'Flat rate',
-      priceZAR: 100,
+      priceZAR: 99,
       meta: 'Best value · 3–5 business days'
     },
     {
@@ -836,7 +836,7 @@ function App() {
           ? 'Express delivery is currently available for Gauteng addresses only. We are growing our delivery network and look forward to bringing this option to more areas soon. Normal delivery times remain available at checkout.'
           : '';
         setLocalShippingError(
-          expressCoverageMessage || data.message || `Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`
+          expressCoverageMessage || data.message || `Bob Go returned no ${label} test rates for this address. Choose Standard delivery or try a different delivery address.`
         );
       }
     } catch (error) {
@@ -982,7 +982,7 @@ function App() {
   const getLocalShippingCost = () => {
     if (!hasLocal) return 0;
     if (hasFreeLocalDelivery()) return 0;
-    if (localDeliveryMode === 'economy') return 100;
+    if (localDeliveryMode === 'economy') return 99;
     return Number(selectedLocalShipping?.priceZAR || 0);
   };
 
@@ -990,8 +990,8 @@ function App() {
     if (!hasLocal) return null;
     if (localDeliveryMode === 'economy') {
       return hasFreeLocalDelivery()
-        ? 'Economy delivery - Free over R600'
-        : 'Economy delivery - R100 flat rate';
+        ? 'Standard delivery - Free over R600'
+        : 'Standard delivery - R99';
     }
     if (!selectedLocalShipping) return null;
     return hasFreeLocalDelivery()
@@ -1283,10 +1283,10 @@ function App() {
               {localDeliveryMode === 'economy' ? (
             <div className="shipping-summary-card">
               <div>
-                <strong>Economy delivery</strong>
-                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : 'R100 flat rate'}</p>
+                <strong>Standard delivery</strong>
+                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : 'R99'}</p>
               </div>
-              <span>{hasFreeLocalDelivery() ? 'Free' : 'R100.00'}</span>
+              <span>{hasFreeLocalDelivery() ? 'Free' : 'R99.00'}</span>
             </div>
           ) : (
             <>
