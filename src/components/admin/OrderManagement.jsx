@@ -12,6 +12,8 @@ export default function OrderManagement() {
   const [diagnosticsResults, setDiagnosticsResults] = useState(null);
   const [showCJPayloads, setShowCJPayloads] = useState(false);
   const [cjPayloads, setCJPayloads] = useState(null);
+  const [trackingForm, setTrackingForm] = useState({});
+  const [savingTracking, setSavingTracking] = useState(false);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -61,12 +63,61 @@ export default function OrderManagement() {
     }
   };
 
+  const trackingFormFromOrder = (order = {}) => ({
+    bobShipmentId: order.bob_shipment_id || '',
+    bobTrackingReference: order.bob_tracking_reference || '',
+    bobTrackingUrl: order.bob_tracking_url || '',
+    bobCourierName: order.bob_courier_name || '',
+    bobProviderSlug: order.bob_provider_slug || '',
+    bobServiceLevel: order.bob_service_level || '',
+    bobTrackingStatus: order.bob_tracking_status || '',
+    bobHealthStatus: order.bob_health_status || '',
+    bobHealthStatusReason: order.bob_health_status_reason || '',
+  });
+
   const viewOrderDetails = (order) => {
     setSelectedOrder(order);
+    setTrackingForm(trackingFormFromOrder(order));
   };
 
   const closeOrderDetails = () => {
     setSelectedOrder(null);
+    setTrackingForm({});
+  };
+
+  const saveBobTracking = async () => {
+    if (!selectedOrder) return;
+
+    setSavingTracking(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/${selectedOrder.id}/tracking`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(trackingForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Failed to update tracking: ${data.error || 'Unknown error'}`);
+        return;
+      }
+
+      setSelectedOrder(data.order);
+      setTrackingForm(trackingFormFromOrder(data.order));
+      setOrders(prev => prev.map(order => order.id === data.order.id ? data.order : order));
+      alert('Tracking updated.');
+    } catch (err) {
+      alert('Error updating tracking: ' + err.message);
+    } finally {
+      setSavingTracking(false);
+    }
+  };
+
+  const updateTrackingField = (field, value) => {
+    setTrackingForm(prev => ({ ...prev, [field]: value }));
   };
 
   const submitToCJ = async (orderId) => {
@@ -213,6 +264,7 @@ export default function OrderManagement() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All Orders</option>
           <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
           <option value="completed">Completed</option>
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
@@ -259,7 +311,7 @@ export default function OrderManagement() {
               <th>Items</th>
               <th>Total</th>
               <th>Status</th>
-              <th>CJ Status</th>
+              <th>Tracking</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -285,7 +337,18 @@ export default function OrderManagement() {
                     </span>
                   </td>
                   <td>
-                    {order.cj_order_id ? (
+                    {order.bob_tracking_reference || order.bob_tracking_status ? (
+                      <div className="cj-status">
+                        <span className={`status-badge status-cj-${(order.bob_tracking_status || 'linked').toLowerCase()}`}>
+                          {order.bob_tracking_status || 'Linked'}
+                        </span>
+                        {order.bob_tracking_reference && (
+                          <div className="cj-tracking">
+                            <small>Bob Go: {order.bob_tracking_reference}</small>
+                          </div>
+                        )}
+                      </div>
+                    ) : order.cj_order_id ? (
                       <div className="cj-status">
                         <span className={`status-badge status-cj-${(order.cj_status || 'submitted').toLowerCase()}`}>
                           {order.cj_status || 'SUBMITTED'}
@@ -297,7 +360,7 @@ export default function OrderManagement() {
                         )}
                       </div>
                     ) : (
-                      <span className="cj-status-none">Not submitted</span>
+                      <span className="cj-status-none">Not linked</span>
                     )}
                   </td>
                   <td>
@@ -401,6 +464,117 @@ export default function OrderManagement() {
                   </p>
                 </>
               )}
+            </div>
+
+            <div className="order-details-section">
+              <h3>Bob Go Tracking</h3>
+              <p style={{ fontSize: '13px', color: '#666', marginTop: 0 }}>
+                Use this order number in Bob Go as the channel order number or custom tracking reference: <strong>{selectedOrder.order_number}</strong>
+              </p>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Tracking reference</label>
+                  <input
+                    type="text"
+                    value={trackingForm.bobTrackingReference || ''}
+                    onChange={(e) => updateTrackingField('bobTrackingReference', e.target.value)}
+                    placeholder="e.g. UASDX44J"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Bob shipment ID</label>
+                  <input
+                    type="text"
+                    value={trackingForm.bobShipmentId || ''}
+                    onChange={(e) => updateTrackingField('bobShipmentId', e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Courier</label>
+                  <input
+                    type="text"
+                    value={trackingForm.bobCourierName || ''}
+                    onChange={(e) => updateTrackingField('bobCourierName', e.target.value)}
+                    placeholder="Courier or provider"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Service level</label>
+                  <input
+                    type="text"
+                    value={trackingForm.bobServiceLevel || ''}
+                    onChange={(e) => updateTrackingField('bobServiceLevel', e.target.value)}
+                    placeholder="e.g. Local Overnight Flyer"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Status</label>
+                  <select
+                    value={trackingForm.bobTrackingStatus || ''}
+                    onChange={(e) => updateTrackingField('bobTrackingStatus', e.target.value)}
+                  >
+                    <option value="">Not shipped yet</option>
+                    <option value="pending-collection">Pending collection</option>
+                    <option value="collected">Collected</option>
+                    <option value="in-transit">In transit</option>
+                    <option value="out-for-delivery">Out for delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="exception">Needs attention</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Provider slug</label>
+                  <input
+                    type="text"
+                    value={trackingForm.bobProviderSlug || ''}
+                    onChange={(e) => updateTrackingField('bobProviderSlug', e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Tracking link</label>
+                <input
+                  type="url"
+                  value={trackingForm.bobTrackingUrl || ''}
+                  onChange={(e) => updateTrackingField('bobTrackingUrl', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+
+              {(selectedOrder.bob_tracking_updated_at || selectedOrder.bob_tracking_last_event_time) && (
+                <p style={{ fontSize: '13px', color: '#666' }}>
+                  <strong>Last tracking update:</strong>{' '}
+                  {new Date(selectedOrder.bob_tracking_updated_at || selectedOrder.bob_tracking_last_event_time).toLocaleString()}
+                </p>
+              )}
+
+              {Array.isArray(selectedOrder.bob_tracking_events) && selectedOrder.bob_tracking_events.length > 0 && (
+                <div className="tracking-events-preview">
+                  {selectedOrder.bob_tracking_events.slice(-3).map((event, index) => (
+                    <p key={index} style={{ margin: '6px 0', fontSize: '13px' }}>
+                      <strong>{event.status || 'Update'}:</strong> {event.description || event.location || 'Tracking updated'}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <button
+                className="btn-small btn-primary"
+                onClick={saveBobTracking}
+                disabled={savingTracking}
+              >
+                {savingTracking ? 'Saving...' : 'Save Bob Go Tracking'}
+              </button>
             </div>
 
             <div className="order-details-section">
