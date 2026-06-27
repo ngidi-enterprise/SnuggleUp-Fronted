@@ -102,8 +102,9 @@ function UserAccount({ onClose, isAdmin }) {
 
   const trackingStatusText = (status) => {
     switch (String(status || '').toLowerCase()) {
+      case 'created': return 'Created';
       case 'pending-collection': return 'Waiting for collection';
-      case 'collected': return 'Collected by courier';
+      case 'collected': return 'Collected';
       case 'in-transit': return 'In transit';
       case 'out-for-delivery': return 'Out for delivery';
       case 'delivered': return 'Delivered';
@@ -118,8 +119,8 @@ function UserAccount({ onClose, isAdmin }) {
     const normalized = String(status || '').toLowerCase();
     if (normalized === 'delivered' || orderStatus === 'completed') return 4;
     if (normalized === 'out-for-delivery') return 3;
-    if (normalized === 'in-transit' || normalized === 'collected') return 2;
-    if (normalized === 'pending-collection' || orderStatus === 'paid') return 1;
+    if (normalized === 'in-transit') return 2;
+    if (normalized === 'collected') return 1;
     return 0;
   };
 
@@ -230,12 +231,11 @@ function UserAccount({ onClose, isAdmin }) {
 
                     {(() => {
                       const events = normalizedTrackingEvents(order);
-                      const trackingUrl = order.bob_tracking_url || order.cj_tracking_url;
                       const trackingRef = order.bob_tracking_reference || order.cj_tracking_number;
                       const trackingStatus = order.bob_tracking_status || order.cj_status;
-                      const hasTracking = Boolean(trackingRef || trackingStatus || trackingUrl || events.length);
+                      const hasTracking = Boolean(trackingRef || trackingStatus || events.length);
                       const activeStep = trackingStepIndex(trackingStatus, order.status);
-                      const steps = ['Order placed', 'Verified', 'With courier', 'Out for delivery', 'Delivered'];
+                      const steps = ['Created', 'Collected', 'In transit', 'Out for delivery', 'Delivered'];
 
                       return (
                         <div className={`delivery-tracking ${hasTracking ? 'has-tracking' : 'pending-tracking'}`}>
@@ -244,11 +244,6 @@ function UserAccount({ onClose, isAdmin }) {
                               <strong>Delivery tracking</strong>
                               <p>{hasTracking ? trackingStatusText(trackingStatus) : 'Tracking will appear here once your shipment is booked.'}</p>
                             </div>
-                            {trackingUrl && (
-                              <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="tracking-link">
-                                Track parcel
-                              </a>
-                            )}
                           </div>
 
                           <div className="tracking-progress">

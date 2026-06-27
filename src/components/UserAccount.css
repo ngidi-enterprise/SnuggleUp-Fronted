@@ -176,6 +176,105 @@
   margin-top: 18px;
 }
 
+.tracking-page {
+  min-height: calc(100vh - 90px);
+  background: #f7fbfa;
+  padding: 36px 16px 60px;
+}
+
+.tracking-page-shell {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+}
+
+.tracking-page-logo {
+  display: block;
+  width: min(260px, 70vw);
+  height: auto;
+  margin: 0 auto 18px;
+}
+
+.tracking-page h1 {
+  margin: 0;
+  text-align: center;
+  color: #1f2933;
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+.tracking-page-intro {
+  text-align: center;
+  color: #5f6f73;
+  margin: 10px 0 24px;
+}
+
+.tracking-page .tracking-lookup-form {
+  width: min(520px, 100%);
+  margin: 24px auto;
+  background: white;
+  border: 1px solid #dbe8e4;
+  border-radius: 8px;
+  padding: 22px;
+  box-sizing: border-box;
+}
+
+.tracking-page-result-card {
+  width: min(920px, 100%);
+  margin: 26px auto 0;
+  background: white;
+}
+
+.tracking-page-result-card .delivery-tracking {
+  padding: 22px;
+}
+
+.tracking-refresh-button {
+  border: 1px solid #dbe8e4;
+  background: white;
+  color: var(--brand);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tracking-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tracking-shipping-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #e6eeee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tracking-shipping-details h3 {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  color: #1f2933;
+}
+
+.tracking-shipping-details span {
+  display: block;
+  color: #6b777a;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.tracking-shipping-details strong {
+  color: #1f2933;
+  font-size: 14px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
 .profile-section {
   background: #f9f9f9;
   padding: 20px;
@@ -534,5 +633,21 @@
 
   .tracking-step small {
     font-size: 10px;
+  }
+
+  .tracking-page {
+    padding: 24px 10px 44px;
+  }
+
+  .tracking-page h1 {
+    font-size: 26px;
+  }
+
+  .tracking-page-result-card .delivery-tracking {
+    padding: 14px;
+  }
+
+  .tracking-shipping-details {
+    grid-template-columns: 1fr;
   }
 }

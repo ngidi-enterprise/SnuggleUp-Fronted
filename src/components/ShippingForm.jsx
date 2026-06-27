@@ -134,7 +134,7 @@ export default function ShippingForm({
     if (!validateForm()) return;
 
     if (hasLocalItems && localDeliveryMode !== 'economy' && !selectedLocalShipping) {
-      setDeliverySelectionError('Choose a Bob Go live rate before continuing to payment.');
+      setDeliverySelectionError('Choose a live courier rate before continuing to payment.');
       return;
     }
 
@@ -392,7 +392,7 @@ export default function ShippingForm({
                     onClick={requestLocalShippingRates}
                     disabled={localShippingLoading}
                   >
-                    {localShippingLoading ? 'Checking Bob Go test rates...' : 'Get Bob Go test rates'}
+                    {localShippingLoading ? 'Checking live courier rates...' : 'Get live courier rates'}
                   </button>
 
                   {localShippingError && (
