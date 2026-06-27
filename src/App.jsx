@@ -55,6 +55,7 @@ function App() {
   const [authView, setAuthView] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
   const [showUserAccount, setShowUserAccount] = useState(false);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
+  const [trackingRouteParams, setTrackingRouteParams] = useState({ orderNumber: '', token: '' });
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [isStorePreviewActive, setIsStorePreviewActive] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -141,14 +142,14 @@ function App() {
     {
       key: 'express',
       label: 'Express',
-      subtitle: 'Bob Go live quote',
+      subtitle: 'Live courier quote',
       priceZAR: null,
       meta: 'Next business day · courier handoff'
     },
     {
       key: 'pickup',
       label: 'Pick-up point',
-      subtitle: 'Bob Go live quote',
+      subtitle: 'Live courier quote',
       priceZAR: null,
       meta: 'Pick up at a partner location'
     }
@@ -409,7 +410,17 @@ function App() {
         return; // wait for hashchange to re-run
       }
       const route = hash || path;
-      if (route.includes('/checkout/success')) {
+      if (route.startsWith('/track-order')) {
+        const query = route.includes('?') ? route.slice(route.indexOf('?') + 1) : '';
+        const params = new URLSearchParams(query);
+        setTrackingRouteParams({
+          orderNumber: params.get('order') || '',
+          token: params.get('token') || '',
+        });
+        setCurrentPage('track-order');
+        setShowOrderTracking(false);
+        trackPageView('/track-order', 'Track Order');
+      } else if (route.includes('/checkout/success')) {
         setCurrentPage('success');
         trackPageView('/checkout/success', 'Checkout Success');
       } else if (route.includes('/checkout/cancel')) {
@@ -836,12 +847,12 @@ function App() {
           ? 'Express delivery is currently available for Gauteng addresses only. We are growing our delivery network and look forward to bringing this option to more areas soon. Normal delivery times remain available at checkout.'
           : '';
         setLocalShippingError(
-          expressCoverageMessage || data.message || `Bob Go returned no ${label} test rates for this address. Choose Standard delivery or try a different delivery address.`
+          expressCoverageMessage || data.message || `No ${label} live courier rates are available for this address. Choose Standard delivery or try a different delivery address.`
         );
       }
     } catch (error) {
       setLocalShippingQuotes([]);
-      setLocalShippingError(error.message || 'Unable to load Bob Go test rates');
+      setLocalShippingError(error.message || 'Unable to load live courier rates');
     } finally {
       setLocalShippingLoading(false);
     }
@@ -1292,19 +1303,19 @@ function App() {
             <>
               {!shippingFormData?.postalCode && (
                 <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
-                  Enter your delivery address at checkout to see Bob Go test rates.
+                  Enter your delivery address at checkout to see live courier rates.
                 </p>
               )}
               {shippingFormData?.postalCode && !selectedLocalShipping && (
                 <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
-                  Continue to the delivery form, then request a live Bob Go rate.
+                  Continue to the delivery form, then request a live courier rate.
                 </p>
               )}
               {selectedLocalShipping && (
                 <div className="shipping-summary-card">
                   <div>
                     <strong>{selectedLocalShipping.label}</strong>
-                    <p>{selectedLocalShipping.deliveryEstimate || 'Bob Go test rate'}</p>
+                    <p>{selectedLocalShipping.deliveryEstimate || 'Live courier rate'}</p>
                   </div>
                   <span>{hasFreeLocalDelivery() ? 'Free' : `R${Number(selectedLocalShipping.priceZAR).toFixed(2)}`}</span>
                 </div>
@@ -1484,6 +1495,14 @@ function App() {
         <CheckoutSuccess />
       ) : currentPage === 'cancel' ? (
         <CheckoutCancel />
+      ) : currentPage === 'track-order' ? (
+        <OrderTrackingLookup
+          key={`${trackingRouteParams.orderNumber}:${trackingRouteParams.token}`}
+          mode="page"
+          initialOrderNumber={trackingRouteParams.orderNumber}
+          initialToken={trackingRouteParams.token}
+          autoLookup={Boolean(trackingRouteParams.orderNumber && trackingRouteParams.token)}
+        />
       ) : currentPage === 'wishlist' ? (
         <div className="wishlist-page">
           <div className="wishlist-content">
