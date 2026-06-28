@@ -6,6 +6,83 @@
 let supabase = null;
 let initPromise = null;
 
+const AUTH_ERROR_STORAGE_KEY = 'snuggleup.auth.error';
+
+function readOAuthRedirectParams() {
+  if (typeof window === 'undefined') {
+    return { code: '', error: '', errorDescription: '' };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search || '');
+  const hash = window.location.hash || '';
+  const hashQuery = hash.includes('?')
+    ? hash.slice(hash.indexOf('?') + 1)
+    : hash.replace(/^#\/?/, '');
+  const hashParams = new URLSearchParams(hashQuery);
+
+  return {
+    code: searchParams.get('code') || hashParams.get('code') || '',
+    error: searchParams.get('error') || hashParams.get('error') || '',
+    errorDescription:
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('error_code') ||
+      hashParams.get('error_code') ||
+      '',
+  };
+}
+
+function clearOAuthRedirectParams() {
+  if (typeof window === 'undefined') return;
+
+  const url = new URL(window.location.href);
+  [
+    'auth',
+    'code',
+    'error',
+    'error_code',
+    'error_description',
+  ].forEach((key) => url.searchParams.delete(key));
+
+  const nextHash = url.hash.startsWith('#/auth/callback') ? '' : url.hash;
+  const nextSearch = url.searchParams.toString();
+  const cleanUrl = `${url.origin}${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${nextHash}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
+
+async function recoverOAuthRedirectSession(client) {
+  if (typeof window === 'undefined') return;
+
+  const { code, error, errorDescription } = readOAuthRedirectParams();
+
+  if (error || errorDescription) {
+    window.sessionStorage.setItem(
+      AUTH_ERROR_STORAGE_KEY,
+      errorDescription || error || 'Social login could not be completed.'
+    );
+    clearOAuthRedirectParams();
+    return;
+  }
+
+  if (!code) return;
+
+  const { error: exchangeError } = await client.auth.exchangeCodeForSession(code);
+  if (exchangeError) {
+    window.sessionStorage.setItem(
+      AUTH_ERROR_STORAGE_KEY,
+      exchangeError.message || 'Social login could not be completed.'
+    );
+  }
+  clearOAuthRedirectParams();
+}
+
+export function popAuthRedirectError() {
+  if (typeof window === 'undefined') return '';
+  const message = window.sessionStorage.getItem(AUTH_ERROR_STORAGE_KEY) || '';
+  if (message) window.sessionStorage.removeItem(AUTH_ERROR_STORAGE_KEY);
+  return message;
+}
+
 async function init() {
   let mod = null;
   try {
@@ -33,13 +110,16 @@ async function init() {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   });
+
+  await recoverOAuthRedirectSession(client);
+  return client;
 }
 
 // Lazy initializer to avoid top-level await in build
