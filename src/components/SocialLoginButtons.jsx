@@ -42,6 +42,7 @@ export default function SocialLoginButtons() {
         {providers.map(p => (
           <button
             key={p.key}
+            type="button"
             className={`social-btn-new ${p.className}`}
             onClick={() => onClick(p.key)}
             disabled={!!loadingKey}
