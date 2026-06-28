@@ -410,12 +410,12 @@ function App() {
         return; // wait for hashchange to re-run
       }
       const route = hash || path;
-      if (route.startsWith('/track-order')) {
+      if (route.startsWith('/track-order') || route.startsWith('/t')) {
         const query = route.includes('?') ? route.slice(route.indexOf('?') + 1) : '';
         const params = new URLSearchParams(query);
         setTrackingRouteParams({
-          orderNumber: params.get('order') || '',
-          token: params.get('token') || '',
+          orderNumber: params.get('order') || params.get('o') || '',
+          token: params.get('token') || params.get('t') || '',
         });
         setCurrentPage('track-order');
         setShowOrderTracking(false);
