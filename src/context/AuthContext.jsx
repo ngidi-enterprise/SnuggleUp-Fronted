@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { getSupabase } from '../lib/supabaseClient';
+import { getSupabase, popAuthRedirectError } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [showExpiryWarning, setShowExpiryWarning] = useState(false);
+  const [authRedirectError, setAuthRedirectError] = useState('');
 
   // Normalize Supabase user into app user shape
   const toAppUser = (sbUser) => {
@@ -46,6 +47,8 @@ export const AuthProvider = ({ children }) => {
         data: { session },
       } = await supabase.auth.getSession();
       if (!mounted) return;
+      const redirectError = popAuthRedirectError();
+      if (redirectError) setAuthRedirectError(redirectError);
       setUser(toAppUser(session?.user || null));
       setToken(session?.access_token || null);
       setLoading(false);
@@ -132,17 +135,25 @@ export const AuthProvider = ({ children }) => {
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
     
-    // Use production domain or fallback to current origin
-    const redirectTo = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za'
-      ? 'https://snuggleup.co.za'
-      : window.location.origin;
+    const configuredRedirect = import.meta.env.VITE_AUTH_REDIRECT_URL;
+    const redirectTo = configuredRedirect || (
+      window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za'
+        ? 'https://snuggleup.co.za/?auth=callback'
+        : `${window.location.origin}${window.location.pathname}?auth=callback`
+    );
+
+    const options = {
+      redirectTo,
+      skipBrowserRedirect: false,
+    };
+
+    if (provider === 'facebook') {
+      options.scopes = 'email,public_profile';
+    }
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: redirectTo,
-        skipBrowserRedirect: false,
-      },
+      options,
     });
     if (error) throw error;
     return data;
@@ -224,6 +235,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     showExpiryWarning,
+    authRedirectError,
     // legacy flags
     login: () => {
       throw new Error('Use loginWithCredentials(email, password)');
@@ -240,6 +252,7 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
     signInWithProvider,
     logout,
+    clearAuthRedirectError: () => setAuthRedirectError(''),
     // Keep session alive (extend timeout on manual action)
     extendSession: () => setLastActivity(Date.now()),
   };
@@ -288,6 +301,42 @@ export const AuthProvider = ({ children }) => {
             }}
           >
             Stay Logged In
+          </button>
+        </div>
+      )}
+      {authRedirectError && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            backgroundColor: '#fff5f5',
+            color: '#9b1c1c',
+            padding: '14px 16px',
+            borderRadius: '8px',
+            border: '1px solid #fecaca',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            zIndex: 10000,
+            maxWidth: '420px',
+            fontSize: '14px',
+          }}
+        >
+          <strong>Social login could not finish.</strong>
+          <div style={{ marginTop: '6px' }}>{authRedirectError}</div>
+          <button
+            type="button"
+            onClick={() => setAuthRedirectError('')}
+            style={{
+              marginTop: '10px',
+              background: '#9b1c1c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            Dismiss
           </button>
         </div>
       )}
