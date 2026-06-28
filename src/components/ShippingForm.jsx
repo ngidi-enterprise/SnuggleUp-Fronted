@@ -49,7 +49,8 @@ export default function ShippingForm({
     city: safeInit.city || '',
     province: safeInit.province || 'Gauteng',
     postalCode: safeInit.postalCode || '',
-    phone: safeInit.phone || ''
+    phone: safeInit.phone || '',
+    smsTrackingOptIn: Boolean(safeInit.smsTrackingOptIn || safeInit.smsTrackingConsent)
   });
 
   const [errors, setErrors] = useState({});
@@ -115,14 +116,16 @@ export default function ShippingForm({
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, type, value, checked } = e.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+    setFormData(prev => ({ ...prev, [name]: nextValue }));
     
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
 
-    if (hasLocalItems && localDeliveryMode !== 'economy') {
+    const localQuoteFields = new Set(['address', 'suburb', 'city', 'province', 'postalCode']);
+    if (hasLocalItems && localDeliveryMode !== 'economy' && localQuoteFields.has(name)) {
       onLocalShippingSelect?.(null);
       setDeliverySelectionError('');
     }
@@ -249,6 +252,18 @@ export default function ShippingForm({
             {errors.phone && <span className="error-message">{errors.phone}</span>}
           </div>
 
+          <label className="sms-consent">
+            <input
+              type="checkbox"
+              name="smsTrackingOptIn"
+              checked={formData.smsTrackingOptIn}
+              onChange={handleChange}
+            />
+            <span>
+              <strong>Send delivery updates by SMS</strong>
+              <small>We will only text important tracking updates. SMS costs are covered by SnuggleUp.</small>
+            </span>
+          </label>
 
           <div className="form-group">
             <label htmlFor="address">

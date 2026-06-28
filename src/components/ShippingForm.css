@@ -141,6 +141,43 @@
   font-style: italic;
 }
 
+.sms-consent {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin: -4px 0 20px;
+  border: 1px solid #dbe8e4;
+  border-radius: 8px;
+  background: #f7fbfa;
+  cursor: pointer;
+}
+
+.sms-consent input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: #126F71;
+}
+
+.sms-consent strong,
+.sms-consent small {
+  display: block;
+}
+
+.sms-consent strong {
+  color: #1f2933;
+  font-size: 14px;
+}
+
+.sms-consent small {
+  color: #607377;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
