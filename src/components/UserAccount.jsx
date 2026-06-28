@@ -137,6 +137,26 @@ function UserAccount({ onClose, isAdmin }) {
       });
   };
 
+  const visibleTrackingEvents = (order, events, trackingStatus) => {
+    if (!trackingStatus) return events;
+
+    const currentStep = trackingStepIndex(trackingStatus, order.status);
+    const latestEventStep = events.length
+      ? trackingStepIndex(events[0]?.status, order.status)
+      : -1;
+
+    if (latestEventStep >= currentStep) return events;
+
+    return [
+      {
+        status: trackingStatus,
+        time: order.bob_tracking_updated_at || order.updated_at,
+        description: `Current status: ${trackingStatusText(trackingStatus)}`,
+      },
+      ...events,
+    ];
+  };
+
   const handleLogout = () => {
     logout();
     onClose();
@@ -233,6 +253,7 @@ function UserAccount({ onClose, isAdmin }) {
                       const events = normalizedTrackingEvents(order);
                       const trackingRef = order.bob_tracking_reference || order.cj_tracking_number;
                       const trackingStatus = order.bob_tracking_status || order.cj_status;
+                      const displayEvents = visibleTrackingEvents(order, events, trackingStatus);
                       const hasTracking = Boolean(trackingRef || trackingStatus || events.length);
                       const activeStep = trackingStepIndex(trackingStatus, order.status);
                       const steps = ['Created', 'Collected', 'In transit', 'Out for delivery', 'Delivered'];
@@ -266,9 +287,9 @@ function UserAccount({ onClose, isAdmin }) {
                             </div>
                           )}
 
-                          {events.length > 0 && (
+                          {displayEvents.length > 0 && (
                             <div className="tracking-events">
-                              {events.slice(0, 4).map((event, idx) => (
+                              {displayEvents.slice(0, 4).map((event, idx) => (
                                 <div key={idx} className="tracking-event">
                                   <span>{event.time ? new Date(event.time).toLocaleString('en-ZA') : 'Update'}</span>
                                   <strong>{trackingStatusText(event.status)}</strong>
