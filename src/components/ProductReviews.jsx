@@ -1,193 +1,257 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './ProductReviews.css';
-import { getProductReviews } from '../lib/cjApi.js';
 import { useAuth } from '../context/AuthContext';
 
-export default function ProductReviews({ productId, productName = 'Product' }) {
+const API_BASE = (import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com').replace(/\/$/, '');
+
+const clampRating = (value) => {
+  const rating = Number(value) || 0;
+  return Math.min(5, Math.max(1, Math.round(rating)));
+};
+
+const uniqueIds = (ids) => {
+  const seen = new Set();
+  return ids
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+    .filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+};
+
+const getReviewApiJson = async (path, token) => {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Unable to load reviews right now');
+  }
+  return data;
+};
+
+const postReviewApiJson = async (path, token, body) => {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to submit review');
+  }
+  return data;
+};
+
+export default function ProductReviews({ productId, productIds, productName = 'Product' }) {
   const { user, token: authToken } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [canReview, setCanReview] = useState(false);
+  const [orderInfo, setOrderInfo] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewData, setReviewData] = useState({
-    rating: 5,
-    title: '',
-    comment: ''
-  });
+  const [reviewData, setReviewData] = useState({ rating: 5, title: '', comment: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [orderInfo, setOrderInfo] = useState(null);
+
+  const rawProductIds = Array.isArray(productIds) ? productIds : [];
+  const reviewIdKey = [productId, ...rawProductIds].map((id) => String(id || '').trim()).join('|');
+  const reviewIds = useMemo(() => uniqueIds(reviewIdKey.split('|')), [reviewIdKey]);
+
+  const loadReviews = async (ids, token) => {
+    if (ids.length === 0) return [];
+
+    const settled = await Promise.allSettled(
+      ids.map((id) => getReviewApiJson(`/api/reviews/product/${encodeURIComponent(id)}`, token))
+    );
+
+    const merged = [];
+    const seen = new Set();
+    let firstError = null;
+
+    settled.forEach((result) => {
+      if (result.status === 'rejected') {
+        firstError = firstError || result.reason;
+        return;
+      }
+
+      const incoming = Array.isArray(result.value?.reviews) ? result.value.reviews : [];
+      incoming.forEach((review) => {
+        const key = String(review.id || `${review.author}-${review.date}-${review.comment}`);
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push({
+          id: key,
+          rating: clampRating(review.rating),
+          title: review.title || '',
+          comment: review.comment || '',
+          author: review.author || 'SnuggleUp customer',
+          verified: Boolean(review.verified || review.verified_purchase),
+          helpful: Number(review.helpful || review.helpful_count || 0),
+          date: review.date || review.created_at || null,
+        });
+      });
+    });
+
+    if (merged.length === 0 && settled.every((result) => result.status === 'rejected')) {
+      throw firstError || new Error('Unable to load reviews right now');
+    }
+
+    return merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 50);
+  };
 
   useEffect(() => {
     let cancelled = false;
-    const fetchReviews = async () => {
-      if (!productId) {
-        setReviews([]);
-        setLoading(false);
-        return;
-      }
+
+    const run = async () => {
       try {
         setLoading(true);
         setError('');
-        const data = await getProductReviews(productId);
-        if (cancelled) return;
-        const incoming = Array.isArray(data?.reviews) ? data.reviews : [];
-        setReviews(incoming.slice(0, 50));
-      } catch (e) {
-        if (cancelled) return;
-        setError(e.message || 'Unable to load reviews right now');
-        setReviews([]);
+        const token = authToken || localStorage.getItem('token');
+        const loadedReviews = await loadReviews(reviewIds, token);
+        if (!cancelled) setReviews(loadedReviews);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Unable to load reviews right now');
+          setReviews([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    fetchReviews();
-    return () => { cancelled = true; };
-  }, [productId]);
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewIds, authToken]);
 
-  // Check if logged-in user can review this product
   useEffect(() => {
     let cancelled = false;
-    const checkReviewEligibility = async () => {
-      const bearerToken = authToken || localStorage.getItem('token');
 
-      console.log('🔍 Review eligibility check:', { user: !!user, productId, bearerToken: !!bearerToken });
-
-      if (!user || !productId || !bearerToken) {
-        console.log('❌ Early exit: missing user/productId/token');
+    const checkEligibility = async () => {
+      const token = authToken || localStorage.getItem('token');
+      if (!user || !token || reviewIds.length === 0) {
         setCanReview(false);
+        setOrderInfo(null);
         return;
       }
-      
-      try {
-        // Auto-detect production API URL
-        const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
-        const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
-        const apiUrl = `${baseUrl}/api/reviews/can-review/${productId}`;
-        console.log('📡 Fetching:', apiUrl);
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Authorization': `Bearer ${bearerToken}`
+
+      for (const id of reviewIds) {
+        try {
+          const data = await getReviewApiJson(`/api/reviews/can-review/${encodeURIComponent(id)}`, token);
+          if (cancelled) return;
+          if (data.canReview) {
+            setCanReview(true);
+            setOrderInfo({
+              productId: id,
+              orderId: data.orderId,
+              orderNumber: data.orderNumber,
+            });
+            return;
           }
-        });
-        
-        console.log('📨 Response status:', response.status);
-        if (!response.ok) {
-          console.log('❌ Non-OK response');
-          setCanReview(false);
-          return;
+        } catch (_) {
+          // Try the next possible product ID. Older orders may have used a different cart ID.
         }
-        
-        const data = await response.json();
-        console.log('✅ Eligibility data:', data);
-        if (cancelled) return;
-        
-        setCanReview(data.canReview);
-        if (data.canReview) {
-          setOrderInfo({ orderId: data.orderId, orderNumber: data.orderNumber });
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('❌ Review eligibility check failed:', err);
-          setCanReview(false);
-        }
+      }
+
+      if (!cancelled) {
+        setCanReview(false);
+        setOrderInfo(null);
       }
     };
 
-    checkReviewEligibility();
-    return () => { cancelled = true; };
-  }, [user, authToken, productId]);
+    checkEligibility();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authToken, reviewIds]);
+
+  useEffect(() => {
+    if (!showReviewModal) return;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setShowReviewModal(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showReviewModal]);
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
-    return Number((reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length).toFixed(1));
+    const total = reviews.reduce((sum, review) => sum + clampRating(review.rating), 0);
+    return Number((total / reviews.length).toFixed(1));
   }, [reviews]);
 
   const ratingDistribution = useMemo(() => {
     const buckets = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach(r => {
-      const rating = Math.round(Number(r.rating) || 0);
-      if (rating >= 1 && rating <= 5) buckets[rating] += 1;
+    reviews.forEach((review) => {
+      buckets[clampRating(review.rating)] += 1;
     });
     return buckets;
   }, [reviews]);
 
-  const renderStars = (rating) => (
-    <div className="star-rating">
-      {[...Array(5)].map((_, i) => (
-        <span
-          key={i}
-          className={`star ${i < rating ? 'filled' : 'empty'}`}
-          aria-label={`${i + 1} star`}
-        >
-          ★
+  const renderStars = (rating, label = `${rating} out of 5 stars`) => (
+    <span className="review-stars" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span key={star} className={star <= rating ? 'star filled' : 'star'}>
+          &#9733;
         </span>
       ))}
-    </div>
+    </span>
   );
 
-  const renderRatingBar = (stars, count, total) => {
-    const percentage = total > 0 ? (count / total) * 100 : 0;
+  const renderRatingBar = (stars) => {
+    const count = ratingDistribution[stars] || 0;
+    const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+
     return (
       <div key={stars} className="rating-bar-row">
-        <span className="rating-label">{stars} ★</span>
-        <div className="rating-bar-container">
-          <div className="rating-bar" style={{ width: `${percentage}%` }}></div>
+        <span className="rating-label">{stars} star</span>
+        <div className="rating-bar-track" aria-hidden="true">
+          <span className="rating-bar-fill" style={{ width: `${percentage}%` }} />
         </div>
         <span className="rating-count">{count}</span>
       </div>
     );
   };
 
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!orderInfo) return;
-    
+  const handleSubmitReview = async (event) => {
+    event.preventDefault();
+    if (!orderInfo) {
+      setSubmitError('You can review this product after purchasing it.');
+      return;
+    }
+
+    const token = authToken || localStorage.getItem('token');
+    if (!token) {
+      setSubmitError('Please sign in before writing a review.');
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError('');
-    
+
     try {
-      const bearerToken = authToken || localStorage.getItem('token');
-      if (!bearerToken) {
-        setSubmitError('You need to be signed in to write a review.');
-        return;
-      }
-      // Auto-detect production API URL
-      const isProd = window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za';
-      const baseUrl = import.meta.env.VITE_API_URL || (isProd ? 'https://snuggleup-api.onrender.com' : 'http://localhost:3000');
-      const response = await fetch(`${baseUrl}/api/reviews/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerToken}`
-        },
-        body: JSON.stringify({
-          productId,
-          orderId: orderInfo.orderId,
-          rating: reviewData.rating,
-          title: reviewData.title,
-          comment: reviewData.comment
-        })
+      await postReviewApiJson('/api/reviews/submit', token, {
+        productId: orderInfo.productId,
+        orderId: orderInfo.orderId,
+        rating: reviewData.rating,
+        title: reviewData.title.trim(),
+        comment: reviewData.comment.trim(),
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit review');
-      }
-      
-      // Success - close modal and refresh reviews
+
+      const loadedReviews = await loadReviews(reviewIds, token);
+      setReviews(loadedReviews);
+      setCanReview(false);
+      setOrderInfo(null);
       setShowReviewModal(false);
       setReviewData({ rating: 5, title: '', comment: '' });
-      setCanReview(false);
-      
-      // Refresh reviews list
-      const refreshData = await getProductReviews(productId);
-      const incoming = Array.isArray(refreshData?.reviews) ? refreshData.reviews : [];
-      setReviews(incoming.slice(0, 50));
-      
     } catch (err) {
       setSubmitError(err.message || 'Failed to submit review');
     } finally {
@@ -195,184 +259,165 @@ export default function ProductReviews({ productId, productName = 'Product' }) {
     }
   };
 
+  const reviewAction = canReview ? (
+    <button className="write-review-btn" type="button" onClick={() => setShowReviewModal(true)}>
+      Write a review
+    </button>
+  ) : (
+    <span className="review-note">
+      {user ? 'Reviews open after a paid purchase.' : 'Sign in after checkout to review this product.'}
+    </span>
+  );
+
   return (
-    <div className="product-reviews-section">
+    <section className="product-reviews-section" aria-labelledby="customer-reviews-title">
       <div className="reviews-title-row">
-        <h3 className="reviews-title">Customer Reviews</h3>
-        {canReview && (
-          <button 
-            className="write-review-btn"
-            onClick={() => setShowReviewModal(true)}
-          >
-            ✍️ Write a Review
-          </button>
-        )}
-        {/* Debug info - remove after testing */}
-        {user && (
-          <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>
-            Debug: user={user.email || 'yes'} | canReview={canReview ? 'YES' : 'NO'} | token={authToken ? 'yes' : 'no'}
-          </div>
-        )}
+        <div>
+          <h2 id="customer-reviews-title" className="reviews-title">Customer reviews</h2>
+          <p className="reviews-subtitle">{productName}</p>
+        </div>
+        {reviewAction}
       </div>
 
       {loading && (
-        <div className="no-reviews" style={{ padding: '32px 0' }}>
-          <p>Loading reviews for {productName}…</p>
+        <div className="reviews-empty-state">
+          <p>Loading customer reviews...</p>
         </div>
       )}
 
       {error && !loading && (
-        <div className="no-reviews" style={{ color: '#a30000' }}>
+        <div className="reviews-empty-state reviews-error-state">
           <p>{error}</p>
         </div>
       )}
 
-      {!loading && !error && reviews.length > 0 ? (
+      {!loading && !error && (
         <>
           <div className="reviews-summary">
-            <div className="summary-rating">
-              <div className="average-score">
-                <span className="score-number">{averageRating}</span>
-                <span className="score-text">out of 5</span>
-              </div>
-              <div className="summary-stars">
-                {renderStars(Math.round(averageRating))}
-              </div>
-              <p className="review-count">Based on {reviews.length} recent reviews</p>
-            </div>
-
-            <div className="rating-distribution">
-              {[5, 4, 3, 2, 1].map(stars =>
-                renderRatingBar(stars, ratingDistribution[stars], reviews.length)
+            <div className="summary-score-card">
+              {reviews.length > 0 ? (
+                <>
+                  <span className="score-number">{averageRating}</span>
+                  {renderStars(Math.round(averageRating), `${averageRating} out of 5 stars`)}
+                  <span className="review-count">Based on {reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="score-number muted">0.0</span>
+                  {renderStars(0, 'No rating yet')}
+                  <span className="review-count">No reviews yet</span>
+                </>
               )}
             </div>
+
+            <div className="rating-distribution" aria-label="Rating distribution">
+              {[5, 4, 3, 2, 1].map(renderRatingBar)}
+            </div>
           </div>
 
-          <div className="reviews-list">
-            {reviews.map((review) => (
-              <div key={review.id} className="review-item">
-                <div className="review-header">
-                  <div className="review-title-section">
-                    <h4 className="review-title">{review.title || 'Review'}</h4>
-                    {review.verified && (
-                      <span className="verified-badge">✓ Verified Purchase</span>
-                    )}
+          {reviews.length > 0 ? (
+            <div className="reviews-list">
+              {reviews.map((review) => (
+                <article key={review.id} className="review-item">
+                  <div className="review-header">
+                    <div>
+                      <h3 className="review-title">{review.title || 'Customer review'}</h3>
+                      <div className="review-meta">
+                        <span>{review.author}</span>
+                        {review.date && <span>{new Date(review.date).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    {review.verified && <span className="verified-badge">Verified purchase</span>}
                   </div>
-                  <span className="review-date">{review.date ? new Date(review.date).toLocaleDateString() : 'Recently'}</span>
-                </div>
 
-                <div className="review-rating">
-                  {renderStars(Math.round(Number(review.rating) || 0))}
-                </div>
+                  <div className="review-rating-row">
+                    {renderStars(review.rating)}
+                  </div>
 
-                <p className="review-comment">{review.comment}</p>
+                  <p className="review-comment">{review.comment}</p>
 
-                <div className="review-footer">
-                  <span className="review-author">by {review.author || 'Customer'}</span>
-                  <button className="helpful-btn">
-                    👍 Helpful ({review.helpful ?? 0})
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {reviews.length >= 6 && (
-            <button className="load-more-reviews">
-              View All Reviews →
-            </button>
+                  <div className="review-footer">
+                    <span>{review.helpful} found this helpful</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="reviews-empty-state">
+              <p>No customer reviews yet. Be the first to share your experience after checkout.</p>
+            </div>
           )}
         </>
-      ) : null}
-
-      {!loading && !error && reviews.length === 0 && (
-        <div className="no-reviews">
-          <p>No reviews yet. Be the first to review this product!</p>
-        </div>
       )}
 
-      {/* Review Modal */}
       {showReviewModal && (
-        <div className="review-modal-overlay" onClick={() => setShowReviewModal(false)}>
-          <div className="review-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="review-modal-overlay" onMouseDown={() => setShowReviewModal(false)}>
+          <div className="review-modal" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="write-review-title">
             <div className="review-modal-header">
-              <h3>Write Your Review</h3>
-              <button 
-                className="review-modal-close"
-                onClick={() => setShowReviewModal(false)}
-              >
-                ×
+              <h3 id="write-review-title">Write your review</h3>
+              <button className="review-modal-close" type="button" onClick={() => setShowReviewModal(false)} aria-label="Close review form">
+                &times;
               </button>
             </div>
-            
-            <form onSubmit={handleSubmitReview} className="review-form">
+
+            <form className="review-form" onSubmit={handleSubmitReview}>
               <div className="form-group">
-                <label>Your Rating *</label>
-                <div className="rating-input">
-                  {[1, 2, 3, 4, 5].map(star => (
+                <label>Your rating</label>
+                <div className="rating-input" role="radiogroup" aria-label="Choose your rating">
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       className={`star-btn ${star <= reviewData.rating ? 'filled' : ''}`}
-                      onClick={() => setReviewData({ ...reviewData, rating: star })}
+                      onClick={() => setReviewData((current) => ({ ...current, rating: star }))}
+                      aria-label={`${star} star${star === 1 ? '' : 's'}`}
                     >
-                      ★
+                      &#9733;
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="form-group">
-                <label htmlFor="review-title">Review Title (optional)</label>
+                <label htmlFor="review-title">Review title</label>
                 <input
                   id="review-title"
                   type="text"
-                  placeholder="Sum up your experience"
                   value={reviewData.title}
-                  onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
+                  onChange={(event) => setReviewData((current) => ({ ...current, title: event.target.value }))}
+                  placeholder="Example: Great quality"
                   maxLength={100}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="review-comment">Your Review *</label>
+                <label htmlFor="review-comment">Your review</label>
                 <textarea
                   id="review-comment"
-                  placeholder="Tell us about your experience with this product..."
                   value={reviewData.comment}
-                  onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                  onChange={(event) => setReviewData((current) => ({ ...current, comment: event.target.value }))}
+                  placeholder="Tell other parents what you liked about it"
                   rows={5}
-                  required
                   minLength={10}
+                  required
                 />
-                <span className="char-count">{reviewData.comment.length} characters</span>
+                <span className="char-count">{reviewData.comment.trim().length} characters</span>
               </div>
 
-              {submitError && (
-                <div className="review-error">{submitError}</div>
-              )}
+              {submitError && <div className="review-error">{submitError}</div>}
 
               <div className="review-modal-footer">
-                <button 
-                  type="button" 
-                  className="btn-cancel"
-                  onClick={() => setShowReviewModal(false)}
-                  disabled={submitting}
-                >
+                <button type="button" className="btn-cancel" onClick={() => setShowReviewModal(false)} disabled={submitting}>
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="btn-submit"
-                  disabled={submitting || reviewData.comment.trim().length < 10}
-                >
-                  {submitting ? 'Submitting...' : 'Submit Review'}
+                <button type="submit" className="btn-submit" disabled={submitting || reviewData.comment.trim().length < 10}>
+                  {submitting ? 'Submitting...' : 'Submit review'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

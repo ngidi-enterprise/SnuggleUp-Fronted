@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './LocalProductDetail.css';
 import WhatsAppIcon from './WhatsAppIcon.jsx';
+import ProductReviews from './ProductReviews.jsx';
 
 function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const [quantity, setQuantity] = useState(1);
@@ -124,6 +125,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const shareLink = shareId ? `${baseUrl}?product=${shareId}&type=local` : baseUrl;
   const shareText = `Check this out on SnuggleUp: ${product.name || product.product_name || 'this product'} – R${price.toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const localReviewIds = [product.id, product.sku].filter(Boolean);
 
   return (
     <div className="local-product-detail-page">
@@ -314,6 +316,12 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
           </div>
         )}
       </div>
+
+      <ProductReviews
+        productId={product.id}
+        productIds={localReviewIds}
+        productName={product.name || product.product_name || 'Product'}
+      />
     </div>
   );
 }

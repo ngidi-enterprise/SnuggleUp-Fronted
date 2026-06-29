@@ -302,6 +302,19 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
   const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
   const shareText = `Check this out on SnuggleUp: ${product?.product_name || 'this product'} – R${(Number(price) || 0).toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const reviewProductIds = [
+    product?.id,
+    product?.id ? `curated-${product.id}` : '',
+    product?.cj_pid,
+    activeProduct?.id,
+    activeProduct?.id ? `curated-${activeProduct.id}` : '',
+    activeProduct?.cj_pid,
+    ...processedVariants.flatMap((variant) => [
+      variant.id,
+      variant.id ? `curated-${variant.id}` : '',
+      variant.raw?.cj_pid,
+    ]),
+  ].filter(Boolean);
 
   const handleAdd = () => {
     if (!activeProduct || isOutOfStock) return;
@@ -594,7 +607,8 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
 
       {/* Customer Reviews Section */}
       <ProductReviews 
-        productId={product?.cj_pid || product?.id} 
+        productId={product?.id}
+        productIds={reviewProductIds}
         productName={product?.product_name || 'Product'} 
       />
     </div>
