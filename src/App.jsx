@@ -1196,7 +1196,7 @@ function App() {
 
       // helper to actually post the payment data
       const postPayment = async (hdrs) => {
-        return fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
+        return fetch(`${apiBaseInUse}/api/payments/create`, {
           method: 'POST',
           headers: hdrs,
           body: JSON.stringify({
@@ -2091,21 +2091,13 @@ function App() {
               </p>
             </div>
               <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
-                <p className="payment-trust-label">Secure checkout powered by</p>
-                <div className="payment-trust-row">
-                  <div className="payfast-wordmark" aria-label="PayFast">
-                    <span className="payfast-pay">Pay</span><span className="payfast-fast">Fast</span>
-                  </div>
-                  <div className="payment-brand-strip" aria-label="Accepted payment methods">
-                    <span className="payment-badge payment-badge-visa">VISA</span>
-                    <span className="payment-badge payment-badge-mastercard">
-                      <span className="mastercard-mark" aria-hidden="true"><span></span><span></span></span>
-                      <span>Mastercard</span>
-                    </span>
-                    <span className="payment-badge payment-badge-amex">AMEX</span>
-                    <span className="payment-badge payment-badge-eft">Instant EFT</span>
-                  </div>
-                </div>
+                <p className="payment-trust-label">Secure checkout powered by PayFast</p>
+                <img
+                  className="payfast-secure-banner"
+                  src="/images/payfast-secure-payments.png"
+                  alt="PayFast safe and secure payments. Instant EFT, South African banks, Visa, Mastercard and Masterpass."
+                  loading="lazy"
+                />
               </div>
           </footer>
 
