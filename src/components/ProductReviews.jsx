@@ -291,23 +291,13 @@ export default function ProductReviews({ productId, productIds, productName = 'P
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && reviews.length > 0 && (
         <>
           <div className="reviews-summary">
             <div className="summary-score-card">
-              {reviews.length > 0 ? (
-                <>
-                  <span className="score-number">{averageRating}</span>
-                  {renderStars(Math.round(averageRating), `${averageRating} out of 5 stars`)}
-                  <span className="review-count">Based on {reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
-                </>
-              ) : (
-                <>
-                  <span className="score-number muted">0.0</span>
-                  {renderStars(0, 'No rating yet')}
-                  <span className="review-count">No reviews yet</span>
-                </>
-              )}
+              <span className="score-number">{averageRating}</span>
+              {renderStars(Math.round(averageRating), `${averageRating} out of 5 stars`)}
+              <span className="review-count">Based on {reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
             </div>
 
             <div className="rating-distribution" aria-label="Rating distribution">
@@ -315,39 +305,43 @@ export default function ProductReviews({ productId, productIds, productName = 'P
             </div>
           </div>
 
-          {reviews.length > 0 ? (
-            <div className="reviews-list">
-              {reviews.map((review) => (
-                <article key={review.id} className="review-item">
-                  <div className="review-header">
-                    <div>
-                      <h3 className="review-title">{review.title || 'Customer review'}</h3>
-                      <div className="review-meta">
-                        <span>{review.author}</span>
-                        {review.date && <span>{new Date(review.date).toLocaleDateString()}</span>}
-                      </div>
+          <div className="reviews-list">
+            {reviews.map((review) => (
+              <article key={review.id} className="review-item">
+                <div className="review-header">
+                  <div>
+                    <h3 className="review-title">{review.title || 'Customer review'}</h3>
+                    <div className="review-meta">
+                      <span>{review.author}</span>
+                      {review.date && <span>{new Date(review.date).toLocaleDateString()}</span>}
                     </div>
-                    {review.verified && <span className="verified-badge">Verified purchase</span>}
                   </div>
+                  {review.verified && <span className="verified-badge">Verified purchase</span>}
+                </div>
 
-                  <div className="review-rating-row">
-                    {renderStars(review.rating)}
-                  </div>
+                <div className="review-rating-row">
+                  {renderStars(review.rating)}
+                </div>
 
-                  <p className="review-comment">{review.comment}</p>
+                <p className="review-comment">{review.comment}</p>
 
-                  <div className="review-footer">
-                    <span>{review.helpful} found this helpful</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="reviews-empty-state">
-              <p>No customer reviews yet. Be the first to share your experience after checkout.</p>
-            </div>
-          )}
+                <div className="review-footer">
+                  <span>{review.helpful} found this helpful</span>
+                </div>
+              </article>
+            ))}
+          </div>
         </>
+      )}
+
+      {!loading && !error && reviews.length === 0 && (
+        <div className="reviews-empty-card">
+          <div className="empty-stars" aria-hidden="true">
+            <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+          </div>
+          <h3>No customer reviews yet</h3>
+          <p>Once customers have bought this product, their verified reviews will appear here.</p>
+        </div>
       )}
 
       {showReviewModal && (

@@ -315,13 +315,13 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
             </div>
           </div>
         )}
-      </div>
 
-      <ProductReviews
-        productId={product.id}
-        productIds={localReviewIds}
-        productName={product.name || product.product_name || 'Product'}
-      />
+        <ProductReviews
+          productId={product.id}
+          productIds={localReviewIds}
+          productName={product.name || product.product_name || 'Product'}
+        />
+      </div>
     </div>
   );
 }

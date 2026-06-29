@@ -603,14 +603,13 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
             )}
         </div>
         </div>
-      </div>
 
-      {/* Customer Reviews Section */}
-      <ProductReviews 
-        productId={product?.id}
-        productIds={reviewProductIds}
-        productName={product?.product_name || 'Product'} 
-      />
+        <ProductReviews
+          productId={product?.id}
+          productIds={reviewProductIds}
+          productName={product?.product_name || 'Product'}
+        />
+      </div>
     </div>
   );
 }
