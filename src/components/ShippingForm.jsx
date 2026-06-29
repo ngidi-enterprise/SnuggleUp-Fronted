@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import './ShippingForm.css';
 
+// Temporary live PayFast test setting. Change back to 99 after the small test order.
+const STANDARD_DELIVERY_FEE_ZAR = 0;
+
 // South African ID validator (13 digits + checksum)
 const isValidSouthAfricanId = (value) => {
   const digits = (value || '').replace(/\D/g, '');
@@ -365,7 +368,7 @@ export default function ShippingForm({
                     background: localDeliveryMode === 'economy' ? '#e8f6f3' : undefined
                   }}
                 >
-                  {localFreeDeliveryEligible ? 'Standard delivery - Free' : 'Standard delivery - R99'}
+                  {localFreeDeliveryEligible ? 'Standard delivery - Free' : `Standard delivery - R${STANDARD_DELIVERY_FEE_ZAR}`}
                 </button>
                 <button
                   type="button"
