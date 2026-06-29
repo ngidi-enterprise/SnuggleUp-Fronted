@@ -2090,29 +2090,21 @@ function App() {
                 <a href="#" onClick={() => setCurrentPage('data-deletion')} style={{ color: '#999' }}>Data Deletion</a>
               </p>
             </div>
-              <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <img 
-                  src="https://www.payfast.co.za/images/logo.png" 
-                  alt="PayFast Secure Payments" 
-                  style={{ height: '32px', opacity: 0.8 }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '4px 12px', background: 'white', borderRadius: '4px' }}>
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
-                    alt="Visa" 
-                    style={{ height: '20px' }}
-                  />
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
-                    alt="Mastercard" 
-                    style={{ height: '24px' }}
-                  />
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
-                    alt="American Express" 
-                    style={{ height: '20px' }}
-                  />
+              <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
+                <p className="payment-trust-label">Secure checkout powered by</p>
+                <div className="payment-trust-row">
+                  <div className="payfast-wordmark" aria-label="PayFast">
+                    <span className="payfast-pay">Pay</span><span className="payfast-fast">Fast</span>
+                  </div>
+                  <div className="payment-brand-strip" aria-label="Accepted payment methods">
+                    <span className="payment-badge payment-badge-visa">VISA</span>
+                    <span className="payment-badge payment-badge-mastercard">
+                      <span className="mastercard-mark" aria-hidden="true"><span></span><span></span></span>
+                      <span>Mastercard</span>
+                    </span>
+                    <span className="payment-badge payment-badge-amex">AMEX</span>
+                    <span className="payment-badge payment-badge-eft">Instant EFT</span>
+                  </div>
                 </div>
               </div>
           </footer>

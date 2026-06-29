@@ -1343,6 +1343,127 @@ body {
   border-color: #ddd;
 }
 
+.footer-payment-trust {
+  margin-top: 1.35rem;
+}
+
+.payment-trust-label {
+  margin: 0 0 0.7rem;
+  color: #b9c0c5;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
+}
+
+.payment-trust-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.payfast-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 9px 13px 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.payfast-pay {
+  color: #e5282c;
+}
+
+.payfast-fast {
+  color: #24292f;
+}
+
+.payment-brand-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 7px 10px;
+  background: #ffffff;
+  border: 1px solid rgba(255,255,255,0.75);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.payment-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: #f8fafc;
+  border: 1px solid #d8dee7;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.payment-badge-visa {
+  color: #1434cb;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+.payment-badge-mastercard {
+  gap: 7px;
+  color: #1f2933;
+  font-size: 0.68rem;
+  text-transform: lowercase;
+}
+
+.mastercard-mark {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 18px;
+}
+
+.mastercard-mark span {
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.mastercard-mark span:first-child {
+  left: 0;
+  background: #eb001b;
+}
+
+.mastercard-mark span:last-child {
+  right: 0;
+  background: rgba(247, 158, 27, 0.9);
+  mix-blend-mode: multiply;
+}
+
+.payment-badge-amex {
+  background: #2e77bc;
+  border-color: #2e77bc;
+  color: #ffffff;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+.payment-badge-eft {
+  color: #126f71;
+  background: #eef8f7;
+  border-color: #c8e7e4;
+}
+
 @media (max-width: 768px) {
   .wishlist-header {
     flex-direction: column;
@@ -1357,5 +1478,21 @@ body {
   
   .wishlist-content {
     padding: 20px;
+  }
+
+  .payfast-wordmark {
+    font-size: 1.6rem;
+  }
+
+  .payment-brand-strip {
+    width: min(100%, 360px);
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .payment-badge {
+    min-width: 52px;
+    height: 26px;
+    padding: 0 7px;
   }
 }
