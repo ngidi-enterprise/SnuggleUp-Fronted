@@ -1,22 +1,7 @@
-import React, { useState } from 'react';
-import payfastSecurePaymentsBanner from '../assets/payfast-secure-payments.png';
+import React from 'react';
 import './PaymentTrustBanner.css';
 
 export default function PaymentTrustBanner() {
-  const [useFallback, setUseFallback] = useState(false);
-
-  if (!useFallback) {
-    return (
-      <img
-        className="payfast-secure-banner"
-        src={payfastSecurePaymentsBanner}
-        alt="PayFast safe and secure payments. Instant EFT, South African banks, Visa, Mastercard and Masterpass."
-        loading="lazy"
-        onError={() => setUseFallback(true)}
-      />
-    );
-  }
-
   return (
     <div className="payfast-trust-fallback" role="img" aria-label="PayFast safe and secure payments">
       <div className="payfast-trust-main">

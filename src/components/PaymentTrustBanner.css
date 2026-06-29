@@ -1,14 +1,3 @@
-.payfast-secure-banner {
-  display: block;
-  width: min(100%, 560px);
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-}
-
 .payfast-trust-fallback {
   width: min(100%, 560px);
   margin: 0 auto;
@@ -101,11 +90,6 @@
 }
 
 @media (max-width: 640px) {
-  .payfast-secure-banner {
-    width: min(100%, 430px);
-    border-radius: 6px;
-  }
-
   .payfast-trust-fallback {
     padding: 12px;
   }
