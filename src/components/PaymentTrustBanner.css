@@ -1,0 +1,136 @@
+.payfast-secure-banner {
+  display: block;
+  width: min(100%, 560px);
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.payfast-trust-fallback {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: 14px 18px;
+  background: #ffffff;
+  color: #20262a;
+  border: 1px solid #d8dde1;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.payfast-trust-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.payfast-trust-logo {
+  font-size: 2.15rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #111111;
+}
+
+.payfast-trust-logo span {
+  color: #ed1c24;
+}
+
+.payfast-trust-company {
+  margin-top: 2px;
+  color: #3d3d3d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.payfast-trust-divider {
+  width: 1px;
+  height: 46px;
+  background: #c7ced4;
+}
+
+.payfast-trust-message {
+  color: #3d3d3d;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.payfast-trust-methods {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.trust-method {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid #dce4ea;
+  border-radius: 999px;
+  background: #f7fafb;
+  color: #1f3038;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trust-method-eft {
+  color: #006f9f;
+}
+
+.trust-method-bank {
+  color: #126f71;
+}
+
+.trust-method-visa {
+  color: #1434cb;
+}
+
+.trust-method-mastercard {
+  color: #d43d22;
+}
+
+@media (max-width: 640px) {
+  .payfast-secure-banner {
+    width: min(100%, 430px);
+    border-radius: 6px;
+  }
+
+  .payfast-trust-fallback {
+    padding: 12px;
+  }
+
+  .payfast-trust-main {
+    gap: 10px;
+  }
+
+  .payfast-trust-logo {
+    font-size: 1.6rem;
+  }
+
+  .payfast-trust-company {
+    font-size: 0.58rem;
+  }
+
+  .payfast-trust-divider {
+    height: 36px;
+  }
+
+  .payfast-trust-message {
+    font-size: 0.86rem;
+  }
+
+  .trust-method {
+    font-size: 0.66rem;
+  }
+}
