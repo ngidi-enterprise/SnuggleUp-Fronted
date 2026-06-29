@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
-import payfastSecurePaymentsBanner from './assets/payfast-secure-payments.png';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
 const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
 import CheckoutSuccess from './CheckoutSuccess';
@@ -21,6 +20,7 @@ import AdminDashboard from './components/AdminDashboard';
  
 import TrustBadges from './components/TrustBadges';
 import PaymentMethodsStrip from './components/PaymentMethodsStrip';
+import PaymentTrustBanner from './components/PaymentTrustBanner';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -1048,14 +1048,16 @@ function App() {
     try {
       setVoucherError('');
       const subtotal = getSubtotal();
-      const orderAmount = subtotal + getImportShippingCost() + getLocalShippingCost() + getInsuranceCost();
+      const shippingAmount = getImportShippingCost() + getLocalShippingCost();
+      const orderAmount = subtotal + shippingAmount + getInsuranceCost();
 
-      const response = await fetch(`${BACKEND_URL}/api/discounts/apply`, {
+      const response = await fetch(`${apiBaseInUse}/api/discounts/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: voucherCode.trim(),
-          orderAmount: orderAmount
+          orderAmount,
+          shippingAmount
         })
       });
 
@@ -1071,7 +1073,9 @@ function App() {
       setAppliedVoucher({
         code: data.code,
         value: data.discountValue,
-        description: data.discountPercentage 
+        description: data.type === 'free_delivery'
+          ? 'Free delivery'
+          : data.discountPercentage 
           ? `${data.discountPercentage}% off`
           : `R${data.discountAmount} off`
       });
@@ -2096,12 +2100,7 @@ function App() {
             </div>
               <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
                 <p className="payment-trust-label">Secure checkout powered by PayFast</p>
-                <img
-                  className="payfast-secure-banner"
-                  src={payfastSecurePaymentsBanner}
-                  alt="PayFast safe and secure payments. Instant EFT, South African banks, Visa, Mastercard and Masterpass."
-                  loading="lazy"
-                />
+                <PaymentTrustBanner />
                 <PaymentMethodsStrip compact />
               </div>
           </footer>
