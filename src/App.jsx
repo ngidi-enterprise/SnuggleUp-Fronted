@@ -1040,22 +1040,41 @@ function App() {
   };
 
   const applyVoucher = async () => {
-    if (!voucherCode.trim()) {
+    const normalizedCode = voucherCode.trim().toUpperCase();
+
+    if (!normalizedCode) {
       setVoucherError('Please enter a discount code');
+      return;
+    }
+
+    const shippingAmount = Math.round((getImportShippingCost() + getLocalShippingCost()) * 100) / 100;
+    if (normalizedCode === 'FREEDELIVERY') {
+      if (shippingAmount <= 0) {
+        setVoucherError('This code only applies when there is a delivery fee');
+        setAppliedVoucher(null);
+        return;
+      }
+
+      setAppliedVoucher({
+        code: 'FREEDELIVERY',
+        value: shippingAmount,
+        description: 'Free delivery'
+      });
+      setVoucherCode('');
+      setVoucherError('');
       return;
     }
 
     try {
       setVoucherError('');
       const subtotal = getSubtotal();
-      const shippingAmount = getImportShippingCost() + getLocalShippingCost();
       const orderAmount = subtotal + shippingAmount + getInsuranceCost();
 
       const response = await fetch(`${apiBaseInUse}/api/discounts/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: voucherCode.trim(),
+          code: normalizedCode,
           orderAmount,
           shippingAmount
         })
@@ -1874,7 +1893,7 @@ function App() {
                           <p style={{fontWeight: 'bold'}}>Grand Total: R{getTotalPrice().toFixed(2)}</p>
                           {appliedVoucher && (
                             <p style={{marginBottom: '8px', color: '#28a745'}}>
-                              Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                              Discount ({appliedVoucher.code}): -R{Number(appliedVoucher.value || 0).toFixed(2)}
                               <button
                                 onClick={removeVoucher}
                                 style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
@@ -1966,7 +1985,7 @@ function App() {
                       <p style={{marginBottom: '8px'}}>Shipping: R{(cartOnlyLocal ? getLocalShippingCost() : getImportShippingCost()).toFixed(2)}</p>
                       {appliedVoucher && (
                         <p style={{marginBottom: '8px', color: '#28a745'}}>
-                          Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                          Discount ({appliedVoucher.code}): -R{Number(appliedVoucher.value || 0).toFixed(2)}
                           <button 
                             onClick={removeVoucher}
                             style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
