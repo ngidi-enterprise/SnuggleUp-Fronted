@@ -19,6 +19,7 @@ import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
  
 import TrustBadges from './components/TrustBadges';
+import PaymentMethodsStrip from './components/PaymentMethodsStrip';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -1907,6 +1908,7 @@ function App() {
                         >
                           Proceed to PayFast Checkout
                         </button>
+                        <PaymentMethodsStrip />
                         {hasStockIssues && (
                           <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
                             Please remove or adjust items marked "Sold out" before continuing.
@@ -2003,6 +2005,7 @@ function App() {
                     >
                       Proceed to PayFast Checkout
                     </button>
+                    <PaymentMethodsStrip />
                     {hasStockIssues && (
                       <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
                         Please remove or adjust items marked "Sold out" before continuing.
@@ -2098,6 +2101,7 @@ function App() {
                   alt="PayFast safe and secure payments. Instant EFT, South African banks, Visa, Mastercard and Masterpass."
                   loading="lazy"
                 />
+                <PaymentMethodsStrip compact />
               </div>
           </footer>
 
