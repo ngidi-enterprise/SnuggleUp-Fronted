@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
+import payfastSecurePaymentsBanner from './assets/payfast-secure-payments.png';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
 const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
 import CheckoutSuccess from './CheckoutSuccess';
@@ -132,12 +133,15 @@ function App() {
     }
   ];
 
+  // Temporary live PayFast test setting. Change back to 99 after the small test order.
+  const STANDARD_DELIVERY_FEE_ZAR = 0;
+
   const localDeliveryOptions = [
     {
       key: 'economy',
       label: 'Standard',
       subtitle: 'Flat rate',
-      priceZAR: 99,
+      priceZAR: STANDARD_DELIVERY_FEE_ZAR,
       meta: 'Best value · 3–5 business days'
     },
     {
@@ -994,7 +998,7 @@ function App() {
   const getLocalShippingCost = () => {
     if (!hasLocal) return 0;
     if (hasFreeLocalDelivery()) return 0;
-    if (localDeliveryMode === 'economy') return 99;
+    if (localDeliveryMode === 'economy') return STANDARD_DELIVERY_FEE_ZAR;
     return Number(selectedLocalShipping?.priceZAR || 0);
   };
 
@@ -1003,7 +1007,7 @@ function App() {
     if (localDeliveryMode === 'economy') {
       return hasFreeLocalDelivery()
         ? 'Standard delivery - Free over R600'
-        : 'Standard delivery - R99';
+        : `Standard delivery - R${STANDARD_DELIVERY_FEE_ZAR}`;
     }
     if (!selectedLocalShipping) return null;
     return hasFreeLocalDelivery()
@@ -1296,9 +1300,9 @@ function App() {
             <div className="shipping-summary-card">
               <div>
                 <strong>Standard delivery</strong>
-                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : 'R99'}</p>
+                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : `R${STANDARD_DELIVERY_FEE_ZAR}`}</p>
               </div>
-              <span>{hasFreeLocalDelivery() ? 'Free' : 'R99.00'}</span>
+              <span>{hasFreeLocalDelivery() ? 'Free' : `R${STANDARD_DELIVERY_FEE_ZAR.toFixed(2)}`}</span>
             </div>
           ) : (
             <>
@@ -2097,7 +2101,7 @@ function App() {
                 <p className="payment-trust-label">Secure checkout powered by PayFast</p>
                 <img
                   className="payfast-secure-banner"
-                  src="/images/payfast-secure-payments.png"
+                  src={payfastSecurePaymentsBanner}
                   alt="PayFast safe and secure payments. Instant EFT, South African banks, Visa, Mastercard and Masterpass."
                   loading="lazy"
                 />
