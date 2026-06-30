@@ -255,7 +255,7 @@ body {
 
 @media (max-width: 640px) {
   :root {
-    --header-height: 80px;
+    --header-height: 126px;
   }
 }
 
@@ -902,21 +902,111 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  /* Header already optimized for mobile at base level */
+  :root {
+    --header-height: 126px;
+  }
+
+  .app.has-account-prompt {
+    --header-height: 174px;
+  }
+
+  .app {
+    padding-top: var(--header-height);
+  }
+
   .header {
-    padding: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 8px;
+    padding: 8px 14px 12px;
+    min-height: var(--header-height);
+  }
+
+  .account-prompt-banner {
+    order: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 0;
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+
+  .account-prompt-banner .btn-small {
+    min-height: 38px;
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .logo-section {
+    order: 1;
+    width: 100%;
+    gap: 10px;
   }
   
   .logo {
-    width: 62px;
-    min-width: 62px;
-    max-width: 62px;
-    height: 62px;
+    width: 54px;
+    min-width: 54px;
+    max-width: 54px;
+    height: 54px;
+    border-radius: 10px;
   }
   
   .brand-info h1 {
-    font-size: 22px;
+    font-size: 24px;
     line-height: 1.15;
+  }
+
+  .header-right {
+    order: 2;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.74fr) 44px 78px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .login-btn,
+  .logout-btn,
+  .account-btn,
+  .admin-btn,
+  .track-order-btn {
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 13px;
+    border-radius: 999px;
+    width: 100%;
+    white-space: nowrap;
+  }
+
+  .wishlist-btn {
+    min-width: 44px;
+    min-height: 42px;
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .checkout-btn {
+    min-height: 42px;
+    width: 78px;
+    justify-content: center;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .checkout-btn .cart-icon,
+  .wishlist-icon {
+    width: 20px;
+    height: 20px;
   }
   
   .search-bar {
@@ -928,12 +1018,6 @@ body {
     width: 100%;
     font-size: 14px;
     padding: 10px 15px;
-  }
-  
-  .login-btn, .logout-btn, .account-btn, .admin-btn, .track-order-btn {
-    padding: 8px 16px;
-    font-size: 13px;
-    white-space: nowrap;
   }
   
   .cart-icon {
@@ -1089,20 +1173,68 @@ body {
 
 /* Small Mobile (iPhone SE, etc.) */
 @media (max-width: 375px) {
+  :root {
+    --header-height: 118px;
+  }
+
+  .app.has-account-prompt {
+    --header-height: 164px;
+  }
+
   .header {
-    padding: 0.4rem;
+    gap: 7px;
+    padding: 7px 10px 10px;
+    min-height: var(--header-height);
+  }
+
+  .account-prompt-banner {
+    font-size: 0.84rem;
+    padding: 7px 8px;
+  }
+
+  .account-prompt-banner .btn-small {
+    min-height: 34px;
+    padding: 5px 9px;
+    font-size: 0.78rem;
   }
   
   .logo {
-    width: 54px;
-    min-width: 54px;
-    max-width: 54px;
-    height: 54px;
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    height: 48px;
   }
   
   .brand-info h1 {
-    font-size: 20px;
+    font-size: 21px;
     line-height: 1.15;
+  }
+
+  .header-right {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr) 40px 68px;
+    gap: 7px;
+  }
+
+  .login-btn,
+  .logout-btn,
+  .account-btn,
+  .admin-btn,
+  .track-order-btn {
+    min-height: 38px;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+
+  .wishlist-btn {
+    min-width: 40px;
+    width: 40px;
+    min-height: 38px;
+  }
+
+  .checkout-btn {
+    width: 68px;
+    min-height: 38px;
+    padding: 7px 9px;
   }
   
   .product-grid {
@@ -1355,15 +1487,95 @@ body {
   letter-spacing: 0.01em;
 }
 
-.payfast-secure-banner {
-  display: block;
+.payfast-trust-panel {
   width: min(100%, 560px);
-  max-width: 100%;
-  height: auto;
   margin: 0 auto;
+  padding: 14px 18px;
   background: #ffffff;
+  color: #20262a;
+  border: 1px solid #d8dde1;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.payfast-trust-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.payfast-trust-logo {
+  color: #111111;
+  font-size: 2.15rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.payfast-trust-logo span {
+  color: #ed1c24;
+}
+
+.payfast-trust-company {
+  margin-top: 2px;
+  color: #3d3d3d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.payfast-trust-divider {
+  width: 1px;
+  height: 46px;
+  background: #c7ced4;
+}
+
+.payfast-trust-message {
+  color: #3d3d3d;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.payfast-trust-methods {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.trust-method {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid #dce4ea;
+  border-radius: 999px;
+  background: #f7fafb;
+  color: #1f3038;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trust-method-eft {
+  color: #006f9f;
+}
+
+.trust-method-bank {
+  color: #126f71;
+}
+
+.trust-method-visa {
+  color: #1434cb;
+}
+
+.trust-method-mastercard {
+  color: #d43d22;
 }
 
 @media (max-width: 768px) {
@@ -1382,8 +1594,31 @@ body {
     padding: 20px;
   }
 
-  .payfast-secure-banner {
-    width: min(100%, 430px);
-    border-radius: 6px;
+  .payfast-trust-panel {
+    padding: 12px;
+  }
+
+  .payfast-trust-main {
+    gap: 10px;
+  }
+
+  .payfast-trust-logo {
+    font-size: 1.6rem;
+  }
+
+  .payfast-trust-company {
+    font-size: 0.58rem;
+  }
+
+  .payfast-trust-divider {
+    height: 36px;
+  }
+
+  .payfast-trust-message {
+    font-size: 0.86rem;
+  }
+
+  .trust-method {
+    font-size: 0.66rem;
   }
 }

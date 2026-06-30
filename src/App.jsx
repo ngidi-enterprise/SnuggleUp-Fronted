@@ -20,7 +20,6 @@ import AdminDashboard from './components/AdminDashboard';
  
 import TrustBadges from './components/TrustBadges';
 import PaymentMethodsStrip from './components/PaymentMethodsStrip';
-import PaymentTrustBanner from './components/PaymentTrustBanner';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -1392,7 +1391,7 @@ function App() {
   // Note: '/cj' routes are normalized to 'home' in the router.
 
   return (
-    <div className="app">
+    <div className={`app ${showAccountPrompt ? 'has-account-prompt' : ''}`}>
       {/* Header */}
       <header className="header">
         {showAccountPrompt && (
@@ -2119,7 +2118,27 @@ function App() {
             </div>
               <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
                 <p className="payment-trust-label">Secure checkout powered by PayFast</p>
-                <PaymentTrustBanner />
+                <div className="payfast-trust-panel" role="img" aria-label="PayFast safe and secure payments">
+                  <div className="payfast-trust-main">
+                    <div>
+                      <div className="payfast-trust-logo">
+                        <span>Pay</span>Fast
+                      </div>
+                      <div className="payfast-trust-company">A DPO Company</div>
+                    </div>
+                    <div className="payfast-trust-divider" />
+                    <div className="payfast-trust-message">Safe and secure payments</div>
+                  </div>
+                  <div className="payfast-trust-methods" aria-hidden="true">
+                    <span className="trust-method trust-method-eft">instant EFT</span>
+                    <span className="trust-method trust-method-bank">ABSA</span>
+                    <span className="trust-method trust-method-bank">FNB</span>
+                    <span className="trust-method trust-method-bank">Nedbank</span>
+                    <span className="trust-method trust-method-bank">Standard Bank</span>
+                    <span className="trust-method trust-method-visa">VISA</span>
+                    <span className="trust-method trust-method-mastercard">Mastercard</span>
+                  </div>
+                </div>
                 <PaymentMethodsStrip compact />
               </div>
           </footer>
