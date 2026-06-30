@@ -636,11 +636,26 @@
   }
 
   .tracking-page {
-    padding: 24px 10px 44px;
+    padding: 18px 10px 44px;
+  }
+
+  .tracking-page-logo {
+    width: min(170px, 52vw);
+    margin-bottom: 12px;
   }
 
   .tracking-page h1 {
-    font-size: 26px;
+    font-size: 25px;
+    line-height: 1.15;
+  }
+
+  .tracking-page-result-card {
+    margin-top: 18px;
+  }
+
+  .tracking-page-result-card .order-header {
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .tracking-page-result-card .delivery-tracking {
