@@ -7,6 +7,7 @@ import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
 import Register from './components/Register';
 import UserAccount from './components/UserAccount';
+import OrderTrackingLookup from './components/OrderTrackingLookup';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ProductDetail from './components/ProductDetail';
@@ -18,6 +19,7 @@ import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
  
 import TrustBadges from './components/TrustBadges';
+import PaymentMethodsStrip from './components/PaymentMethodsStrip';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -53,6 +55,8 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
   const [showUserAccount, setShowUserAccount] = useState(false);
+  const [showOrderTracking, setShowOrderTracking] = useState(false);
+  const [trackingRouteParams, setTrackingRouteParams] = useState({ orderNumber: '', token: '' });
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [isStorePreviewActive, setIsStorePreviewActive] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -131,22 +135,22 @@ function App() {
   const localDeliveryOptions = [
     {
       key: 'economy',
-      label: 'Economy',
+      label: 'Standard',
       subtitle: 'Flat rate',
-      priceZAR: 100,
+      priceZAR: 99,
       meta: 'Best value · 3–5 business days'
     },
     {
       key: 'express',
       label: 'Express',
-      subtitle: 'Bob Go live quote',
+      subtitle: 'Live courier quote',
       priceZAR: null,
       meta: 'Next business day · courier handoff'
     },
     {
       key: 'pickup',
       label: 'Pick-up point',
-      subtitle: 'Bob Go live quote',
+      subtitle: 'Live courier quote',
       priceZAR: null,
       meta: 'Pick up at a partner location'
     }
@@ -407,7 +411,17 @@ function App() {
         return; // wait for hashchange to re-run
       }
       const route = hash || path;
-      if (route.includes('/checkout/success')) {
+      if (route.startsWith('/track-order') || route.startsWith('/t')) {
+        const query = route.includes('?') ? route.slice(route.indexOf('?') + 1) : '';
+        const params = new URLSearchParams(query);
+        setTrackingRouteParams({
+          orderNumber: params.get('order') || params.get('o') || '',
+          token: params.get('token') || params.get('t') || '',
+        });
+        setCurrentPage('track-order');
+        setShowOrderTracking(false);
+        trackPageView('/track-order', 'Track Order');
+      } else if (route.includes('/checkout/success')) {
         setCurrentPage('success');
         trackPageView('/checkout/success', 'Checkout Success');
       } else if (route.includes('/checkout/cancel')) {
@@ -812,6 +826,7 @@ function App() {
           items: localItems,
           destination: {
             address: shippingDetails.address,
+            suburb: shippingDetails.suburb,
             city: shippingDetails.city,
             province: shippingDetails.province,
             postalCode: shippingDetails.postalCode,
@@ -828,11 +843,17 @@ function App() {
 
       if (matchingRates.length === 0) {
         const label = localDeliveryMode === 'pickup' ? 'pick-up point' : 'express';
-        setLocalShippingError(`Bob Go returned no ${label} test rates for this address. Choose Economy or try a different delivery address.`);
+        const outsideGauteng = String(shippingDetails.province || '').trim().toLowerCase() !== 'gauteng';
+        const expressCoverageMessage = localDeliveryMode === 'express' && outsideGauteng
+          ? 'Express delivery is currently available for Gauteng addresses only. We are growing our delivery network and look forward to bringing this option to more areas soon. Normal delivery times remain available at checkout.'
+          : '';
+        setLocalShippingError(
+          expressCoverageMessage || data.message || `No ${label} live courier rates are available for this address. Choose Standard delivery or try a different delivery address.`
+        );
       }
     } catch (error) {
       setLocalShippingQuotes([]);
-      setLocalShippingError(error.message || 'Unable to load Bob Go test rates');
+      setLocalShippingError(error.message || 'Unable to load live courier rates');
     } finally {
       setLocalShippingLoading(false);
     }
@@ -956,6 +977,12 @@ function App() {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const hasFreeLocalDelivery = () => (
+    hasLocal &&
+    getSubtotal() > 600 &&
+    ['economy', 'pickup'].includes(localDeliveryMode)
+  );
+
   const getImportShippingCost = () => {
     if (!hasImport) return 0;
     return Number(selectedShipping?.priceZAR || 0);
@@ -966,14 +993,22 @@ function App() {
 
   const getLocalShippingCost = () => {
     if (!hasLocal) return 0;
-    if (localDeliveryMode === 'economy') return 100;
+    if (hasFreeLocalDelivery()) return 0;
+    if (localDeliveryMode === 'economy') return 99;
     return Number(selectedLocalShipping?.priceZAR || 0);
   };
 
   const getLocalShippingMethod = () => {
     if (!hasLocal) return null;
-    if (localDeliveryMode === 'economy') return 'Economy delivery - R100 flat rate';
-    return selectedLocalShipping?.label || null;
+    if (localDeliveryMode === 'economy') {
+      return hasFreeLocalDelivery()
+        ? 'Standard delivery - Free over R600'
+        : 'Standard delivery - R99';
+    }
+    if (!selectedLocalShipping) return null;
+    return hasFreeLocalDelivery()
+      ? `${selectedLocalShipping.label} - Free over R600`
+      : selectedLocalShipping.label;
   };
 
   const getImportShippingMethod = () => {
@@ -1004,22 +1039,43 @@ function App() {
   };
 
   const applyVoucher = async () => {
-    if (!voucherCode.trim()) {
+    const normalizedCode = voucherCode.trim().toUpperCase();
+
+    if (!normalizedCode) {
       setVoucherError('Please enter a discount code');
+      return;
+    }
+
+    const shippingAmount = Math.round((getImportShippingCost() + getLocalShippingCost()) * 100) / 100;
+    if (normalizedCode === 'FREEDELIVERY') {
+      if (shippingAmount <= 0) {
+        setVoucherError('This code only applies when there is a delivery fee');
+        setAppliedVoucher(null);
+        return;
+      }
+
+      setAppliedVoucher({
+        code: 'FREEDELIVERY',
+        value: shippingAmount,
+        description: 'Free delivery'
+      });
+      setVoucherCode('');
+      setVoucherError('');
       return;
     }
 
     try {
       setVoucherError('');
       const subtotal = getSubtotal();
-      const orderAmount = subtotal + getImportShippingCost() + getLocalShippingCost() + getInsuranceCost();
+      const orderAmount = subtotal + shippingAmount + getInsuranceCost();
 
-      const response = await fetch(`${BACKEND_URL}/api/discounts/apply`, {
+      const response = await fetch(`${apiBaseInUse}/api/discounts/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: voucherCode.trim(),
-          orderAmount: orderAmount
+          code: normalizedCode,
+          orderAmount,
+          shippingAmount
         })
       });
 
@@ -1035,7 +1091,9 @@ function App() {
       setAppliedVoucher({
         code: data.code,
         value: data.discountValue,
-        description: data.discountPercentage 
+        description: data.type === 'free_delivery'
+          ? 'Free delivery'
+          : data.discountPercentage 
           ? `${data.discountPercentage}% off`
           : `R${data.discountAmount} off`
       });
@@ -1143,7 +1201,7 @@ function App() {
         shippingCountry,
         shippingMethod: importShippingMethod,
         localShippingMethod,
-        localDeliveryMode,
+      localDeliveryMode,
         selectedLocalShipping,
         insuranceSelected,
         insuranceData: insuranceSelected ? insuranceData : null,
@@ -1162,7 +1220,7 @@ function App() {
 
       // helper to actually post the payment data
       const postPayment = async (hdrs) => {
-        return fetch('https://snuggleup-backend.onrender.com/api/payments/create', {
+        return fetch(`${apiBaseInUse}/api/payments/create`, {
           method: 'POST',
           headers: hdrs,
           body: JSON.stringify({
@@ -1175,6 +1233,7 @@ function App() {
             discount: Math.round(getDiscount() * 100) / 100,
             shippingMethod: importShippingMethod,
             localShippingMethod,
+            localDeliveryMode,
             shippingQuoted: importShipping,
             shippingCountry: shippingCountry,
             shippingDetails: detailsWithName,
@@ -1256,33 +1315,33 @@ function App() {
           ))}
         </div>
         <div className="shipping-option-body">
-          {localDeliveryMode === 'economy' ? (
+              {localDeliveryMode === 'economy' ? (
             <div className="shipping-summary-card">
               <div>
-                <strong>Economy delivery</strong>
-                <p>R100 flat rate</p>
+                <strong>Standard delivery</strong>
+                <p>{hasFreeLocalDelivery() ? 'Free delivery on orders over R600' : 'R99'}</p>
               </div>
-              <span>R100.00</span>
+              <span>{hasFreeLocalDelivery() ? 'Free' : 'R99.00'}</span>
             </div>
           ) : (
             <>
               {!shippingFormData?.postalCode && (
                 <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
-                  Enter your delivery address at checkout to see Bob Go test rates.
+                  Enter your delivery address at checkout to see live courier rates.
                 </p>
               )}
               {shippingFormData?.postalCode && !selectedLocalShipping && (
                 <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>
-                  Continue to the delivery form, then request a live Bob Go rate.
+                  Continue to the delivery form, then request a live courier rate.
                 </p>
               )}
               {selectedLocalShipping && (
                 <div className="shipping-summary-card">
                   <div>
                     <strong>{selectedLocalShipping.label}</strong>
-                    <p>{selectedLocalShipping.deliveryEstimate || 'Bob Go test rate'}</p>
+                    <p>{selectedLocalShipping.deliveryEstimate || 'Live courier rate'}</p>
                   </div>
-                  <span>R{Number(selectedLocalShipping.priceZAR).toFixed(2)}</span>
+                  <span>{hasFreeLocalDelivery() ? 'Free' : `R${Number(selectedLocalShipping.priceZAR).toFixed(2)}`}</span>
                 </div>
               )}
               {matchingRates.length > 0 && !selectedLocalShipping && (
@@ -1332,7 +1391,7 @@ function App() {
   // Note: '/cj' routes are normalized to 'home' in the router.
 
   return (
-    <div className="app">
+    <div className={`app ${showAccountPrompt ? 'has-account-prompt' : ''}`}>
       {/* Header */}
       <header className="header">
         {showAccountPrompt && (
@@ -1378,6 +1437,13 @@ function App() {
           </div>
         </div>
         <div className="header-right">
+          <button
+            className="track-order-btn"
+            onClick={() => setShowOrderTracking(true)}
+            title="Track an order"
+          >
+            Track Order
+          </button>
           {/* Login/Account Button */}
           {!isAuthenticated ? (
             <button
@@ -1453,6 +1519,14 @@ function App() {
         <CheckoutSuccess />
       ) : currentPage === 'cancel' ? (
         <CheckoutCancel />
+      ) : currentPage === 'track-order' ? (
+        <OrderTrackingLookup
+          key={`${trackingRouteParams.orderNumber}:${trackingRouteParams.token}`}
+          mode="page"
+          initialOrderNumber={trackingRouteParams.orderNumber}
+          initialToken={trackingRouteParams.token}
+          autoLookup={Boolean(trackingRouteParams.orderNumber && trackingRouteParams.token)}
+        />
       ) : currentPage === 'wishlist' ? (
         <div className="wishlist-page">
           <div className="wishlist-content">
@@ -1818,7 +1892,7 @@ function App() {
                           <p style={{fontWeight: 'bold'}}>Grand Total: R{getTotalPrice().toFixed(2)}</p>
                           {appliedVoucher && (
                             <p style={{marginBottom: '8px', color: '#28a745'}}>
-                              Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                              Discount ({appliedVoucher.code}): -R{Number(appliedVoucher.value || 0).toFixed(2)}
                               <button
                                 onClick={removeVoucher}
                                 style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
@@ -1857,6 +1931,7 @@ function App() {
                         >
                           Proceed to PayFast Checkout
                         </button>
+                        <PaymentMethodsStrip />
                         {hasStockIssues && (
                           <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
                             Please remove or adjust items marked "Sold out" before continuing.
@@ -1909,7 +1984,7 @@ function App() {
                       <p style={{marginBottom: '8px'}}>Shipping: R{(cartOnlyLocal ? getLocalShippingCost() : getImportShippingCost()).toFixed(2)}</p>
                       {appliedVoucher && (
                         <p style={{marginBottom: '8px', color: '#28a745'}}>
-                          Discount ({appliedVoucher.code}): -R{appliedVoucher.value}
+                          Discount ({appliedVoucher.code}): -R{Number(appliedVoucher.value || 0).toFixed(2)}
                           <button 
                             onClick={removeVoucher}
                             style={{marginLeft: '8px', background: 'transparent', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.9em'}}
@@ -1953,6 +2028,7 @@ function App() {
                     >
                       Proceed to PayFast Checkout
                     </button>
+                    <PaymentMethodsStrip />
                     {hasStockIssues && (
                       <p style={{ color: '#dc3545', marginTop: '8px', fontSize: '0.9em' }}>
                         Please remove or adjust items marked "Sold out" before continuing.
@@ -2019,6 +2095,10 @@ function App() {
             <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
           )}
 
+          {showOrderTracking && (
+            <OrderTrackingLookup onClose={() => setShowOrderTracking(false)} />
+          )}
+
           
 
           {/* Footer */}
@@ -2036,30 +2116,30 @@ function App() {
                 <a href="#" onClick={() => setCurrentPage('data-deletion')} style={{ color: '#999' }}>Data Deletion</a>
               </p>
             </div>
-              <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '0.75rem' }}>Secure payments powered by</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <img 
-                  src="https://www.payfast.co.za/images/logo.png" 
-                  alt="PayFast Secure Payments" 
-                  style={{ height: '32px', opacity: 0.8 }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '4px 12px', background: 'white', borderRadius: '4px' }}>
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
-                    alt="Visa" 
-                    style={{ height: '20px' }}
-                  />
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
-                    alt="Mastercard" 
-                    style={{ height: '24px' }}
-                  />
-                  <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
-                    alt="American Express" 
-                    style={{ height: '20px' }}
-                  />
+              <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
+                <p className="payment-trust-label">Secure checkout powered by PayFast</p>
+                <div className="payfast-trust-panel" role="img" aria-label="PayFast safe and secure payments">
+                  <div className="payfast-trust-main">
+                    <div>
+                      <div className="payfast-trust-logo">
+                        <span>Pay</span>Fast
+                      </div>
+                      <div className="payfast-trust-company">A DPO Company</div>
+                    </div>
+                    <div className="payfast-trust-divider" />
+                    <div className="payfast-trust-message">Safe and secure payments</div>
+                  </div>
+                  <div className="payfast-trust-methods" aria-hidden="true">
+                    <span className="trust-method trust-method-eft">instant EFT</span>
+                    <span className="trust-method trust-method-bank">ABSA</span>
+                    <span className="trust-method trust-method-bank">FNB</span>
+                    <span className="trust-method trust-method-bank">Nedbank</span>
+                    <span className="trust-method trust-method-bank">Standard Bank</span>
+                    <span className="trust-method trust-method-visa">VISA</span>
+                    <span className="trust-method trust-method-mastercard">Mastercard</span>
+                  </div>
                 </div>
+                <PaymentMethodsStrip compact />
               </div>
           </footer>
 
@@ -2088,6 +2168,7 @@ function App() {
               readonlyEmail={!!user?.email}
               hasLocalItems={hasLocal}
               localDeliveryMode={localDeliveryMode}
+              localFreeDeliveryEligible={hasLocal && getSubtotal() > 600}
               localShippingQuotes={localShippingQuotes}
               selectedLocalShipping={selectedLocalShipping}
               localShippingLoading={localShippingLoading}
@@ -2097,7 +2178,10 @@ function App() {
                 setSelectedLocalShipping(null);
                 setLocalShippingError('');
               }}
-              onLocalShippingSelect={setSelectedLocalShipping}
+              onLocalShippingSelect={(rate) => {
+                setSelectedLocalShipping(rate);
+                setLocalShippingError('');
+              }}
               onCheckLocalShippingRates={fetchLocalShippingQuotes}
             />
           )}
