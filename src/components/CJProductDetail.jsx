@@ -3,6 +3,13 @@ import './ProductDetail.css';
 import ProductReviews from './ProductReviews.jsx';
 import WhatsAppIcon from './WhatsAppIcon.jsx';
 import { trackProductView } from '../lib/analytics';
+import {
+  buildProductJsonLd,
+  getCuratedProductUrl,
+  setPageSeo,
+  stripHtml,
+  truncate,
+} from '../lib/seo';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
@@ -299,9 +306,45 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
   // Use database ID for sharing (numeric), not cj_pid (string)
   const shareId = product?.id || activeProduct?.id || '';
-  const shareLink = shareId ? `${baseUrl}?product=${shareId}` : baseUrl;
-  const shareText = `Check this out on SnuggleUp: ${product?.product_name || 'this product'} – R${(Number(price) || 0).toFixed(2)} ${shareLink}`;
+  const shareLink = shareId ? getCuratedProductUrl(product || activeProduct) : baseUrl;
+  const shareText = `Check this out on SnuggleUp: ${product?.product_name || 'this product'} - R${(Number(price) || 0).toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+  useEffect(() => {
+    if (!product) return;
+    const baseName = product.seo_title || product.product_name || 'Baby product';
+    const productName = selectedVariant && selectedVariant.color !== 'Default'
+      ? `${baseName} - ${selectedVariant.color}`
+      : baseName;
+    const productUrl = getCuratedProductUrl(product);
+    const image = selectedImage || product.product_image || galleryImages[0];
+    const description = truncate(
+      stripHtml(product.product_description) ||
+      `Shop ${productName} from SnuggleUp. Secure checkout and delivery options available in South Africa.`
+    );
+
+    setPageSeo({
+      title: `${productName} | SnuggleUp Baby Store`,
+      description,
+      url: productUrl,
+      image,
+      type: 'product',
+      jsonLd: [
+        buildProductJsonLd({
+          product,
+          name: productName,
+          description,
+          image,
+          url: productUrl,
+          price,
+          sku: activeProduct?.cj_vid || product.cj_vid || product.cj_pid || product.id,
+          availability: isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+          category: product.category,
+        }),
+      ],
+    });
+  }, [product, selectedVariant, selectedImage, galleryImages, price, activeProduct, isOutOfStock]);
+
   const reviewProductIds = [
     product?.id,
     product?.id ? `curated-${product.id}` : '',

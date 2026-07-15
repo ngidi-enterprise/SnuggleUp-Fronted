@@ -511,6 +511,15 @@
   background: #c0392b;
 }
 
+.btn-success {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #219653;
+}
+
 /* Pricing Manager */
 .pricing-header {
   background: white;
@@ -653,6 +662,74 @@
   margin-left: 8px;
 }
 
+.late-order-admin-flag {
+  display: grid;
+  gap: 5px;
+}
+
+.late-order-admin-flag small {
+  color: #7f6a45;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.late-order-badge {
+  background: #fff3cd;
+  color: #7a4d00;
+  border: 1px solid #f1d7aa;
+  width: fit-content;
+}
+
+.supplier-admin-status {
+  display: grid;
+  gap: 5px;
+}
+
+.supplier-admin-status small {
+  color: #6b777a;
+  font-size: 11px;
+}
+
+.supplier-status-waiting {
+  background: #fff3cd;
+  color: #7a4d00;
+}
+
+.supplier-status-picked_up {
+  background: #d4edda;
+  color: #155724;
+}
+
+.supplier-status-problem {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.supplier-admin-panel {
+  border: 1px solid #dbe8e4;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f7fbfa;
+}
+
+.supplier-link-preview {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #dbe8e4;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #126f71;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.supplier-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -709,6 +786,31 @@
 .order-details-section p {
   margin: 8px 0;
   color: #555;
+}
+
+.late-order-alert-panel {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #f1d7aa;
+  border-left: 4px solid #b45309;
+  border-radius: 8px;
+  background: #fff8ed;
+}
+
+.late-order-alert-panel strong {
+  display: block;
+  color: #7a4d00;
+  margin-bottom: 6px;
+}
+
+.late-order-alert-panel p {
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.late-order-alert-error {
+  color: #c0392b !important;
+  font-weight: 600;
 }
 
 .order-items-table {

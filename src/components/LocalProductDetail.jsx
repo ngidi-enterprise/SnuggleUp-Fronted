@@ -2,6 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './LocalProductDetail.css';
 import WhatsAppIcon from './WhatsAppIcon.jsx';
 import ProductReviews from './ProductReviews.jsx';
+import {
+  buildProductJsonLd,
+  getLocalProductUrl,
+  setPageSeo,
+  stripHtml,
+  truncate,
+} from '../lib/seo';
 
 function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const [quantity, setQuantity] = useState(1);
@@ -122,9 +129,42 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
   const discount = onSale ? Math.round((1 - price / comparePrice) * 100) : 0;
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://snuggleup.co.za';
   const shareId = product?.id || product?.sku || '';
-  const shareLink = shareId ? `${baseUrl}?product=${shareId}&type=local` : baseUrl;
-  const shareText = `Check this out on SnuggleUp: ${product.name || product.product_name || 'this product'} – R${price.toFixed(2)} ${shareLink}`;
+  const shareLink = shareId ? getLocalProductUrl(product) : baseUrl;
+  const shareText = `Check this out on SnuggleUp: ${product.name || product.product_name || 'this product'} - R${price.toFixed(2)} ${shareLink}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+  useEffect(() => {
+    if (!product) return;
+    const productName = product.name || product.product_name || 'Local baby product';
+    const productUrl = getLocalProductUrl(product);
+    const image = selectedImage || galleryImages[0];
+    const description = truncate(
+      stripHtml(product.description) ||
+      `Shop ${productName} from SnuggleUp local warehouse. Fast delivery available in South Africa.`
+    );
+
+    setPageSeo({
+      title: `${productName} | SnuggleUp Local Warehouse`,
+      description,
+      url: productUrl,
+      image,
+      type: 'product',
+      jsonLd: [
+        buildProductJsonLd({
+          product,
+          name: productName,
+          description,
+          image,
+          url: productUrl,
+          price,
+          sku: product.sku || product.id,
+          availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          category: product.category,
+        }),
+      ],
+    });
+  }, [product, selectedImage, galleryImages, price, inStock]);
+
   const localReviewIds = [product.id, product.sku].filter(Boolean);
 
   return (
