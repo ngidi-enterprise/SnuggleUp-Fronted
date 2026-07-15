@@ -27,6 +27,18 @@
   font-size: 16px;
 }
 
+.supplier-topline > div {
+  display: grid;
+  gap: 4px;
+}
+
+.supplier-brand {
+  color: #126f71;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .supplier-status-pill {
   display: inline-flex;
   align-items: center;
@@ -59,8 +71,6 @@
 }
 
 .supplier-label,
-.supplier-ref,
-.supplier-items,
 .supplier-confirmed,
 .supplier-inline-error,
 .supplier-loading,
@@ -82,23 +92,22 @@
   line-height: 1;
 }
 
-.supplier-items {
+.supplier-items-list {
+  margin: 0;
+  padding-left: 20px;
   color: #253334;
   font-size: 16px;
   line-height: 1.45;
 }
 
-.supplier-ref {
-  margin-top: 8px;
-  color: #5f6f73;
-  font-size: 14px;
+.supplier-items-list li {
+  margin: 8px 0;
+  padding-left: 2px;
 }
 
-.supplier-waybill {
-  display: inline-flex;
-  margin-top: 12px;
+.supplier-items-list strong {
+  margin-right: 6px;
   color: #126f71;
-  font-weight: 800;
 }
 
 .supplier-actions {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './SupplierPickupPage.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -28,11 +28,7 @@ export default function SupplierPickupPage({ token }) {
   const currentStatus = data?.order?.status || 'waiting';
   const statusMeta = STATUS_COPY[currentStatus] || STATUS_COPY.waiting;
 
-  const itemSummary = useMemo(() => {
-    const items = data?.order?.items || [];
-    if (items.length === 0) return 'Order items';
-    return items.slice(0, 3).map(item => `${item.quantity} x ${item.name}`).join(', ');
-  }, [data]);
+  const items = data?.order?.items || [];
 
   const loadPickup = async () => {
     if (!token) {
@@ -107,25 +103,28 @@ export default function SupplierPickupPage({ token }) {
     <main className="supplier-pickup-page">
       <section className="supplier-pickup-shell">
         <div className="supplier-topline">
+          <div>
+            <span className="supplier-brand">SnuggleUp</span>
+            <strong>#{data.order.orderNumber}</strong>
+          </div>
           <span className={`supplier-status-pill ${statusMeta.tone}`}>{statusMeta.title}</span>
-          <strong>#{data.order.orderNumber}</strong>
         </div>
 
         <div className="supplier-order-card">
           <p className="supplier-label">Items</p>
-          <h1>{data.order.itemCount || data.order.items.length}</h1>
-          <p className="supplier-items">{itemSummary}</p>
-          {data.order.trackingReference && (
-            <p className="supplier-ref">Ref: {data.order.trackingReference}</p>
-          )}
-          {data.order.courier && (
-            <p className="supplier-ref">Courier: {data.order.courier}</p>
-          )}
-          {data.order.waybillUrl && (
-            <a className="supplier-waybill" href={data.order.waybillUrl} target="_blank" rel="noreferrer">
-              Open waybill / tracking
-            </a>
-          )}
+          <h1>{data.order.itemCount || items.length}</h1>
+          <ul className="supplier-items-list">
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <li key={`${item.name}-${index}`}>
+                  <strong>{item.quantity} x</strong>
+                  <span>{item.name}</span>
+                </li>
+              ))
+            ) : (
+              <li>Items listed on order</li>
+            )}
+          </ul>
         </div>
 
         <div className="supplier-actions" aria-label="Supplier pickup actions">
