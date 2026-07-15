@@ -14,6 +14,7 @@ export default function OrderManagement() {
   const [cjPayloads, setCJPayloads] = useState(null);
   const [trackingForm, setTrackingForm] = useState({});
   const [savingTracking, setSavingTracking] = useState(false);
+  const [generatingSupplierLinkId, setGeneratingSupplierLinkId] = useState(null);
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -73,6 +74,7 @@ export default function OrderManagement() {
     bobTrackingStatus: order.bob_tracking_status || '',
     bobHealthStatus: order.bob_health_status || '',
     bobHealthStatusReason: order.bob_health_status_reason || '',
+    supplierWaybillUrl: order.supplier_waybill_url || '',
   });
 
   const viewOrderDetails = (order) => {
@@ -254,6 +256,66 @@ export default function OrderManagement() {
     });
   };
 
+  const supplierStatusLabel = (status) => {
+    switch (status) {
+      case 'picked_up':
+        return 'Collected';
+      case 'problem':
+        return 'Problem';
+      case 'waiting':
+      default:
+        return 'Not yet';
+    }
+  };
+
+  const supplierPickupUrlFromOrder = (order) => {
+    if (!order?.supplier_pickup_token) return '';
+    return `${window.location.origin}/#/supplier-pickup?token=${encodeURIComponent(order.supplier_pickup_token)}`;
+  };
+
+  const createSupplierPickupLink = async (order) => {
+    setGeneratingSupplierLinkId(order.id);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/${order.id}/supplier-pickup-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Failed to create supplier link: ${data.error || 'Unknown error'}`);
+        return null;
+      }
+
+      setOrders(prev => prev.map(current => current.id === data.order.id ? data.order : current));
+      if (selectedOrder?.id === data.order.id) setSelectedOrder(data.order);
+      return data;
+    } catch (err) {
+      alert('Error creating supplier link: ' + err.message);
+      return null;
+    } finally {
+      setGeneratingSupplierLinkId(null);
+    }
+  };
+
+  const copySupplierPickupLink = async (order) => {
+    let url = supplierPickupUrlFromOrder(order);
+    if (!url) {
+      const data = await createSupplierPickupLink(order);
+      url = data?.supplierPickupUrl || '';
+    }
+    if (url) copyToClipboard(url);
+  };
+
+  const openSupplierWhatsapp = async (order) => {
+    const data = await createSupplierPickupLink(order);
+    if (data?.supplierWhatsappUrl) {
+      window.open(data.supplierWhatsappUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   if (loading) return <div className="admin-loading">Loading orders...</div>;
   if (error) return <div className="admin-error">Error: {error}</div>;
 
@@ -311,6 +373,8 @@ export default function OrderManagement() {
               <th>Items</th>
               <th>Total</th>
               <th>Status</th>
+              <th>Alerts</th>
+              <th>Supplier</th>
               <th>Tracking</th>
               <th>Actions</th>
             </tr>
@@ -337,6 +401,29 @@ export default function OrderManagement() {
                     </span>
                   </td>
                   <td>
+                    {order.late_order_flagged_at ? (
+                      <div className="late-order-admin-flag">
+                        <span className="status-badge late-order-badge">Late order</span>
+                        <small>
+                          {Number(order.late_order_flag_count || 1)} report(s) since{' '}
+                          {new Date(order.late_order_flagged_at).toLocaleDateString()}
+                        </small>
+                      </div>
+                    ) : (
+                      <span className="cj-status-none">None</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="supplier-admin-status">
+                      <span className={`status-badge supplier-status-${order.supplier_pickup_status || 'waiting'}`}>
+                        {supplierStatusLabel(order.supplier_pickup_status)}
+                      </span>
+                      {order.supplier_pickup_confirmed_at && (
+                        <small>{new Date(order.supplier_pickup_confirmed_at).toLocaleDateString()}</small>
+                      )}
+                    </div>
+                  </td>
+                  <td>
                     {order.bob_tracking_reference || order.bob_tracking_status ? (
                       <div className="cj-status">
                         <span className={`status-badge status-cj-${(order.bob_tracking_status || 'linked').toLowerCase()}`}>
@@ -344,7 +431,7 @@ export default function OrderManagement() {
                         </span>
                         {order.bob_tracking_reference && (
                           <div className="cj-tracking">
-                            <small>Bob Go: {order.bob_tracking_reference}</small>
+                            <small>Tracking: {order.bob_tracking_reference}</small>
                           </div>
                         )}
                       </div>
@@ -369,6 +456,13 @@ export default function OrderManagement() {
                       onClick={() => viewOrderDetails(order)}
                     >
                       View
+                    </button>
+                    <button
+                      className="btn-small btn-success"
+                      onClick={() => openSupplierWhatsapp(order)}
+                      disabled={generatingSupplierLinkId === order.id}
+                    >
+                      {generatingSupplierLinkId === order.id ? 'Preparing...' : 'Supplier WhatsApp'}
                     </button>
                     <button
                       className="btn-small btn-secondary"
@@ -430,6 +524,23 @@ export default function OrderManagement() {
                   {selectedOrder.status}
                 </span>
               </p>
+              {selectedOrder.late_order_flagged_at && (
+                <div className="late-order-alert-panel">
+                  <strong>Customer flagged this order as late.</strong>
+                  <p>
+                    Flagged on {new Date(selectedOrder.late_order_flagged_at).toLocaleString()}.
+                    {' '}Report count: {Number(selectedOrder.late_order_flag_count || 1)}.
+                  </p>
+                  {selectedOrder.late_order_flag_notified_at && (
+                    <p>Email alert sent on {new Date(selectedOrder.late_order_flag_notified_at).toLocaleString()}.</p>
+                  )}
+                  {selectedOrder.late_order_flag_email_last_error && (
+                    <p className="late-order-alert-error">
+                      Email alert failed: {selectedOrder.late_order_flag_email_last_error}
+                    </p>
+                  )}
+                </div>
+              )}
               {selectedOrder.cj_order_id && (
                 <>
                   <p>
@@ -467,9 +578,9 @@ export default function OrderManagement() {
             </div>
 
             <div className="order-details-section">
-              <h3>Bob Go Tracking</h3>
+              <h3>Courier Tracking</h3>
               <p style={{ fontSize: '13px', color: '#666', marginTop: 0 }}>
-                Use this order number in Bob Go as the channel order number or custom tracking reference: <strong>{selectedOrder.order_number}</strong>
+                Use this order number as the courier channel order number or custom tracking reference: <strong>{selectedOrder.order_number}</strong>
               </p>
 
               <div className="form-row">
@@ -483,7 +594,7 @@ export default function OrderManagement() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Bob shipment ID</label>
+                  <label>Shipment ID</label>
                   <input
                     type="text"
                     value={trackingForm.bobShipmentId || ''}
@@ -551,6 +662,16 @@ export default function OrderManagement() {
                 />
               </div>
 
+              <div className="form-group">
+                <label>Waybill / label link for supplier</label>
+                <input
+                  type="url"
+                  value={trackingForm.supplierWaybillUrl || ''}
+                  onChange={(e) => updateTrackingField('supplierWaybillUrl', e.target.value)}
+                  placeholder="Paste BobGo waybill or label URL"
+                />
+              </div>
+
               {(selectedOrder.bob_tracking_updated_at || selectedOrder.bob_tracking_last_event_time) && (
                 <p style={{ fontSize: '13px', color: '#666' }}>
                   <strong>Last tracking update:</strong>{' '}
@@ -573,8 +694,56 @@ export default function OrderManagement() {
                 onClick={saveBobTracking}
                 disabled={savingTracking}
               >
-                {savingTracking ? 'Saving...' : 'Save Bob Go Tracking'}
+                {savingTracking ? 'Saving...' : 'Save Tracking'}
               </button>
+            </div>
+
+            <div className="order-details-section">
+              <h3>Supplier Handoff</h3>
+              <div className="supplier-admin-panel">
+                <p>
+                  <strong>Status:</strong>{' '}
+                  <span className={`status-badge supplier-status-${selectedOrder.supplier_pickup_status || 'waiting'}`}>
+                    {supplierStatusLabel(selectedOrder.supplier_pickup_status)}
+                  </span>
+                </p>
+                {selectedOrder.supplier_pickup_confirmed_at && (
+                  <p>
+                    <strong>Collected at:</strong> {new Date(selectedOrder.supplier_pickup_confirmed_at).toLocaleString()}
+                  </p>
+                )}
+                {selectedOrder.supplier_pickup_notes && (
+                  <p>
+                    <strong>Supplier note:</strong> {selectedOrder.supplier_pickup_notes}
+                  </p>
+                )}
+                {selectedOrder.supplier_pickup_last_sent_at && (
+                  <p>
+                    <strong>Link prepared:</strong> {new Date(selectedOrder.supplier_pickup_last_sent_at).toLocaleString()}
+                  </p>
+                )}
+                {supplierPickupUrlFromOrder(selectedOrder) && (
+                  <div className="supplier-link-preview">
+                    <span>{supplierPickupUrlFromOrder(selectedOrder)}</span>
+                  </div>
+                )}
+                <div className="supplier-admin-actions">
+                  <button
+                    className="btn-small btn-success"
+                    onClick={() => openSupplierWhatsapp(selectedOrder)}
+                    disabled={generatingSupplierLinkId === selectedOrder.id}
+                  >
+                    {generatingSupplierLinkId === selectedOrder.id ? 'Preparing...' : 'Open WhatsApp'}
+                  </button>
+                  <button
+                    className="btn-small btn-secondary"
+                    onClick={() => copySupplierPickupLink(selectedOrder)}
+                    disabled={generatingSupplierLinkId === selectedOrder.id}
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="order-details-section">
