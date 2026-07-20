@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import UserAccount from './components/UserAccount';
 import OrderTrackingLookup from './components/OrderTrackingLookup';
+import SupplierPickupPage from './components/SupplierPickupPage';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ProductDetail from './components/ProductDetail';
@@ -29,6 +30,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
+import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
   const [cartCount, setCartCount] = useState(0);
@@ -57,12 +59,20 @@ function App() {
   const [showUserAccount, setShowUserAccount] = useState(false);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [trackingRouteParams, setTrackingRouteParams] = useState({ orderNumber: '', token: '' });
+  const [supplierPickupToken, setSupplierPickupToken] = useState('');
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [isStorePreviewActive, setIsStorePreviewActive] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCjPid, setSelectedCjPid] = useState(null);
   const [cjQuery, setCjQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAccess, setAdminAccess] = useState({
+    role: 'customer',
+    isSuperuser: false,
+    isProductAssistant: false,
+    canManageProducts: false,
+    canApproveProducts: false
+  });
   
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
@@ -86,6 +96,11 @@ function App() {
   });
   
   const { user, token, isAuthenticated, logout } = useAuth();
+
+  useEffect(() => {
+    if (selectedCjPid || selectedLocalProductId) return;
+    setPageSeo(PAGE_SEO[currentPage] || PAGE_SEO.home);
+  }, [currentPage, selectedCjPid, selectedLocalProductId]);
 
   const normalizeCartItem = (product, quantity = 1) => {
     const safeId = product?.id ?? product?.sku ?? product?.pid ?? product?.name;
@@ -231,6 +246,52 @@ function App() {
       return newCount;
     });
     throw lastErr || new Error('All API bases failed');
+  };
+
+  const pushProductPath = (path, replace = false) => {
+    if (typeof window === 'undefined' || !path) return;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === path) return;
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', path);
+  };
+
+  const loadLocalProductById = async (id) => {
+    setCatalogView('local');
+    setSelectedCjPid(null);
+    const response = await fetchApi(`/api/local-products/${id}`);
+    if (!response.ok) throw new Error('Product not found');
+    const data = await response.json();
+    setSelectedLocalProductId(data);
+    return data;
+  };
+
+  const openCuratedProduct = (pid, options = {}) => {
+    if (!pid) return;
+    setCurrentPage('home');
+    setCatalogView('cj');
+    setSelectedLocalProductId(null);
+    setSelectedCjPid(pid);
+    pushProductPath(`/products/${pid}`, Boolean(options.replace));
+    if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openLocalProduct = (product, options = {}) => {
+    if (!product) return;
+    const id = product.id || product.sku;
+    setCurrentPage('home');
+    setCatalogView('local');
+    setSelectedCjPid(null);
+    setSelectedLocalProductId(product);
+    if (id) pushProductPath(`/local-products/${id}`, Boolean(options.replace));
+    if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeProductDetail = () => {
+    setSelectedCjPid(null);
+    setSelectedLocalProductId(null);
+    if (typeof window !== 'undefined' && /^\/(local-)?products?\//.test(window.location.pathname)) {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   // Save cart to backend (authenticated users only)
@@ -410,8 +471,38 @@ function App() {
         window.location.hash = path + (window.location.search || '');
         return; // wait for hashchange to re-run
       }
-      const route = hash || path;
-      if (route.startsWith('/track-order') || route.startsWith('/t')) {
+      const route = hash || `${path}${window.location.search || ''}`;
+      const routePath = (route.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+      const localProductMatch = routePath.match(/^\/local-products?\/(\d+)/);
+      const curatedProductMatch = routePath.match(/^\/products?\/(\d+)/);
+
+      if (localProductMatch) {
+        const productId = localProductMatch[1];
+        setCurrentPage('home');
+        setCatalogView('local');
+        setSelectedCjPid(null);
+        loadLocalProductById(productId).catch((err) => {
+          console.error('Failed to load local product route:', err);
+          setSelectedLocalProductId(null);
+        });
+        trackPageView(`/local-products/${productId}`, 'Local Product');
+      } else if (curatedProductMatch) {
+        const productId = Number(curatedProductMatch[1]);
+        setCurrentPage('home');
+        setCatalogView('cj');
+        setSelectedLocalProductId(null);
+        setSelectedCjPid(productId);
+        trackPageView(`/products/${productId}`, 'Product');
+      } else if (route.startsWith('/supplier-pickup') || route.startsWith('/supplier')) {
+        const query = route.includes('?') ? route.slice(route.indexOf('?') + 1) : '';
+        const params = new URLSearchParams(query);
+        setSupplierPickupToken(params.get('token') || params.get('t') || '');
+        setCurrentPage('supplier-pickup');
+        setSelectedCjPid(null);
+        setSelectedLocalProductId(null);
+        setShowCart(false);
+        trackPageView('/supplier-pickup', 'Supplier Pickup');
+      } else if (route.startsWith('/track-order') || route.startsWith('/t')) {
         const query = route.includes('?') ? route.slice(route.indexOf('?') + 1) : '';
         const params = new URLSearchParams(query);
         setTrackingRouteParams({
@@ -443,6 +534,9 @@ function App() {
       } else if (route.startsWith('/shipping')) {
         setCurrentPage('shipping');
         trackPageView('/shipping', 'Shipping Policy');
+      } else if (route.startsWith('/returns')) {
+        setCurrentPage('returns');
+        trackPageView('/returns', 'Returns Policy');
       } else if (route.startsWith('/terms')) {
         setCurrentPage('terms');
         trackPageView('/terms', 'Terms of Service');
@@ -450,11 +544,15 @@ function App() {
         setCurrentPage('data-deletion');
         trackPageView('/data-deletion', 'Data Deletion');
       } else if (route.startsWith('/cj')) {
-        // Treat /cj as home — CJ catalog is the home page now
+        // Treat /cj as home - CJ catalog is the home page now
         setCurrentPage('home');
+        setSelectedCjPid(null);
+        setSelectedLocalProductId(null);
         trackPageView('/', 'Home - Baby Products');
       } else {
         setCurrentPage('home');
+        setSelectedCjPid(null);
+        setSelectedLocalProductId(null);
         trackPageView('/', 'Home - Baby Products');
       }
     };
@@ -492,6 +590,7 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('product');
     const productType = params.get('type'); // 'local' or empty (CJ)
+    const searchQuery = params.get('search');
     
     if (productId) {
       console.log('📱 Product ID found in URL:', productId, 'Type:', productType || 'cj');
@@ -503,6 +602,7 @@ function App() {
           // Local product from local_products table
           console.log('🏠 Loading local product:', numericId);
           setCatalogView('local');
+          setSelectedCjPid(null);
           
           // Fetch the local product details
           fetchApi(`/api/local-products/${numericId}`)
@@ -518,24 +618,34 @@ function App() {
               console.error('❌ Failed to load local product:', err);
               alert('Product not found or no longer available');
             });
+          pushProductPath(`/local-products/${numericId}`, true);
         } else {
           // CJ product from curated_products table (default)
           console.log('🌍 Loading CJ product:', numericId);
-          setCatalogView('cj');
-          setSelectedCjPid(numericId);
+          openCuratedProduct(numericId, { replace: true, skipScroll: true });
         }
       }
-      
-      // Clean up the URL to remove the query parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (searchQuery) {
+      setCurrentPage('home');
+      setCjQuery(searchQuery);
+      setSearchTerm(searchQuery);
     }
   }, []);
 
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
+      const customerAccess = {
+        role: 'customer',
+        isSuperuser: false,
+        isProductAssistant: false,
+        canManageProducts: false,
+        canApproveProducts: false
+      };
+
       if (!isAuthenticated) {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         setShowAdminDashboard(false); // Close admin dashboard when logged out
         return;
       }
@@ -545,6 +655,13 @@ function App() {
       if (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
         console.log('✅ Hardcoded admin detected:', user.email);
         setIsAdmin(true);
+        setAdminAccess({
+          role: 'superuser',
+          isSuperuser: true,
+          isProductAssistant: false,
+          canManageProducts: true,
+          canApproveProducts: true
+        });
         setShowAdminDashboard(true); // Open admin view immediately for hardcoded admins
         return;
       }
@@ -552,19 +669,29 @@ function App() {
       // Fallback: try backend check if token exists
       if (!token) {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         return;
       }
 
       try {
-        const res = await fetchApi(`/api/admin/analytics`, {
+        const res = await fetchApi(`/api/auth/access`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // If we can access admin endpoint, user is admin
-        setIsAdmin(res.ok);
-        setShowAdminDashboard(res.ok); // Open admin view immediately when backend confirms admin
+        const access = res.ok ? await res.json() : customerAccess;
+        const canManageProducts = Boolean(access.canManageProducts || access.isSuperuser);
+        setIsAdmin(canManageProducts);
+        setAdminAccess({
+          role: access.role || 'customer',
+          isSuperuser: Boolean(access.isSuperuser),
+          isProductAssistant: Boolean(access.isProductAssistant),
+          canManageProducts,
+          canApproveProducts: Boolean(access.canApproveProducts)
+        });
+        setShowAdminDashboard(canManageProducts); // Open dashboard for superuser or product assistant
       } catch {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         setShowAdminDashboard(false);
       }
     };
@@ -573,103 +700,6 @@ function App() {
   }, [isAuthenticated, token, user]);
 
   // NOTE: Do not return early before all hooks run. Route-based returns are moved below hooks.
-
-  // We keep hero header but CJ catalog is now the main store.
-  // Remove local product sections entirely.
-  const allProductsFlat = [];
-
-  // Inject JSON-LD for all products, Organization, and BreadcrumbList (SEO, invisible to customers)
-  useEffect(() => {
-    try {
-      // Product nodes
-      const productNodes = allProductsFlat.map((p) => {
-        const descSource = p.fullDescription || p.description || '';
-        const description = String(descSource).replace(/\s+/g, ' ').trim().slice(0, 300);
-        const images = [p.image, ...(Array.isArray(p.altImages) ? p.altImages : [])].filter(Boolean);
-        const node = {
-          "@type": "Product",
-          name: p.name,
-          description,
-          image: images,
-          sku: `prod-${p.id}`,
-          category: p.category,
-          brand: { "@type": "Brand", name: "SnuggleUp" },
-          offers: {
-            "@type": "Offer",
-            priceCurrency: "ZAR",
-            price: String(p.price),
-            availability: "https://schema.org/InStock"
-          }
-        };
-        if (p.keywords) {
-          node.keywords = Array.isArray(p.keywords) ? p.keywords.join(', ') : String(p.keywords);
-        }
-        return node;
-      });
-
-      // Organization node (placeholder values)
-      const organizationNode = {
-        "@type": "Organization",
-        name: "SnuggleUp",
-        url: "https://snuggleup.co.za/",
-        logo: "https://via.placeholder.com/200x60?text=SnuggleUp+Logo",
-        email: "support@snuggleup.co.za",
-        contactPoint: [{
-          "@type": "ContactPoint",        
-          contactType: "customer support",
-          email: "support@snuggleup.co.za"
-        }],
-        sameAs: [
-          "https://www.facebook.com/placeholder",
-          "https://www.instagram.com/placeholder"
-        ]
-      };
-
-      // BreadcrumbList node (for all products, placeholder URLs)
-      const breadcrumbNodes = allProductsFlat.map((p) => ({
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item: "https://snuggleup.co.za/"
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: p.category.charAt(0).toUpperCase() + p.category.slice(1),
-            item: `https://snuggleup.co.za/category/${encodeURIComponent(p.category)}`
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: p.name,
-            item: `https://snuggleup.co.za/product/${encodeURIComponent(p.name.replace(/\s+/g, '-').toLowerCase())}`
-          }
-        ]
-      }));
-
-      const jsonLd = {
-        "@context": "https://schema.org",
-        "@graph": [organizationNode, ...productNodes, ...breadcrumbNodes]
-      };
-
-      const scriptId = 'jsonld-products';
-      let script = document.getElementById(scriptId);
-      if (!script) {
-        script = document.createElement('script');
-        script.type = 'application/ld+json';
-        script.id = scriptId;
-        document.head.appendChild(script);
-      }
-      script.text = JSON.stringify(jsonLd);
-    } catch (err) {
-      console.error('JSON-LD injection failed:', err);
-    }
-    // We only need to inject once on mount; products are static at runtime
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Determine if cart contains only local products (used to disable shipping UI)
   const cartOnlyLocal = useMemo(() => {
@@ -1519,6 +1549,8 @@ function App() {
         <CheckoutSuccess />
       ) : currentPage === 'cancel' ? (
         <CheckoutCancel />
+      ) : currentPage === 'supplier-pickup' ? (
+        <SupplierPickupPage token={supplierPickupToken} />
       ) : currentPage === 'track-order' ? (
         <OrderTrackingLookup
           key={`${trackingRouteParams.orderNumber}:${trackingRouteParams.token}`}
@@ -1622,6 +1654,7 @@ function App() {
             <AdminDashboard 
               onClose={() => setShowAdminDashboard(false)} 
               onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
+              access={adminAccess}
             />
           )}
 
@@ -1644,7 +1677,12 @@ function App() {
                 flexWrap: 'wrap'
               }}>
                 <button
-                  onClick={() => { setCatalogView('cj'); setSelectedCjPid(null); }}
+                  onClick={() => {
+                    setCatalogView('cj');
+                    setSelectedCjPid(null);
+                    setSelectedLocalProductId(null);
+                    if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
+                  }}
                   style={{
                     padding: '10px 20px',
                     background: catalogView === 'cj' ? '#ff6b9d' : '#f0f0f0',
@@ -1660,7 +1698,12 @@ function App() {
                   🌍 Import Store
                 </button>
                 <button
-                  onClick={() => { setCatalogView('local'); setSelectedLocalProductId(null); }}
+                  onClick={() => {
+                    setCatalogView('local');
+                    setSelectedCjPid(null);
+                    setSelectedLocalProductId(null);
+                    if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
+                  }}
                   style={{
                     padding: '10px 20px',
                     background: catalogView === 'local' ? '#ff6b9d' : '#f0f0f0',
@@ -1685,7 +1728,7 @@ function App() {
                       query={cjQuery}
                       onQueryChange={setCjQuery}
                       onBack={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      onOpenProduct={(pid) => setSelectedCjPid(pid)}
+                      onOpenProduct={openCuratedProduct}
                       isAdmin={isAdmin}
                       onAddToCart={addToCart}
                     />
@@ -1694,7 +1737,7 @@ function App() {
                   {selectedCjPid && (
                     <CJProductDetail
                       pid={selectedCjPid}
-                      onClose={() => setSelectedCjPid(null)}
+                      onClose={closeProductDetail}
                       onAddToCart={addToCart}
                       onAddToWishlist={addToWishlist}
                     />
@@ -1708,7 +1751,7 @@ function App() {
                   {!selectedLocalProductId ? (
                     <LocalProductsCatalog
                       query={searchTerm}
-                      onOpenProduct={(product) => setSelectedLocalProductId(product)}
+                      onOpenProduct={openLocalProduct}
                       isAdmin={isAdmin}
                       onShowUpload={() => setShowLocalProductUpload(true)}
                       initialProducts={localProductsCache}
@@ -1718,7 +1761,7 @@ function App() {
                   ) : (
                     <LocalProductDetail
                       product={selectedLocalProductId}
-                      onClose={() => setSelectedLocalProductId(null)}
+                      onClose={closeProductDetail}
                       onAddToCart={addToCart}
                       allProducts={[]}
                     />
