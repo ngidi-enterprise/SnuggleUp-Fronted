@@ -42,12 +42,15 @@ const dimensionsFromForm = (formData) => {
   return { dimensions: hasCompleteValues ? dimensions : null, hasAnyValue, hasCompleteValues };
 };
 
-export default function LocalProductManager() {
+export default function LocalProductManager({ access = {} }) {
   const { token } = useAuth(); // Get token from auth context
+  const isSuperuser = Boolean(access.isSuperuser);
+  const isProductAssistant = Boolean(access.isProductAssistant);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [assistantNotifications, setAssistantNotifications] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -71,12 +74,13 @@ export default function LocalProductManager() {
   useEffect(() => {
     if (token) {
       fetchProducts();
+      fetchAssistantNotifications();
     }
-  }, [token]);
+  }, [token, isProductAssistant]);
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/local-products`, {
+      const response = await fetch(`${API_BASE}/api/local-products/manage`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -86,6 +90,41 @@ export default function LocalProductManager() {
       setMessage('Failed to load products. Please check backend availability.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAssistantNotifications = async () => {
+    if (!isProductAssistant) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/local-products/assistant/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setAssistantNotifications(data.notifications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching product approval notifications:', error);
+    }
+  };
+
+  const markAssistantNotificationsRead = async () => {
+    if (!assistantNotifications.length) return;
+    const ids = assistantNotifications.map((notification) => notification.id);
+    setAssistantNotifications([]);
+
+    try {
+      await fetch(`${API_BASE}/api/local-products/assistant/notifications/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ids })
+      });
+    } catch (error) {
+      console.error('Error marking approval notifications read:', error);
     }
   };
 
@@ -113,14 +152,22 @@ export default function LocalProductManager() {
       const { length_cm, width_cm, height_cm, ...productData } = formData;
       const payload = {
         ...productData,
-        price: parseFloat(formData.price),
-        compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
         stock_quantity: parseInt(formData.stock_quantity),
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
         images: formData.images ? formData.images.split('\n').filter(url => url.trim()) : [],
         dimensions: shippingDimensions.dimensions
       };
+
+      if (isSuperuser) {
+        payload.price = parseFloat(formData.price);
+        payload.compare_at_price = formData.compare_at_price ? parseFloat(formData.compare_at_price) : null;
+      } else {
+        delete payload.price;
+        delete payload.compare_at_price;
+        delete payload.is_featured;
+        delete payload.is_active;
+      }
 
       const url = editingId 
         ? `${API_BASE}/api/local-products/${editingId}`
@@ -142,7 +189,11 @@ export default function LocalProductManager() {
         throw new Error(error.error || 'Failed to save product');
       }
 
-      setMessage(editingId ? 'Product updated successfully!' : 'Product created successfully!');
+      setMessage(
+        isProductAssistant
+          ? (editingId ? 'Product changes sent for superuser review.' : 'Product submitted for superuser review.')
+          : (editingId ? 'Product updated successfully!' : 'Product created successfully!')
+      );
       setShowForm(false);
       setEditingId(null);
       resetForm();
@@ -197,6 +248,45 @@ export default function LocalProductManager() {
       if (!response.ok) throw new Error('Failed to delete product');
 
       setMessage('Product deleted successfully!');
+      fetchProducts();
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const handleApprove = async (product) => {
+    if (!isSuperuser) return;
+
+    const price = Number(product.price || 0);
+    if (!Number.isFinite(price) || price <= 0) {
+      setMessage('Error: Add a valid price before approving this product.');
+      handleEdit(product);
+      return;
+    }
+
+    if (!confirm(`Approve and publish "${product.name}" to the store?`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/local-products/${product.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          price: product.price,
+          compare_at_price: product.compare_at_price || null,
+          stock_quantity: product.stock_quantity,
+          is_featured: product.is_featured
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to approve product');
+      }
+
+      setMessage(`Product approved and published: ${data.product?.name || product.name}`);
       fetchProducts();
     } catch (error) {
       setMessage(`Error: ${error.message}`);
@@ -329,9 +419,32 @@ export default function LocalProductManager() {
           }}
           style={{ display: showForm ? 'none' : 'inline-block' }}
         >
-          ➕ Add New Product
+          + Add New Product
         </button>
       </div>
+
+      {isProductAssistant && (
+        <div className="assistant-access-card">
+          <strong>Product assistant access</strong>
+          <p>You can upload product details, descriptions, images, stock, weight, and dimensions. Prices and publishing are handled by the SnuggleUp superuser before anything goes live.</p>
+        </div>
+      )}
+
+      {isSuperuser && products.some((product) => product.approval_status === 'pending_review') && (
+        <div className="assistant-access-card superuser-review-card">
+          <strong>Products waiting for review</strong>
+          <p>Review pending uploads, add prices, then approve and publish them when ready.</p>
+        </div>
+      )}
+
+      {assistantNotifications.length > 0 && (
+        <div className="message success">
+          <span>
+            Congratulations, {assistantNotifications.map((item) => item.name).join(', ')} {assistantNotifications.length === 1 ? 'has' : 'have'} been approved and are now live.
+          </span>
+          <button onClick={markAssistantNotificationsRead}>x</button>
+        </div>
+      )}
 
       {message && (
         <div className={`message ${message.includes('Error') ? 'error' : 'success'}`}>
@@ -416,6 +529,7 @@ export default function LocalProductManager() {
                   setMessage={setMessage}
                   token={token}
                   apiBase={API_BASE}
+                  endpointBase="/api/local-products"
                 />
               )}
             </label>
@@ -433,26 +547,30 @@ export default function LocalProductManager() {
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label>Price (R) *</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Compare At Price (R)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.compare_at_price}
-                onChange={(e) => setFormData({ ...formData, compare_at_price: e.target.value })}
-                placeholder="Was R..."
-              />
-            </div>
+            {isSuperuser && (
+              <>
+                <div className="form-group">
+                  <label>Price (R) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    required={isSuperuser}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Compare At Price (R)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.compare_at_price}
+                    onChange={(e) => setFormData({ ...formData, compare_at_price: e.target.value })}
+                    placeholder="Was R..."
+                  />
+                </div>
+              </>
+            )}
             <div className="form-group">
               <label>Stock Quantity</label>
               <input
@@ -581,31 +699,35 @@ export default function LocalProductManager() {
             </div>
           </div>
 
-          <div className="form-checkboxes">
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.is_featured}
-                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-              />
-              Featured Product
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              />
-              Active
-            </label>
-          </div>
+          {isSuperuser && (
+            <div className="form-checkboxes">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={formData.is_featured}
+                  onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
+                />
+                Featured Product
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                />
+                Active
+              </label>
+            </div>
+          )}
 
           <div className="form-actions">
             <button type="button" onClick={() => { setShowForm(false); resetForm(); }}>
               Cancel
             </button>
             <button type="submit" className="btn-primary">
-              {editingId ? 'Update Product' : 'Create Product'}
+              {isProductAssistant
+                ? (editingId ? 'Send Changes for Review' : 'Submit for Review')
+                : (editingId ? 'Update Product' : 'Create Product')}
             </button>
           </div>
         </form>
@@ -618,7 +740,7 @@ export default function LocalProductManager() {
               <th>Image</th>
               <th>Name</th>
               <th>SKU</th>
-              <th>Price</th>
+              {isSuperuser && <th>Price</th>}
               <th>Stock</th>
               <th>Category</th>
               <th>Status</th>
@@ -640,24 +762,33 @@ export default function LocalProductManager() {
                   {product.is_featured && <span className="badge featured">⭐ Featured</span>}
                 </td>
                 <td>{product.sku || '-'}</td>
-                <td>
-                  R{product.price}
-                  {product.compare_at_price && (
-                    <span className="compare-price">R{product.compare_at_price}</span>
-                  )}
-                </td>
+                {isSuperuser && (
+                  <td>
+                    {Number(product.price || 0) > 0 ? `R${product.price}` : 'Needs price'}
+                    {product.compare_at_price && (
+                      <span className="compare-price">R{product.compare_at_price}</span>
+                    )}
+                  </td>
+                )}
                 <td className={product.stock_quantity === 0 ? 'out-of-stock' : ''}>
                   {product.stock_quantity}
                 </td>
                 <td>{product.category}</td>
                 <td>
-                  <span className={`status ${product.is_active ? 'active' : 'inactive'}`}>
-                    {product.is_active ? 'Active' : 'Inactive'}
+                  <span className={`status ${product.approval_status === 'pending_review' ? 'pending' : (product.is_active ? 'active' : 'inactive')}`}>
+                    {product.approval_status === 'pending_review' ? 'Pending review' : (product.is_active ? 'Live' : 'Inactive')}
                   </span>
                 </td>
                 <td className="actions">
-                  <button onClick={() => handleEdit(product)} title="Edit">✏️</button>
-                  <button onClick={() => handleDelete(product.id)} title="Delete" className="delete">🗑️</button>
+                  {(isSuperuser || product.approval_status !== 'approved') && (
+                    <button onClick={() => handleEdit(product)} title="Edit">✏️</button>
+                  )}
+                  {isSuperuser && product.approval_status === 'pending_review' && (
+                    <button onClick={() => handleApprove(product)} title="Approve and publish" className="approve">Approve</button>
+                  )}
+                  {isSuperuser && (
+                    <button onClick={() => handleDelete(product.id)} title="Delete" className="delete">🗑️</button>
+                  )}
                 </td>
               </tr>
             ))}

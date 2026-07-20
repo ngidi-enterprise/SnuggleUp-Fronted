@@ -74,6 +74,32 @@
   padding: 0 8px;
 }
 
+.assistant-access-card {
+  background: #f7fbfa;
+  border: 1px solid #dbe8e4;
+  border-left: 4px solid #126f71;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  color: #1f2933;
+}
+
+.assistant-access-card strong {
+  display: block;
+  color: #126f71;
+  margin-bottom: 6px;
+}
+
+.assistant-access-card p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.superuser-review-card {
+  border-left-color: #ff6b9d;
+  background: #fff7fb;
+}
+
 .product-form {
   background: white;
   padding: 24px;
@@ -195,8 +221,17 @@
   transition: all 0.2s;
 }
 
+.form-actions button.btn-primary {
+  color: white;
+  border-color: #ff6b9d;
+}
+
 .form-actions button:hover {
   background: #f5f5f5;
+}
+
+.form-actions button.btn-primary:hover {
+  background: linear-gradient(135deg, #ff4f85, #ff3570);
 }
 
 .products-table {
@@ -286,6 +321,11 @@
   color: #721c24;
 }
 
+.status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -307,6 +347,19 @@
 
 .actions button.delete:hover {
   background: #fee;
+}
+
+.actions button.approve {
+  font-size: 12px;
+  background: #126f71;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 700;
+}
+
+.actions button.approve:hover {
+  background: #0d5f61;
 }
 
 .empty-state {

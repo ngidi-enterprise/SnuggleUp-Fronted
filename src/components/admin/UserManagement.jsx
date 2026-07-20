@@ -10,8 +10,8 @@ export default function UserManagement() {
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (token) fetchUsers();
+  }, [token]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -30,7 +30,7 @@ export default function UserManagement() {
   };
 
   const toggleAdminStatus = async (userId, currentStatus) => {
-    if (!confirm(`${currentStatus ? 'Remove' : 'Grant'} admin access for this user?`)) return;
+    if (!confirm(`${currentStatus ? 'Remove' : 'Grant'} superuser access for this user?`)) return;
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/admin`, {
@@ -50,6 +50,36 @@ export default function UserManagement() {
     } catch (err) {
       alert('Error: ' + err.message);
     }
+  };
+
+  const updateUserRole = async (userId, role) => {
+    if (role === 'superuser' && !confirm('Give this user full superuser access?')) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role }),
+      });
+
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to update role');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const roleLabel = (role, isAdmin) => {
+    if (role === 'product_assistant') return 'Product assistant';
+    if (role === 'superuser' || isAdmin) return 'Superuser';
+    return 'Customer';
   };
 
   if (loading) return <div className="admin-loading">Loading users...</div>;
@@ -82,8 +112,8 @@ export default function UserManagement() {
                 <td>{user.name || '-'}</td>
                 <td>{user.phone || '-'}</td>
                 <td>
-                  <span className={`role-badge ${user.is_admin ? 'role-admin' : 'role-user'}`}>
-                    {user.is_admin ? '👑 Admin' : '👤 User'}
+                  <span className={`role-badge ${user.role === 'product_assistant' ? 'role-product-assistant' : (user.is_admin || user.role === 'superuser' ? 'role-admin' : 'role-user')}`}>
+                    {roleLabel(user.role, user.is_admin)}
                   </span>
                 </td>
                 <td>{new Date(user.created_at).toLocaleDateString()}</td>
@@ -92,8 +122,17 @@ export default function UserManagement() {
                     className={`btn-small ${user.is_admin ? 'btn-warning' : 'btn-primary'}`}
                     onClick={() => toggleAdminStatus(user.id, user.is_admin)}
                   >
-                    {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                    {user.is_admin ? 'Remove Superuser' : 'Make Superuser'}
                   </button>
+                  <select
+                    className="role-select"
+                    value={user.role || (user.is_admin ? 'superuser' : 'customer')}
+                    onChange={(event) => updateUserRole(user.id, event.target.value)}
+                  >
+                    <option value="customer">Customer</option>
+                    <option value="product_assistant">Product assistant</option>
+                    <option value="superuser">Superuser</option>
+                  </select>
                 </td>
               </tr>
             ))}
