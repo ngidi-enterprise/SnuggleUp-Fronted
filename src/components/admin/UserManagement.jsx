@@ -76,6 +76,37 @@ export default function UserManagement() {
     }
   };
 
+  const updateUserProfile = async (user) => {
+    const name = window.prompt('Enter display name', user.name || '');
+    if (name === null) return;
+
+    const cleanName = name.trim();
+    if (!cleanName) {
+      alert('Name cannot be empty');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${user.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: cleanName }),
+      });
+
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to update user name');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
   const roleLabel = (role, isAdmin) => {
     if (role === 'product_assistant') return 'Product assistant';
     if (role === 'superuser' || isAdmin) return 'Superuser';
@@ -123,6 +154,12 @@ export default function UserManagement() {
                     onClick={() => toggleAdminStatus(user.id, user.is_admin)}
                   >
                     {user.is_admin ? 'Remove Superuser' : 'Make Superuser'}
+                  </button>
+                  <button
+                    className="btn-small btn-edit"
+                    onClick={() => updateUserProfile(user)}
+                  >
+                    Edit Name
                   </button>
                   <select
                     className="role-select"

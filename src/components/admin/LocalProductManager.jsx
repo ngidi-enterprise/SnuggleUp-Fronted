@@ -42,7 +42,7 @@ const dimensionsFromForm = (formData) => {
   return { dimensions: hasCompleteValues ? dimensions : null, hasAnyValue, hasCompleteValues };
 };
 
-export default function LocalProductManager({ access = {} }) {
+export default function LocalProductManager({ access = {}, onProductStatsChange }) {
   const { token } = useAuth(); // Get token from auth context
   const isSuperuser = Boolean(access.isSuperuser);
   const isProductAssistant = Boolean(access.isProductAssistant);
@@ -77,6 +77,15 @@ export default function LocalProductManager({ access = {} }) {
       fetchAssistantNotifications();
     }
   }, [token, isProductAssistant]);
+
+  useEffect(() => {
+    if (!isProductAssistant || typeof onProductStatsChange !== 'function') return;
+
+    onProductStatsChange({
+      uploaded: products.length,
+      approved: products.filter((product) => product.approval_status === 'approved').length
+    });
+  }, [products, isProductAssistant, onProductStatsChange]);
 
   const fetchProducts = async () => {
     try {
@@ -426,7 +435,7 @@ export default function LocalProductManager({ access = {} }) {
       {isProductAssistant && (
         <div className="assistant-access-card">
           <strong>Product assistant access</strong>
-          <p>You can upload product details, descriptions, images, stock, weight, and dimensions. Prices and publishing are handled by the SnuggleUp superuser before anything goes live.</p>
+          <p>You can upload product details, descriptions, images, stock, weight, and dimensions.</p>
         </div>
       )}
 
