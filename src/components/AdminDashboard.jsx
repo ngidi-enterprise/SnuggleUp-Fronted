@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Analytics from './admin/Analytics';
 import ProductCuration from './admin/ProductCuration';
@@ -11,8 +11,10 @@ import LocalProductManager from './admin/LocalProductManager';
 import Settings from './admin/Settings';
 import './AdminDashboard.css';
 
-export default function AdminDashboard({ onClose, onStorePreview }) {
-  const [activeTab, setActiveTab] = useState('analytics');
+export default function AdminDashboard({ onClose, onStorePreview, access = {} }) {
+  const isSuperuser = Boolean(access.isSuperuser);
+  const isProductAssistant = Boolean(access.isProductAssistant);
+  const [activeTab, setActiveTab] = useState(isProductAssistant && !isSuperuser ? 'local-products' : 'analytics');
   const { user, logout } = useAuth();
   const inactivityTimerRef = useRef(null);
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -64,7 +66,7 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
     };
   }, [resetInactivityTimer]);
 
-  const tabs = [
+  const allTabs = useMemo(() => [
     { id: 'analytics', label: 'Analytics', icon: '📊' },
     { id: 'products', label: 'Product Curator', icon: '🛍️' },
     { id: 'local-products', label: 'Local Warehouse', icon: '🏭' },
@@ -75,32 +77,43 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
     { id: 'orders', label: 'Orders', icon: '📦' },
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ];
+  ], []);
+
+  const tabs = useMemo(
+    () => (isSuperuser ? allTabs : allTabs.filter((tab) => tab.id === 'local-products')),
+    [allTabs, isSuperuser]
+  );
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(tabs[0]?.id || 'local-products');
+    }
+  }, [activeTab, tabs]);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'analytics':
-        return <Analytics />;
+        return isSuperuser ? <Analytics /> : <LocalProductManager access={access} />;
       case 'products':
-        return <ProductCuration />;
+        return isSuperuser ? <ProductCuration /> : <LocalProductManager access={access} />;
       case 'local-products':
-        return <LocalProductManager />;
+        return <LocalProductManager access={access} />;
       case 'pricing':
-        return <PricingManager />;
+        return isSuperuser ? <PricingManager /> : <LocalProductManager access={access} />;
       case 'inventory':
-        return <InventoryPanel />;
+        return isSuperuser ? <InventoryPanel /> : <LocalProductManager access={access} />;
       case 'scheduler':
-        return <SchedulerMonitor />;
+        return isSuperuser ? <SchedulerMonitor /> : <LocalProductManager access={access} />;
       case 'store':
         return null; // Will show store through parent component
       case 'orders':
-        return <OrderManagement />;
+        return isSuperuser ? <OrderManagement /> : <LocalProductManager access={access} />;
       case 'users':
-        return <UserManagement />;
+        return isSuperuser ? <UserManagement /> : <LocalProductManager access={access} />;
       case 'settings':
-        return <Settings />;
+        return isSuperuser ? <Settings /> : <LocalProductManager access={access} />;
       default:
-        return <Analytics />;
+        return isSuperuser ? <Analytics /> : <LocalProductManager access={access} />;
     }
   };
 
@@ -108,8 +121,9 @@ export default function AdminDashboard({ onClose, onStorePreview }) {
     <div className="admin-dashboard">
       <div className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <h2>🛡️ Admin Panel</h2>
+          <h2>{isSuperuser ? 'Superuser Panel' : 'Product Upload Panel'}</h2>
           <p className="admin-user-info">{user?.email}</p>
+          <p className="admin-role-label">{isSuperuser ? 'Superuser - full access' : 'Product assistant - limited access'}</p>
         </div>
         <nav className="admin-nav">
           {tabs.map((tab) => (

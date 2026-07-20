@@ -40,6 +40,12 @@
   color: #95a5a6;
 }
 
+.admin-role-label {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #d6f5ef;
+}
+
 .admin-nav {
   flex: 1;
   padding: 16px 0;
@@ -878,6 +884,21 @@
 .role-user {
   background: #d1ecf1;
   color: #0c5460;
+}
+
+.role-product-assistant {
+  background: #e7f4ff;
+  color: #0b5b84;
+}
+
+.role-select {
+  margin-left: 8px;
+  padding: 6px 10px;
+  border: 1px solid #dbe8e4;
+  border-radius: 6px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 12px;
 }
 
 .btn-warning {

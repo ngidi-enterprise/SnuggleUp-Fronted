@@ -28,6 +28,7 @@ export default function DescriptionGeneratorButton({
   setMessage,
   token,
   apiBase,
+  endpointBase = '/api/admin/products',
   isLoading = false
 }) {
   const [generating, setGenerating] = useState(false);
@@ -38,7 +39,7 @@ export default function DescriptionGeneratorButton({
     // Check which providers are available
     const checkProviders = async () => {
       try {
-        const response = await fetch(`${apiBase}/api/admin/products/description-providers`, {
+        const response = await fetch(`${apiBase}${endpointBase}/description-providers`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
@@ -121,7 +122,7 @@ export default function DescriptionGeneratorButton({
         throw new Error('Image data is too short or invalid');
       }
 
-      const response = await fetch(`${apiBase}/api/admin/products/generate-description`, {
+      const response = await fetch(`${apiBase}${endpointBase}/generate-description`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
