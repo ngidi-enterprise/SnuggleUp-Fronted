@@ -66,6 +66,13 @@ function App() {
   const [selectedCjPid, setSelectedCjPid] = useState(null);
   const [cjQuery, setCjQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAccess, setAdminAccess] = useState({
+    role: 'customer',
+    isSuperuser: false,
+    isProductAssistant: false,
+    canManageProducts: false,
+    canApproveProducts: false
+  });
   
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
@@ -628,8 +635,17 @@ function App() {
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
+      const customerAccess = {
+        role: 'customer',
+        isSuperuser: false,
+        isProductAssistant: false,
+        canManageProducts: false,
+        canApproveProducts: false
+      };
+
       if (!isAuthenticated) {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         setShowAdminDashboard(false); // Close admin dashboard when logged out
         return;
       }
@@ -639,6 +655,13 @@ function App() {
       if (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
         console.log('✅ Hardcoded admin detected:', user.email);
         setIsAdmin(true);
+        setAdminAccess({
+          role: 'superuser',
+          isSuperuser: true,
+          isProductAssistant: false,
+          canManageProducts: true,
+          canApproveProducts: true
+        });
         setShowAdminDashboard(true); // Open admin view immediately for hardcoded admins
         return;
       }
@@ -646,19 +669,29 @@ function App() {
       // Fallback: try backend check if token exists
       if (!token) {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         return;
       }
 
       try {
-        const res = await fetchApi(`/api/admin/analytics`, {
+        const res = await fetchApi(`/api/auth/access`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // If we can access admin endpoint, user is admin
-        setIsAdmin(res.ok);
-        setShowAdminDashboard(res.ok); // Open admin view immediately when backend confirms admin
+        const access = res.ok ? await res.json() : customerAccess;
+        const canManageProducts = Boolean(access.canManageProducts || access.isSuperuser);
+        setIsAdmin(canManageProducts);
+        setAdminAccess({
+          role: access.role || 'customer',
+          isSuperuser: Boolean(access.isSuperuser),
+          isProductAssistant: Boolean(access.isProductAssistant),
+          canManageProducts,
+          canApproveProducts: Boolean(access.canApproveProducts)
+        });
+        setShowAdminDashboard(canManageProducts); // Open dashboard for superuser or product assistant
       } catch {
         setIsAdmin(false);
+        setAdminAccess(customerAccess);
         setShowAdminDashboard(false);
       }
     };
@@ -1621,6 +1654,7 @@ function App() {
             <AdminDashboard 
               onClose={() => setShowAdminDashboard(false)} 
               onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
+              access={adminAccess}
             />
           )}
 
