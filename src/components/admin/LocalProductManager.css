@@ -222,8 +222,10 @@
 }
 
 .form-actions button.btn-primary {
+  background: linear-gradient(135deg, #ff6b9d, #ff4f85);
   color: white;
   border-color: #ff6b9d;
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.2);
 }
 
 .form-actions button:hover {
