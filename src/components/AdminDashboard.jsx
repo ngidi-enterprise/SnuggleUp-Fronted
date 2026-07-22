@@ -19,6 +19,7 @@ export default function AdminDashboard({ onClose, onStorePreview, access = {} })
   const { user, logout } = useAuth();
   const inactivityTimerRef = useRef(null);
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const sidebarIdentity = isProductAssistant && !isSuperuser ? 'MOESHA' : user?.email;
 
   // Notify parent when store preview is active
   useEffect(() => {
@@ -123,7 +124,7 @@ export default function AdminDashboard({ onClose, onStorePreview, access = {} })
       <div className="admin-sidebar">
         <div className="admin-sidebar-header">
           <h2>{isSuperuser ? 'Superuser Panel' : 'SnuggleUp Team Panel'}</h2>
-          <p className="admin-user-info">{user?.email}</p>
+          <p className="admin-user-info">{sidebarIdentity}</p>
           <p className="admin-role-label">{isSuperuser ? 'Superuser' : 'Team Assistant'}</p>
           {isProductAssistant && !isSuperuser && (
             <div className="assistant-sidebar-stats" aria-label="Product upload summary">
