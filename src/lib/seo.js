@@ -15,6 +15,11 @@ export const DEFAULT_SEO = {
 
 export const PAGE_SEO = {
   home: DEFAULT_SEO,
+  'learning-centre': {
+    title: 'Learning Centre | SnuggleUp Baby Store',
+    description: 'Helpful, practical guides for South African parents, families, and caregivers from SnuggleUp.',
+    url: `${SITE_URL}/learning-centre`,
+  },
   shipping: {
     title: 'Shipping Policy | SnuggleUp South Africa',
     description: 'Read SnuggleUp shipping options, delivery timelines, and local warehouse delivery information for South African customers.',
