@@ -28,6 +28,7 @@ import TermsOfService from './pages/TermsOfService';
 import DataDeletion from './pages/DataDeletion';
 import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
+import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
 import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
@@ -38,6 +39,7 @@ function App() {
   const [showCart, setShowCart] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState('home');
+  const [learningSlug, setLearningSlug] = useState('');
   const [voucherCode, setVoucherCode] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState('');
@@ -490,10 +492,18 @@ function App() {
       }
       const route = hash || `${path}${window.location.search || ''}`;
       const routePath = (route.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+      const learningMatch = routePath.match(/^\/learning-centre(?:\/([^/]+))?$/);
       const localProductMatch = routePath.match(/^\/local-products?\/(\d+)/);
       const curatedProductMatch = routePath.match(/^\/products?\/(\d+)/);
 
-      if (localProductMatch) {
+      if (learningMatch) {
+        setCurrentPage('learning-centre');
+        setLearningSlug(learningMatch[1] || '');
+        setSelectedCjPid(null);
+        setSelectedLocalProductId(null);
+        setShowCart(false);
+        trackPageView(routePath, learningMatch[1] ? 'Learning Centre Article' : 'Learning Centre');
+      } else if (localProductMatch) {
         const productId = localProductMatch[1];
         setCurrentPage('home');
         setCatalogView('local');
@@ -1485,6 +1495,13 @@ function App() {
         </div>
         <div className="header-right">
           <button
+            className="learning-centre-btn"
+            onClick={() => { window.location.hash = '/learning-centre'; }}
+            title="Helpful parenting guides"
+          >
+            Learning Centre
+          </button>
+          <button
             className="track-order-btn"
             onClick={() => setShowOrderTracking(true)}
             title="Track an order"
@@ -1576,6 +1593,8 @@ function App() {
           initialToken={trackingRouteParams.token}
           autoLookup={Boolean(trackingRouteParams.orderNumber && trackingRouteParams.token)}
         />
+      ) : currentPage === 'learning-centre' ? (
+        <LearningCentre slug={learningSlug} onBack={() => { window.location.hash = '/learning-centre'; setCurrentPage('learning-centre'); setLearningSlug(''); }} />
       ) : currentPage === 'wishlist' ? (
         <div className="wishlist-page">
           <div className="wishlist-content">
@@ -2175,6 +2194,7 @@ function App() {
                 <a href="#" onClick={() => setCurrentPage('returns')} style={{ color: '#999', marginRight: '1rem' }}>Returns Policy</a>
                 <a href="#" onClick={() => setCurrentPage('terms')} style={{ color: '#999', marginRight: '1rem' }}>Terms of Service</a>
                 <a href="#" onClick={() => setCurrentPage('data-deletion')} style={{ color: '#999' }}>Data Deletion</a>
+                <a href="#/learning-centre" style={{ color: '#999', marginLeft: '1rem' }}>Learning Centre</a>
               </p>
             </div>
               <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">

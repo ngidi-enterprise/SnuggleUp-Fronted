@@ -195,6 +195,21 @@ body {
   transform: translateY(-1px);
 }
 
+.learning-centre-btn {
+  background: #fff7fa;
+  color: #b74370;
+  border: 1px solid #f2c6d7;
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.learning-centre-btn:hover { background: #ffeaf1; }
+
 .account-btn {
   background: #f0f0f0;
   color: #333;
@@ -255,7 +270,7 @@ body {
 
 @media (max-width: 640px) {
   :root {
-    --header-height: 126px;
+    --header-height: 128px;
   }
 }
 
@@ -902,16 +917,17 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .learning-centre-btn { display: none !important; }
   :root {
-    --header-height: 126px;
+    --header-height: 128px;
   }
 
   .app.has-account-prompt {
-    --header-height: 174px;
+    --header-height: 186px;
   }
 
   .app {
-    padding-top: var(--header-height);
+    padding-top: calc(var(--header-height) + 10px);
   }
 
   .header {
@@ -1030,7 +1046,7 @@ body {
   
   .cart-icon {
     font-size: 20px;
-    padding: 8px;
+    padding: 0;
   }
   
   .checkout-btn .cart-count {
@@ -1185,11 +1201,11 @@ body {
 /* Small Mobile (iPhone SE, etc.) */
 @media (max-width: 375px) {
   :root {
-    --header-height: 118px;
+    --header-height: 120px;
   }
 
   .app.has-account-prompt {
-    --header-height: 164px;
+    --header-height: 186px;
   }
 
   .header {
@@ -1635,6 +1651,14 @@ body {
 
 /* Final mobile header guard: keep checkout visible on narrow phones. */
 @media (max-width: 480px) {
+  .app {
+    padding-top: calc(var(--header-height) + 12px);
+  }
+
+  .app.has-account-prompt {
+    --header-height: 186px;
+  }
+
   .header {
     width: 100%;
     overflow-x: hidden;
@@ -1662,6 +1686,14 @@ body {
     max-width: 54px;
     min-height: 38px;
     padding: 6px 7px;
+  }
+
+  .header-right .checkout-btn .cart-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    padding: 0 !important;
+    flex: 0 0 18px;
   }
 
   .header-right .login-btn,
