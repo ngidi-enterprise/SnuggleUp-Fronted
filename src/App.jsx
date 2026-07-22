@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
 const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
@@ -88,6 +88,7 @@ function App() {
   const [showLocalProductUpload, setShowLocalProductUpload] = useState(false);
   const [localProductsRefresh, setLocalProductsRefresh] = useState(0);
   const [catalogView, setCatalogView] = useState('local'); // 'cj' or 'local'
+  const headerRef = useRef(null);
   
   // Wishlist state
   const [wishlistItems, setWishlistItems] = useState(() => {
@@ -96,6 +97,22 @@ function App() {
   });
   
   const { user, token, isAuthenticated, logout } = useAuth();
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const headerHeight = headerRef.current?.offsetHeight;
+      if (headerHeight) {
+        document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, [showAccountPrompt, isAuthenticated, showAdminDashboard, user?.email, cartCount, wishlistItems.length]);
 
   useEffect(() => {
     if (selectedCjPid || selectedLocalProductId) return;
@@ -1423,7 +1440,7 @@ function App() {
   return (
     <div className={`app ${showAccountPrompt ? 'has-account-prompt' : ''}`}>
       {/* Header */}
-      <header className="header">
+      <header className="header" ref={headerRef}>
         {showAccountPrompt && (
           <div className="account-prompt-banner">
             <span>Create an account &amp; get 3% off your next purchase!</span>
@@ -2145,6 +2162,7 @@ function App() {
           
 
           {/* Footer */}
+          {(!showAdminDashboard || isStorePreviewActive) && (
           <footer className="footer" style={{ flexShrink: 0 }}>
             <TrustBadges />
             <div style={{ marginTop: '1.5rem' }}>
@@ -2185,6 +2203,7 @@ function App() {
                 <PaymentMethodsStrip compact />
               </div>
           </footer>
+          )}
 
           {/* Shipping Form Modal */}
           {showShippingForm && (
