@@ -9,6 +9,7 @@ import InventoryPanel from './admin/InventoryPanel';
 import SchedulerMonitor from './admin/SchedulerMonitor';
 import LocalProductManager from './admin/LocalProductManager';
 import Settings from './admin/Settings';
+import LearningCentreManager from './admin/LearningCentreManager';
 import './AdminDashboard.css';
 
 export default function AdminDashboard({ onClose, onStorePreview, access = {} }) {
@@ -75,6 +76,7 @@ export default function AdminDashboard({ onClose, onStorePreview, access = {} })
     { id: 'pricing', label: 'Pricing', icon: '💰' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'scheduler', label: 'Scheduler Monitor', icon: '⏱️' },
+    { id: 'learning-centre', label: 'Learning Centre', icon: 'LC' },
     { id: 'store', label: 'Store Preview', icon: '🏪' },
     { id: 'orders', label: 'Orders', icon: '📦' },
     { id: 'users', label: 'Users', icon: '👥' },
@@ -106,6 +108,8 @@ export default function AdminDashboard({ onClose, onStorePreview, access = {} })
         return isSuperuser ? <InventoryPanel /> : <LocalProductManager access={access} onProductStatsChange={setAssistantStats} />;
       case 'scheduler':
         return isSuperuser ? <SchedulerMonitor /> : <LocalProductManager access={access} onProductStatsChange={setAssistantStats} />;
+      case 'learning-centre':
+        return isSuperuser ? <LearningCentreManager /> : <LocalProductManager access={access} onProductStatsChange={setAssistantStats} />;
       case 'store':
         return null; // Will show store through parent component
       case 'orders':
