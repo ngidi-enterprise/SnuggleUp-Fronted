@@ -30,7 +30,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
-import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
+import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
@@ -75,6 +75,10 @@ function App() {
     canManageProducts: false,
     canApproveProducts: false
   });
+
+  useEffect(() => {
+    setStorefrontAnalyticsPaused(isAdmin || showAdminDashboard);
+  }, [isAdmin, showAdminDashboard]);
   
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
@@ -1349,6 +1353,9 @@ function App() {
         } catch (_) {}
         throw new Error(msg);
       }
+
+      // The payment request was accepted and the customer is about to leave for PayFast.
+      trackPaymentStarted();
 
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
