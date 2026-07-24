@@ -1524,10 +1524,23 @@ function App() {
           ) : (
             <button
               className="account-btn"
-              onClick={() => { setShowAuthModal(false); setShowOrderTracking(false); setShowUserAccount(true); }}
-              title="Your account"
+              onClick={async () => {
+                if (showAdminDashboard && isAdmin) {
+                  await logout();
+                  setShowAdminDashboard(false);
+                  setIsStorePreviewActive(false);
+                  setCurrentPage('home');
+                  window.location.hash = '';
+                  return;
+                }
+
+                setShowAuthModal(false);
+                setShowOrderTracking(false);
+                setShowUserAccount(true);
+              }}
+              title={showAdminDashboard && isAdmin ? 'Log out' : 'Your account'}
             >
-              {user?.email ? user.email.split('@')[0] : 'Account'}
+              {showAdminDashboard && isAdmin ? 'Log out' : (user?.email ? user.email.split('@')[0] : 'Account')}
             </button>
           )}
           {!isAdmin && (
