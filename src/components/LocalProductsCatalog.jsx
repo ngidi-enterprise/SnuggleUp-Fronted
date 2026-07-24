@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './LocalProductsCatalog.css';
+import { trackCategoryView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
@@ -354,6 +355,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
                   className={`category-item ${selectedCategory === cat.id ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedCategory(cat.id === 'all' ? null : cat.id);
+                    trackCategoryView(cat.name);
                     setSidebarOpen(false);
                   }}
                 >

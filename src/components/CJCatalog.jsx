@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './CJCatalog.css';
+import { trackCategoryView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
@@ -274,6 +275,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
               className={`category-item ${selectedCategory === cat.id ? 'active' : ''}`}
               onClick={() => {
                 setSelectedCategory(cat.id === 'all' ? null : cat.id);
+                trackCategoryView(cat.name);
                 setSidebarOpen(false); // Close on mobile after selection
               }}
             >

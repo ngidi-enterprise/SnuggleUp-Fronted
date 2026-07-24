@@ -1256,3 +1256,121 @@
   font-size: 14px;
   font-weight: 500;
 }
+.traffic-funnel {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #d8e7e5;
+  background: #f8fcfb;
+  border-radius: 8px;
+}
+
+.traffic-funnel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.traffic-funnel-heading h3,
+.traffic-funnel-heading p {
+  margin: 0;
+}
+
+.traffic-funnel-heading p,
+.traffic-funnel-heading > span,
+.traffic-funnel-note {
+  color: #637381;
+  font-size: 0.9rem;
+}
+
+.analytics-table-note {
+  margin: 0 0 12px;
+  color: #637381;
+  font-size: 0.9rem;
+}
+
+.traffic-funnel-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.traffic-funnel-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.traffic-funnel-drop {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  color: #a34b61;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.traffic-funnel-drop span {
+  color: #147c7e;
+  font-size: 1.05rem;
+}
+
+.traffic-funnel-bar {
+  min-height: 58px;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  color: #fff;
+  background: #147c7e;
+  border: 1px solid #0e6b6d;
+  border-radius: 6px;
+  transition: width 0.2s ease;
+}
+
+.traffic-funnel-bar:nth-child(even) {
+  background: #147c7e;
+}
+
+.traffic-funnel-bar.verified {
+  background: #267a4c;
+  border-color: #1f6840;
+}
+
+.traffic-funnel-bar span {
+  font-weight: 700;
+}
+
+.traffic-funnel-bar strong {
+  font-size: 1.35rem;
+}
+
+.traffic-funnel-bar small {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.traffic-funnel-note {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #d8e7e5;
+}
+
+@media (max-width: 700px) {
+  .traffic-funnel {
+    padding: 16px 12px;
+  }
+
+  .traffic-funnel-heading {
+    flex-direction: column;
+  }
+
+  .traffic-funnel-bar {
+    width: 100% !important;
+  }
+}
