@@ -78,10 +78,22 @@ export default function Analytics() {
 
   const { summary, dailyOrders, topProducts } = analytics;
   const trafficSummary = traffic?.summary || {};
+  const funnel = traffic?.funnel || [];
+  const funnelStart = Number(funnel[0]?.value || 0);
   const formatNumber = (value) => Number(value || 0).toLocaleString('en-ZA');
   const formatDuration = (seconds) => {
     const value = Number(seconds || 0);
     return value >= 60 ? `${Math.floor(value / 60)}m ${value % 60}s` : `${value}s`;
+  };
+  const formatRegion = (item) => {
+    if (item.country_code) {
+      try {
+        return new Intl.DisplayNames(['en'], { type: 'region' }).of(item.country_code) || item.country_code;
+      } catch {
+        return item.country_code;
+      }
+    }
+    return item.timezone_name || 'Unknown region';
   };
 
   return (
@@ -140,6 +152,43 @@ export default function Analytics() {
               <div className="analytics-card"><div className="analytics-card-content"><h3>Average visit time</h3><p className="analytics-card-value">{formatDuration(trafficSummary.average_seconds)}</p></div></div>
             </div>
 
+            <div className="traffic-funnel" aria-label="Customer journey funnel">
+              <div className="traffic-funnel-heading">
+                <div>
+                  <h3>Customer journey funnel</h3>
+                  <p>See exactly where visitors continue and where they leave.</p>
+                </div>
+                <span>Unique sessions</span>
+              </div>
+              {funnel.length ? (
+                <div className="traffic-funnel-steps">
+                  {funnel.map((stage, index) => {
+                    const relativeWidth = funnelStart > 0
+                      ? Math.max(42, Math.round((Number(stage.value || 0) / funnelStart) * 100))
+                      : Math.max(42, 100 - (index * 10));
+                    return (
+                      <div className="traffic-funnel-stage" key={stage.key}>
+                        {index > 0 && (
+                          <div className="traffic-funnel-drop">
+                            <span aria-hidden="true">↓</span>
+                            {stage.lostPercent}% left before this step
+                          </div>
+                        )}
+                        <div className={`traffic-funnel-bar ${stage.verified ? 'verified' : ''}`} style={{ width: `${relativeWidth}%` }}>
+                          <span>{stage.label}</span>
+                          <strong>{formatNumber(stage.value)}</strong>
+                          {index > 0 && <small>{stage.retainedPercent}% continued</small>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p>No funnel activity recorded yet.</p>
+              )}
+              <p className="traffic-funnel-note">Purchased orders are counted only after PayFast confirms payment. Funnel history begins when this analytics feature is deployed.</p>
+            </div>
+
             <div className="analytics-table" style={{ marginTop: '24px' }}>
               <h3>Where visitors come from</h3>
               {traffic.sources?.length ? (
@@ -147,6 +196,16 @@ export default function Analytics() {
                   {traffic.sources.map((item, index) => <tr key={`${item.source}-${index}`}><td>{item.source}</td><td>{item.medium}</td><td>{formatNumber(item.sessions)}</td></tr>)}
                 </tbody></table>
               ) : <p>No traffic sources recorded yet.</p>}
+            </div>
+
+            <div className="analytics-table" style={{ marginTop: '24px' }}>
+              <h3>Visitor regions</h3>
+              <p className="analytics-table-note">Approximate location based on country routing information or browser time zone. Precise location and IP addresses are not stored.</p>
+              {traffic.regions?.length ? (
+                <table><thead><tr><th>Country or time zone</th><th>Sessions</th></tr></thead><tbody>
+                  {traffic.regions.map((item, index) => <tr key={`${item.country_code || item.timezone_name}-${index}`}><td>{formatRegion(item)}</td><td>{formatNumber(item.sessions)}</td></tr>)}
+                </tbody></table>
+              ) : <p>No visitor-region information recorded yet.</p>}
             </div>
 
             <div className="analytics-table" style={{ marginTop: '24px' }}>
