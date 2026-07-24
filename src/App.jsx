@@ -570,6 +570,10 @@ function App() {
       } else if (route.startsWith('/data-deletion')) {
         setCurrentPage('data-deletion');
         trackPageView('/data-deletion', 'Data Deletion');
+      } else if (route.startsWith('/wishlist')) {
+        setCurrentPage('wishlist');
+        setShowCart(false);
+        trackPageView('/wishlist', 'Wishlist');
       } else if (route.startsWith('/cj')) {
         // Treat /cj as home - CJ catalog is the home page now
         setCurrentPage('home');
@@ -1170,6 +1174,13 @@ function App() {
   };
 
   const toggleCart = () => {
+    if (currentPage !== 'home') {
+      setCurrentPage('home');
+      setLearningSlug('');
+      setShowCart(true);
+      window.location.hash = '';
+      return;
+    }
     setShowCart(!showCart);
   };
 
@@ -1535,7 +1546,11 @@ function App() {
             <>
               <button
                 className="wishlist-btn"
-                onClick={() => setCurrentPage('wishlist')}
+                onClick={() => {
+                  setShowCart(false);
+                  setCurrentPage('wishlist');
+                  window.location.hash = '/wishlist';
+                }}
                 aria-label={`View wishlist (${wishlistItems.length} items)`}
                 title="View wishlist"
               >
@@ -2242,10 +2257,12 @@ function App() {
       {showAuthModal && (
         <div
           className="auth-overlay"
-          onClick={() => { setShowAuthModal(false); }}
+          onPointerDown={(event) => {
+            if (!event.target.closest('.auth-form')) setShowAuthModal(false);
+          }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ width: 'min(560px, 92vw)', maxHeight: '90vh', overflowY: 'auto' }}>
             {authView === 'login' ? <Login onClose={() => { setShowAuthModal(false); }} onSwitchToRegister={() => setAuthView('register')} />
               : authView === 'register' ? <Register onClose={() => { setShowAuthModal(false); }} onSwitchToLogin={() => setAuthView('login')} />
                 : authView === 'forgot-password' ? <ForgotPassword onClose={() => { setShowAuthModal(false); }} onBackToLogin={() => setAuthView('login')} />
