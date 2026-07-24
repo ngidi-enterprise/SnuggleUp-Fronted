@@ -1496,7 +1496,12 @@ function App() {
         <div className="header-right">
           <button
             className="learning-centre-btn"
-            onClick={() => { window.location.hash = '/learning-centre'; }}
+            onClick={() => {
+              setCurrentPage('learning-centre');
+              setLearningSlug('');
+              setShowCart(false);
+              window.location.hash = '/learning-centre';
+            }}
             title="Helpful parenting guides"
           >
             Learning Centre
