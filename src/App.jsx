@@ -30,7 +30,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
-import { trackPageView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
+import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
@@ -281,6 +281,11 @@ function App() {
     if (!response.ok) throw new Error('Product not found');
     const data = await response.json();
     setSelectedLocalProductId(data);
+    trackProductView({
+      id: data.id || id,
+      name: data.name || data.product_name,
+      category: data.category || 'General',
+    });
     return data;
   };
 
@@ -290,6 +295,7 @@ function App() {
     setCatalogView('cj');
     setSelectedLocalProductId(null);
     setSelectedCjPid(pid);
+    if (options.product) trackProductClick(options.product);
     pushProductPath(`/products/${pid}`, Boolean(options.replace));
     if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -301,6 +307,12 @@ function App() {
     setCatalogView('local');
     setSelectedCjPid(null);
     setSelectedLocalProductId(product);
+    trackProductClick(product);
+    trackProductView({
+      id,
+      name: product.name || product.product_name,
+      category: product.category || 'General',
+    });
     if (id) pushProductPath(`/local-products/${id}`, Boolean(options.replace));
     if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
