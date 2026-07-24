@@ -1506,18 +1506,6 @@ function App() {
         </div>
         <div className="header-right">
           <button
-            className="learning-centre-btn"
-            onClick={() => {
-              setCurrentPage('learning-centre');
-              setLearningSlug('');
-              setShowCart(false);
-              window.location.hash = '/learning-centre';
-            }}
-            title="Helpful parenting guides"
-          >
-            Learning Centre
-          </button>
-          <button
             className="track-order-btn"
             onClick={() => { setShowAuthModal(false); setShowUserAccount(false); setShowOrderTracking(true); }}
             title="Track an order"
@@ -1773,6 +1761,28 @@ function App() {
                   }}
                 >
                   ⚡ Local Warehouse (Fast Delivery)
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentPage('learning-centre');
+                    setLearningSlug('');
+                    setShowCart(false);
+                    window.location.hash = '/learning-centre';
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#fff7fa',
+                    color: '#c53c72',
+                    border: '1px solid #ffc9dc',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Helpful parenting guides"
+                >
+                  Learning Centre
                 </button>
               </div>
 
