@@ -1587,7 +1587,13 @@ function App() {
         </div>
       </header>
 
-      {currentPage === 'success' ? (
+      {showAdminDashboard && !isStorePreviewActive ? (
+        <AdminDashboard
+          onClose={() => setShowAdminDashboard(false)}
+          onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
+          access={adminAccess}
+        />
+      ) : currentPage === 'success' ? (
         <CheckoutSuccess />
       ) : currentPage === 'cancel' ? (
         <CheckoutCancel />
@@ -1734,10 +1740,9 @@ function App() {
         </div>
       ) : (
         <>
-          {/* Admin Dashboard (overlays store when active) */}
-          {showAdminDashboard && (
-            <AdminDashboard 
-              onClose={() => setShowAdminDashboard(false)} 
+          {showAdminDashboard && isStorePreviewActive && (
+            <AdminDashboard
+              onClose={() => setShowAdminDashboard(false)}
               onStorePreview={(isActive) => setIsStorePreviewActive(isActive)}
               access={adminAccess}
             />
