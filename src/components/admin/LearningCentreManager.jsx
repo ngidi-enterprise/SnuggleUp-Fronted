@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './LearningCentreManager.css';
 
@@ -14,6 +14,7 @@ export default function LearningCentreManager() {
   const [question, setQuestion] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [editor, setEditor] = useState(null);
+  const shouldScrollToEditor = useRef(false);
 
   const request = useCallback(async (path, options = {}) => {
     const response = await fetch(`${API_BASE}/api/learning-centre${path}`, {
@@ -36,7 +37,17 @@ export default function LearningCentreManager() {
   useEffect(() => { load(); }, [load]);
   const selectedArticle = useMemo(() => data.articles.find((item) => item.id === selectedId) || null, [data.articles, selectedId]);
   useEffect(() => { if (selectedArticle) setEditor({ title: selectedArticle.title, excerpt: selectedArticle.excerpt || '', bodyHtml: selectedArticle.body_html || '', metaTitle: selectedArticle.meta_title || '', metaDescription: selectedArticle.meta_description || '', scheduledFor: localDateTime(selectedArticle.scheduled_for) }); }, [selectedArticle]);
+  useEffect(() => {
+    if (editor && shouldScrollToEditor.current) {
+      shouldScrollToEditor.current = false;
+      document.getElementById('learning-review-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editor]);
   const action = async (fn, success = 'Saved.') => { setMessage(''); try { await fn(); await load(); setMessage(success); } catch (error) { setMessage(error.message); } };
+  const openArticleForReview = (articleId) => {
+    shouldScrollToEditor.current = true;
+    setSelectedId(articleId);
+  };
   const counts = { queued: data.topics.filter((item) => item.status === 'queued').length, drafts: data.articles.filter((item) => item.status === 'draft' || item.status === 'scheduled').length, published: data.articles.filter((item) => item.status === 'published').length };
 
   if (loading) return <div className="learning-admin"><p>Loading Learning Centre...</p></div>;
@@ -76,10 +87,10 @@ export default function LearningCentreManager() {
 
     <section className="learning-admin-card">
       <h3>Drafts, scheduled articles and published guides</h3>
-      {data.articles.length === 0 ? <p>Drafts will appear here after you generate a topic.</p> : <div className="learning-list">{data.articles.map((item) => <div key={item.id} className={selectedId === item.id ? 'is-selected' : ''}><button className="learning-article-select" onClick={() => setSelectedId(item.id)}><b>{item.title}</b><small>{item.review_required ? 'Human review required' : 'Ready for review'} | {item.status}</small></button>{item.status !== 'published' ? <button onClick={() => action(() => request(`/admin/articles/${item.id}/publish`, { method: 'POST' }), 'Article is now live.')}>Publish now</button> : <button className="learning-secondary" onClick={() => action(() => request(`/admin/articles/${item.id}/unpublish`, { method: 'POST' }), 'Article moved back to draft.')}>Move to draft</button>}</div>)}</div>}
+      {data.articles.length === 0 ? <p>Drafts will appear here after you generate a topic.</p> : <div className="learning-list">{data.articles.map((item) => <div key={item.id} className={selectedId === item.id ? 'is-selected' : ''}><button className="learning-article-select" onClick={() => openArticleForReview(item.id)}><b>{item.title}</b><small>{item.review_required ? 'Human review required' : 'Ready for review'} | {item.status}</small></button><button className="learning-secondary" onClick={() => openArticleForReview(item.id)}>Review and edit</button>{item.status !== 'published' ? <button onClick={() => action(() => request(`/admin/articles/${item.id}/publish`, { method: 'POST' }), 'Article is now live.')}>Publish now</button> : <button className="learning-secondary" onClick={() => action(() => request(`/admin/articles/${item.id}/unpublish`, { method: 'POST' }), 'Article moved back to draft.')}>Move to draft</button>}</div>)}</div>}
     </section>
 
-    {editor && selectedArticle && <section className="learning-admin-card learning-editor">
+    {editor && selectedArticle && <section id="learning-review-editor" className="learning-admin-card learning-editor">
       <h3>Review article</h3>
       <label>Title<input value={editor.title} onChange={(e) => setEditor({ ...editor, title: e.target.value })} /></label>
       <label>Short introduction<input value={editor.excerpt} onChange={(e) => setEditor({ ...editor, excerpt: e.target.value })} /></label>
