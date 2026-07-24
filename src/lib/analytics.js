@@ -1,5 +1,71 @@
-// Google Analytics 4 tracking utilities
-// Replace G-XXXXXXXXXX with your actual GA4 Measurement ID
+// Google Analytics 4 plus privacy-safe first-party storefront insights.
+// The first-party data is anonymous: random browser IDs, paths, and product metadata only.
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
+const SESSION_KEY = 'snuggleup_analytics_session';
+const VISITOR_KEY = 'snuggleup_analytics_visitor';
+let activePage = null;
+
+const randomId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const getStorageId = (key, storage) => {
+  try {
+    let value = storage.getItem(key);
+    if (!value) {
+      value = randomId();
+      storage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    return randomId();
+  }
+};
+
+const trafficSource = () => {
+  const params = new URLSearchParams(window.location.search || '');
+  const isGoogleAdsClick = Boolean(params.get('gclid'));
+  const source = params.get('utm_source') || (isGoogleAdsClick ? 'google' : '');
+  const medium = params.get('utm_medium') || (isGoogleAdsClick ? 'cpc' : '');
+  const campaign = params.get('utm_campaign') || '';
+  let referrerHost = '';
+  try { referrerHost = document.referrer ? new URL(document.referrer).hostname : ''; } catch {}
+  return { source, medium, campaign, referrerHost };
+};
+
+const sendStorefrontEvent = (eventName, details = {}) => {
+  if (typeof window === 'undefined' || window.location.pathname.startsWith('/admin')) return;
+  const payload = {
+    eventName,
+    sessionId: getStorageId(SESSION_KEY, window.sessionStorage),
+    visitorId: getStorageId(VISITOR_KEY, window.localStorage),
+    pagePath: details.pagePath || window.location.pathname || '/',
+    pageTitle: details.pageTitle || document.title || '',
+    ...trafficSource(),
+    ...details,
+  };
+  const body = JSON.stringify(payload);
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(`${API_BASE}/api/analytics/events`, new Blob([body], { type: 'application/json' }));
+      return;
+    }
+    fetch(`${API_BASE}/api/analytics/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  } catch {}
+};
+
+const closeActivePage = () => {
+  if (!activePage) return;
+  const seconds = Math.max(0, Math.round((Date.now() - activePage.startedAt) / 1000));
+  sendStorefrontEvent('page_exit', { pagePath: activePage.path, pageTitle: activePage.title, durationSeconds: seconds });
+  activePage = null;
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', closeActivePage);
+}
 
 /**
  * Track page views in Single Page Application
@@ -7,6 +73,15 @@
  * @param {string} title - The page title
  */
 export const trackPageView = (path, title = '') => {
+  if (activePage?.path === path) return;
+  closeActivePage();
+  activePage = { path, title: title || document.title, startedAt: Date.now() };
+  const sessionId = getStorageId(SESSION_KEY, window.sessionStorage);
+  if (!window.sessionStorage.getItem(`${SESSION_KEY}:started`)) {
+    window.sessionStorage.setItem(`${SESSION_KEY}:started`, '1');
+    sendStorefrontEvent('session_start', { pagePath: path, pageTitle: title || document.title, sessionId });
+  }
+  sendStorefrontEvent('page_view', { pagePath: path, pageTitle: title || document.title, sessionId });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'page_view', {
       page_path: path,
@@ -21,6 +96,11 @@ export const trackPageView = (path, title = '') => {
  * @param {object} product - Product data
  */
 export const trackProductView = (product) => {
+  sendStorefrontEvent('product_view', {
+    productId: product.id || product.pid,
+    productName: product.name,
+    productCategory: product.category,
+  });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'view_item', {
       currency: 'ZAR',
@@ -41,6 +121,11 @@ export const trackProductView = (product) => {
  * @param {number} quantity - Quantity added
  */
 export const trackAddToCart = (product, quantity = 1) => {
+  sendStorefrontEvent('add_to_cart', {
+    productId: product.id || product.pid,
+    productName: product.name,
+    productCategory: product.category,
+  });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'add_to_cart', {
       currency: 'ZAR',
@@ -130,6 +215,7 @@ export const trackPurchase = (transactionId, items, total, shipping = 0, tax = 0
  * @param {string} searchTerm - The search term
  */
 export const trackSearch = (searchTerm) => {
+  sendStorefrontEvent('search', { pageTitle: 'Product search' });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'search', {
       search_term: searchTerm
@@ -170,4 +256,12 @@ export const trackEvent = (eventName, params = {}) => {
   if (typeof window.gtag === 'function') {
     window.gtag('event', eventName, params);
   }
+};
+
+export const trackProductClick = (product) => {
+  sendStorefrontEvent('product_click', {
+    productId: product?.id || product?.pid,
+    productName: product?.name || product?.product_name,
+    productCategory: product?.category,
+  });
 };
