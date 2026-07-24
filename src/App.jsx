@@ -1594,7 +1594,7 @@ function App() {
           autoLookup={Boolean(trackingRouteParams.orderNumber && trackingRouteParams.token)}
         />
       ) : currentPage === 'learning-centre' ? (
-        <LearningCentre slug={learningSlug} onBack={() => { window.location.hash = '/learning-centre'; setCurrentPage('learning-centre'); setLearningSlug(''); }} />
+        <LearningCentre slug={learningSlug} onBack={() => { window.location.hash = ''; setCurrentPage('home'); setLearningSlug(''); }} />
       ) : currentPage === 'wishlist' ? (
         <div className="wishlist-page">
           <div className="wishlist-content">
