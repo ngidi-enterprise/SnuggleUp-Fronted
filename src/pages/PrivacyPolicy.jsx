@@ -9,6 +9,18 @@ export default function PrivacyPolicy() {
       
       <h2>How We Use Your Information</h2>
       <p>We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.</p>
+
+      <h2>Anonymous Store Analytics</h2>
+      <p>
+        We use privacy-conscious store analytics to understand how visitors find and use SnuggleUp. This may include pages and products viewed,
+        general referral or advertising campaign information, approximate country or browser time zone, time spent on pages, and shopping steps
+        such as adding an item to the cart.
+      </p>
+      <p>
+        These analytics use random browser and visit identifiers. We do not include your name, email address, phone number, delivery address,
+        payment details, precise GPS location, or stored IP address in this analytics activity. We use the information to improve the store,
+        identify confusing shopping steps, and understand whether our advertising is useful.
+      </p>
       
       <h2>Contact Us</h2>
       <p>For privacy concerns, please contact us at <strong>support@snuggleup.co.za</strong></p>
