@@ -96,7 +96,13 @@ export default function LearningCentreManager() {
       <label>Short introduction<input value={editor.excerpt} onChange={(e) => setEditor({ ...editor, excerpt: e.target.value })} /></label>
       <label>Search title<input value={editor.metaTitle} onChange={(e) => setEditor({ ...editor, metaTitle: e.target.value })} /></label>
       <label>Search description<input value={editor.metaDescription} onChange={(e) => setEditor({ ...editor, metaDescription: e.target.value })} /></label>
-      <label>Article content<textarea rows="15" value={editor.bodyHtml} onChange={(e) => setEditor({ ...editor, bodyHtml: e.target.value })} /></label>
+      <section className="learning-article-preview" aria-label="Article preview" style={{ background: '#f7fbfa', border: '1px solid #dbe8e4', borderRadius: '8px', color: '#24313d', lineHeight: 1.65, padding: '26px 30px' }}>
+        <p className="learning-preview-label" style={{ color: '#126f71', fontSize: '.8rem', fontWeight: 700, letterSpacing: '.04em', margin: '0 0 8px', textTransform: 'uppercase' }}>Article preview</p>
+        <h1 style={{ color: '#126f71', fontSize: '1.85rem', lineHeight: 1.25, margin: '0 0 12px' }}>{editor.title}</h1>
+        {editor.excerpt && <p className="learning-preview-excerpt" style={{ borderLeft: '3px solid #ff6b9d', color: '#52636a', fontSize: '1.05rem', margin: '0 0 22px', paddingLeft: '14px' }}>{editor.excerpt}</p>}
+        <div className="learning-preview-body" style={{ fontSize: '1rem' }} dangerouslySetInnerHTML={{ __html: editor.bodyHtml }} />
+      </section>
+      <label>Article content (advanced HTML editing)<textarea rows="15" value={editor.bodyHtml} onChange={(e) => setEditor({ ...editor, bodyHtml: e.target.value })} /></label>
       <div className="learning-editor-actions">
         <button onClick={() => action(() => request(`/admin/articles/${selectedArticle.id}`, { method: 'PUT', body: JSON.stringify(editor) }), 'Article changes saved.')}>Save changes</button>
         <label>Schedule for<input type="datetime-local" value={editor.scheduledFor} onChange={(e) => setEditor({ ...editor, scheduledFor: e.target.value })} /></label>
