@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './LearningCentre.css';
-import { PAGE_SEO, SITE_URL, setPageSeo } from '../lib/seo';
+import { buildArticleJsonLd, PAGE_SEO, SITE_URL, setPageSeo } from '../lib/seo';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname.includes('snuggleup.co.za') ? 'https://api.snuggleup.co.za' : 'http://localhost:3000');
 const displayDate = (value) => value ? new Date(value).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
@@ -11,7 +11,7 @@ export default function LearningCentre({ slug, onBack }) {
     let active = true; setLoading(true); setError('');
     fetch(`${API_BASE}/api/learning-centre/articles${slug ? `/${encodeURIComponent(slug)}` : ''}`)
       .then(async (response) => { if (!response.ok) throw new Error('not-found'); return response.json(); })
-      .then((data) => { if (!active) return; if (slug) { setArticle(data.article); setPageSeo({ title: data.article.meta_title || data.article.title, description: data.article.meta_description || data.article.excerpt, url: `${SITE_URL}/learning-centre/${data.article.slug}`, type: 'article' }); } else { setArticles(data.articles || []); setPageSeo(PAGE_SEO['learning-centre']); } })
+      .then((data) => { if (!active) return; if (slug) { setArticle(data.article); setPageSeo({ title: data.article.meta_title || data.article.title, description: data.article.meta_description || data.article.excerpt, url: `${SITE_URL}/learning-centre/${data.article.slug}`, type: 'article', jsonLd: [buildArticleJsonLd(data.article)] }); } else { setArticles(data.articles || []); setPageSeo(PAGE_SEO['learning-centre']); } })
       .catch(() => active && setError(slug ? 'This guide is not available right now.' : 'The Learning Centre is getting ready. Please check back soon.'))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
