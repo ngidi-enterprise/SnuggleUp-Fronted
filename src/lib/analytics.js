@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onr
 const SESSION_KEY = 'snuggleup_analytics_session';
 const VISITOR_KEY = 'snuggleup_analytics_visitor';
 let activePage = null;
+let analyticsPaused = false;
 
 const randomId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -35,8 +36,17 @@ const trafficSource = () => {
   return { source, medium, campaign, referrerHost };
 };
 
+const approximateRegion = () => {
+  let timezoneName = '';
+  try { timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
+  return {
+    timezoneName,
+    browserLocale: navigator.language || '',
+  };
+};
+
 const sendStorefrontEvent = (eventName, details = {}) => {
-  if (typeof window === 'undefined' || window.location.pathname.startsWith('/admin')) return;
+  if (analyticsPaused || typeof window === 'undefined' || window.location.pathname.startsWith('/admin')) return;
   const payload = {
     eventName,
     sessionId: getStorageId(SESSION_KEY, window.sessionStorage),
@@ -44,6 +54,7 @@ const sendStorefrontEvent = (eventName, details = {}) => {
     pagePath: details.pagePath || window.location.pathname || '/',
     pageTitle: details.pageTitle || document.title || '',
     ...trafficSource(),
+    ...approximateRegion(),
     ...details,
   };
   const body = JSON.stringify(payload);
@@ -61,6 +72,11 @@ const closeActivePage = () => {
   const seconds = Math.max(0, Math.round((Date.now() - activePage.startedAt) / 1000));
   sendStorefrontEvent('page_exit', { pagePath: activePage.path, pageTitle: activePage.title, durationSeconds: seconds });
   activePage = null;
+};
+
+export const setStorefrontAnalyticsPaused = (paused) => {
+  analyticsPaused = Boolean(paused);
+  if (analyticsPaused) activePage = null;
 };
 
 if (typeof window !== 'undefined') {
@@ -168,6 +184,7 @@ export const trackRemoveFromCart = (product, quantity = 1) => {
  * @param {number} totalValue - Total cart value
  */
 export const trackBeginCheckout = (cartItems, totalValue) => {
+  sendStorefrontEvent('begin_checkout');
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'begin_checkout', {
       currency: 'ZAR',
@@ -264,4 +281,14 @@ export const trackProductClick = (product) => {
     productName: product?.name || product?.product_name,
     productCategory: product?.category,
   });
+};
+
+export const trackCategoryView = (categoryName) => {
+  sendStorefrontEvent('category_view', {
+    pageTitle: String(categoryName || 'Product category').slice(0, 120),
+  });
+};
+
+export const trackPaymentStarted = () => {
+  sendStorefrontEvent('payment_started', { pageTitle: 'PayFast payment opened' });
 };
