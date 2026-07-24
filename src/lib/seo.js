@@ -214,6 +214,21 @@ export function buildProductJsonLd({
   return json;
 }
 
+export function buildArticleJsonLd(article = {}) {
+  const url = `${SITE_URL}/learning-centre/${article.slug || ''}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title || 'SnuggleUp Learning Centre',
+    description: article.meta_description || article.excerpt || DEFAULT_DESCRIPTION,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    datePublished: article.published_at || article.created_at || new Date().toISOString(),
+    dateModified: article.updated_at || article.published_at || new Date().toISOString(),
+    author: { '@type': 'Organization', name: article.author_name || SITE_NAME },
+    publisher: { '@type': 'Organization', name: SITE_NAME, logo: { '@type': 'ImageObject', url: DEFAULT_IMAGE } },
+  };
+}
+
 export function setPageSeo(options = {}) {
   if (typeof document === 'undefined') return;
   const seo = { ...DEFAULT_SEO, ...options };
