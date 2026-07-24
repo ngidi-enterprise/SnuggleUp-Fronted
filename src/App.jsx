@@ -1454,7 +1454,7 @@ function App() {
         {showAccountPrompt && (
           <div className="account-prompt-banner">
             <span>Create an account &amp; get 3% off your next purchase!</span>
-            <button className="btn-small" onClick={() => { setAuthView('register'); setShowAuthModal(true); }}>
+            <button className="btn-small" onClick={() => { setShowOrderTracking(false); setShowUserAccount(false); setAuthView('register'); setShowAuthModal(true); }}>
               Register Now
             </button>
           </div>
@@ -1503,7 +1503,7 @@ function App() {
           </button>
           <button
             className="track-order-btn"
-            onClick={() => setShowOrderTracking(true)}
+            onClick={() => { setShowAuthModal(false); setShowUserAccount(false); setShowOrderTracking(true); }}
             title="Track an order"
           >
             Track Order
@@ -1512,7 +1512,7 @@ function App() {
           {!isAuthenticated ? (
             <button
               className="login-btn"
-              onClick={() => { setAuthView('login'); setShowAuthModal(true); }}
+              onClick={() => { setShowOrderTracking(false); setShowUserAccount(false); setAuthView('login'); setShowAuthModal(true); }}
               title="Login or create an account"
             >
               Login
@@ -1520,7 +1520,7 @@ function App() {
           ) : (
             <button
               className="account-btn"
-              onClick={() => setShowUserAccount(true)}
+              onClick={() => { setShowAuthModal(false); setShowOrderTracking(false); setShowUserAccount(true); }}
               title="Your account"
             >
               {user?.email ? user.email.split('@')[0] : 'Account'}
