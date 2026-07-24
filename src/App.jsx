@@ -2121,65 +2121,6 @@ function App() {
             </div>
           )}
 
-          {/* Auth Modal */}
-          {showAuthModal && (
-            <div
-              className="auth-overlay"
-              onClick={() => { setShowAuthModal(false); window.location.hash = ''; }}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.75)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000
-              }}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: 'min(560px, 92vw)',
-                  maxHeight: '90vh',
-                  overflowY: 'auto'
-                }}
-              >
-                {authView === 'login' ? (
-                  <Login 
-                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                    onSwitchToRegister={() => setAuthView('register')}
-                  />
-                ) : authView === 'register' ? (
-                  <Register 
-                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                    onSwitchToLogin={() => setAuthView('login')}
-                  />
-                ) : authView === 'forgot-password' ? (
-                  <ForgotPassword 
-                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                    onBackToLogin={() => setAuthView('login')}
-                  />
-                ) : authView === 'reset-password' ? (
-                  <ResetPassword 
-                    onClose={() => { setShowAuthModal(false); window.location.hash = ''; }}
-                    onBackToLogin={() => setAuthView('login')}
-                  />
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {/* User Account Modal */}
-          {showUserAccount && (
-            <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />
-          )}
-
-          {showOrderTracking && (
-            <OrderTrackingLookup onClose={() => setShowOrderTracking(false)} />
-          )}
-
-          
-
           {/* Footer */}
           {(!showAdminDashboard || isStorePreviewActive) && (
           <footer className="footer" style={{ flexShrink: 0 }}>
@@ -2292,6 +2233,23 @@ function App() {
           )}
         </>
       )}
+      {/* These controls must be available from every page, not only the shop view. */}
+      {showAuthModal && (
+        <div
+          className="auth-overlay"
+          onClick={() => { setShowAuthModal(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', maxHeight: '90vh', overflowY: 'auto' }}>
+            {authView === 'login' ? <Login onClose={() => { setShowAuthModal(false); }} onSwitchToRegister={() => setAuthView('register')} />
+              : authView === 'register' ? <Register onClose={() => { setShowAuthModal(false); }} onSwitchToLogin={() => setAuthView('login')} />
+                : authView === 'forgot-password' ? <ForgotPassword onClose={() => { setShowAuthModal(false); }} onBackToLogin={() => setAuthView('login')} />
+                  : authView === 'reset-password' ? <ResetPassword onClose={() => { setShowAuthModal(false); }} onBackToLogin={() => setAuthView('login')} /> : null}
+          </div>
+        </div>
+      )}
+      {showUserAccount && <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />}
+      {showOrderTracking && <OrderTrackingLookup onClose={() => setShowOrderTracking(false)} />}
     </div>
   );
 }
