@@ -371,7 +371,7 @@ export default function CJCatalog({ query, onQueryChange, onBack, onOpenProduct,
               onClick={() => {
                 if (opening) return;
                 setOpening(true);
-                try { onOpenProduct?.(p.pid); } finally { setTimeout(() => setOpening(false), 1200); }
+                try { onOpenProduct?.(p.pid, { product: p }); } finally { setTimeout(() => setOpening(false), 1200); }
               }}
             >
               {/* Stock badges hidden for import products - unreliable data */}
