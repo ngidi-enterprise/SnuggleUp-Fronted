@@ -1602,7 +1602,48 @@ function App() {
           autoLookup={Boolean(trackingRouteParams.orderNumber && trackingRouteParams.token)}
         />
       ) : currentPage === 'learning-centre' ? (
-        <LearningCentre slug={learningSlug} onBack={() => { window.location.hash = ''; setCurrentPage('home'); setLearningSlug(''); }} />
+        <>
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            padding: '15px 20px',
+            background: '#f9f9f9',
+            borderBottom: '1px solid #eee',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => {
+                setCatalogView('cj');
+                setCurrentPage('home');
+                setLearningSlug('');
+                window.location.hash = '';
+              }}
+              style={{ padding: '10px 20px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+            >
+              Import Store
+            </button>
+            <button
+              onClick={() => {
+                setCatalogView('local');
+                setCurrentPage('home');
+                setLearningSlug('');
+                window.location.hash = '';
+              }}
+              style={{ padding: '10px 20px', background: '#ff6b9d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+            >
+              Local Warehouse (Fast Delivery)
+            </button>
+            <button
+              type="button"
+              aria-current="page"
+              style={{ padding: '10px 20px', background: '#fff7fa', color: '#c53c72', border: '1px solid #ffc9dc', borderRadius: '6px', fontWeight: '600', fontSize: '14px' }}
+            >
+              Learning Centre
+            </button>
+          </div>
+          <LearningCentre slug={learningSlug} onBack={() => { window.location.hash = ''; setCurrentPage('home'); setLearningSlug(''); }} />
+        </>
       ) : currentPage === 'wishlist' ? (
         <div className="wishlist-page">
           <div className="wishlist-content">
