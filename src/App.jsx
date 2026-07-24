@@ -1630,14 +1630,14 @@ function App() {
                 setLearningSlug('');
                 window.location.hash = '';
               }}
-              style={{ padding: '10px 20px', background: '#ff6b9d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+              style={{ padding: '10px 20px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
             >
               Local Warehouse (Fast Delivery)
             </button>
             <button
               type="button"
               aria-current="page"
-              style={{ padding: '10px 20px', background: '#fff7fa', color: '#c53c72', border: '1px solid #ffc9dc', borderRadius: '6px', fontWeight: '600', fontSize: '14px' }}
+              style={{ padding: '10px 20px', background: '#ff6b9d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'default' }}
             >
               Learning Centre
             </button>
