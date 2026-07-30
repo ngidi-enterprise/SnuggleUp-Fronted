@@ -61,7 +61,7 @@ function Register({ onClose, onSwitchToLogin }) {
       <h2>Create Account</h2>
       <p className="auth-subtitle">Join SnuggleUp for a better shopping experience!</p>
       
-      <SocialLoginButtons />
+      <SocialLoginButtons onSuccess={onClose} />
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>

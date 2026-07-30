@@ -79,7 +79,7 @@ function Login({ onClose, onSwitchToRegister }) {
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
-      <SocialLoginButtons />
+      <SocialLoginButtons onSuccess={onClose} />
       <div className="auth-footer">
         <p>
           Don't have an account?{' '}

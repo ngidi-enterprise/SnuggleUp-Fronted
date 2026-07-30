@@ -1290,6 +1290,84 @@
   font-size: 0.9rem;
 }
 
+.customer-journeys {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #d8e7e5;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.customer-journeys-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.customer-journeys-heading h3,
+.customer-journeys-heading p {
+  margin: 0;
+}
+
+.customer-journeys-heading p,
+.customer-journeys-heading > span {
+  color: #637381;
+  font-size: 0.9rem;
+}
+
+.customer-journey {
+  border-top: 1px solid #e5eceb;
+}
+
+.customer-journey summary {
+  min-height: 52px;
+  padding: 10px 4px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(100px, 0.7fr) minmax(170px, 0.8fr) auto;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #243746;
+}
+
+.customer-journey summary::marker {
+  color: #147c7e;
+}
+
+.customer-journey ol {
+  margin: 0 0 16px 22px;
+  padding: 12px 16px 12px 32px;
+  background: #f8fcfb;
+  border-left: 3px solid #147c7e;
+}
+
+.customer-journey li {
+  padding: 6px 0;
+}
+
+.customer-journey time {
+  display: inline-block;
+  width: 64px;
+  color: #637381;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 800px) {
+  .customer-journeys {
+    padding: 16px 12px;
+  }
+
+  .customer-journeys-heading {
+    flex-direction: column;
+  }
+
+  .customer-journey summary {
+    grid-template-columns: 1fr auto;
+  }
+}
+
 .traffic-funnel-steps {
   display: flex;
   flex-direction: column;
