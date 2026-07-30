@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
     const supabase = await getSupabase();
     if (!supabase)
       throw new Error('Auth is initializing. Please try again in a moment.');
-    
+
     const configuredRedirect = import.meta.env.VITE_AUTH_REDIRECT_URL;
     const redirectTo = configuredRedirect || (
       window.location.hostname === 'snuggleup.co.za' || window.location.hostname === 'www.snuggleup.co.za'
@@ -157,6 +157,24 @@ export const AuthProvider = ({ children }) => {
     });
     if (error) throw error;
     return data;
+  };
+
+  const signInWithGoogleIdToken = async (idToken, nonce) => {
+    const supabase = await getSupabase();
+    if (!supabase)
+      throw new Error('Auth is initializing. Please try again in a moment.');
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+      ...(nonce ? { nonce } : {}),
+    });
+    if (error) throw error;
+
+    const appUser = toAppUser(data.user);
+    setUser(appUser);
+    setToken(data.session?.access_token || null);
+    return appUser;
   };
 
   const logout = async () => {
@@ -251,6 +269,7 @@ export const AuthProvider = ({ children }) => {
     sendPasswordReset,
     updatePassword,
     signInWithProvider,
+    signInWithGoogleIdToken,
     logout,
     clearAuthRedirectError: () => setAuthRedirectError(''),
     // Keep session alive (extend timeout on manual action)
