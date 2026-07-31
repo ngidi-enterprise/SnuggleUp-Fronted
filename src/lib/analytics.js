@@ -4,8 +4,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 const SESSION_KEY = 'snuggleup_analytics_session';
 const VISITOR_KEY = 'snuggleup_analytics_visitor';
+const OPT_OUT_KEY = 'snuggleup_analytics_opt_out';
 let activePage = null;
 let analyticsPaused = false;
+let scrollMilestones = new Set();
 
 const randomId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -46,7 +48,12 @@ const approximateRegion = () => {
 };
 
 const sendStorefrontEvent = (eventName, details = {}) => {
-  if (analyticsPaused || typeof window === 'undefined' || window.location.pathname.startsWith('/admin')) return;
+  if (
+    analyticsPaused
+    || typeof window === 'undefined'
+    || window.location.pathname.startsWith('/admin')
+    || window.localStorage.getItem(OPT_OUT_KEY) === '1'
+  ) return;
   const payload = {
     eventName,
     sessionId: getStorageId(SESSION_KEY, window.sessionStorage),
@@ -79,8 +86,29 @@ export const setStorefrontAnalyticsPaused = (paused) => {
   if (analyticsPaused) activePage = null;
 };
 
+export const getStorefrontAnalyticsIdentity = () => ({
+  sessionId: getStorageId(SESSION_KEY, window.sessionStorage),
+  visitorId: getStorageId(VISITOR_KEY, window.localStorage),
+});
+
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', closeActivePage);
+  window.addEventListener('scroll', () => {
+    if (!activePage || analyticsPaused) return;
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    if (scrollable <= 0) return;
+    const depth = Math.min(100, Math.round((window.scrollY / scrollable) * 100));
+    [25, 50, 75, 90].forEach((milestone) => {
+      if (depth >= milestone && !scrollMilestones.has(milestone)) {
+        scrollMilestones.add(milestone);
+        sendStorefrontEvent('scroll_depth', {
+          pagePath: activePage.path,
+          pageTitle: activePage.title,
+          eventValue: milestone,
+        });
+      }
+    });
+  }, { passive: true });
 }
 
 /**
@@ -91,6 +119,7 @@ if (typeof window !== 'undefined') {
 export const trackPageView = (path, title = '') => {
   if (activePage?.path === path) return;
   closeActivePage();
+  scrollMilestones = new Set();
   activePage = { path, title: title || document.title, startedAt: Date.now() };
   const sessionId = getStorageId(SESSION_KEY, window.sessionStorage);
   if (!window.sessionStorage.getItem(`${SESSION_KEY}:started`)) {
