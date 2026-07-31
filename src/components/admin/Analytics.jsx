@@ -85,6 +85,17 @@ export default function Analytics() {
     const value = Number(seconds || 0);
     return value >= 60 ? `${Math.floor(value / 60)}m ${value % 60}s` : `${value}s`;
   };
+  const formatVisitTime = (value) => {
+    if (!value) return '-';
+    return new Date(value).toLocaleString('en-ZA', {
+      timeZone: 'Africa/Johannesburg',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
   const formatRegion = (item) => {
     if (item.country_code) {
       try {
@@ -95,6 +106,20 @@ export default function Analytics() {
     }
     return item.timezone_name || 'Unknown region';
   };
+  const formatJourneyStep = (step) => {
+    const page = step.pageTitle || step.pagePath || 'store page';
+    switch (step.eventName) {
+      case 'page_view': return `Visited ${page}`;
+      case 'category_view': return `Browsed ${page}`;
+      case 'product_view': return `Viewed ${step.productName || 'a product'}`;
+      case 'add_to_cart': return `Added ${step.productName || 'a product'} to cart`;
+      case 'begin_checkout': return 'Started checkout';
+      case 'payment_started': return 'Opened PayFast';
+      case 'scroll_depth': return `Scrolled ${step.eventValue || 0}% down ${page}`;
+      default: return step.eventName;
+    }
+  };
+  const formatStaffLabel = (value) => value === 'superuser' ? 'Superuser' : 'Other admins';
 
   return (
     <div className="analytics-container">
@@ -190,6 +215,23 @@ export default function Analytics() {
             </div>
 
             <div className="analytics-table" style={{ marginTop: '24px' }}>
+              <h3>Staff activity (separate)</h3>
+              <p className="analytics-table-note">These sessions are excluded from all customer totals, funnels, product views, and visitor reports above.</p>
+              {traffic.staffActivity?.length ? (
+                <table><thead><tr><th>Account type</th><th>Sessions</th><th>Page views</th><th>Latest activity</th></tr></thead><tbody>
+                  {traffic.staffActivity.map((item) => (
+                    <tr key={item.audience_type}>
+                      <td>{formatStaffLabel(item.audience_type)}</td>
+                      <td>{formatNumber(item.sessions)}</td>
+                      <td>{formatNumber(item.page_views)}</td>
+                      <td>{formatVisitTime(item.latest_activity)}</td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              ) : <p>No staff activity has been classified yet.</p>}
+            </div>
+
+            <div className="analytics-table" style={{ marginTop: '24px' }}>
               <h3>Where visitors come from</h3>
               {traffic.sources?.length ? (
                 <table><thead><tr><th>Source</th><th>Medium</th><th>Sessions</th></tr></thead><tbody>
@@ -202,10 +244,49 @@ export default function Analytics() {
               <h3>Visitor regions</h3>
               <p className="analytics-table-note">Approximate location based on country routing information or browser time zone. Precise location and IP addresses are not stored.</p>
               {traffic.regions?.length ? (
-                <table><thead><tr><th>Country or time zone</th><th>Sessions</th></tr></thead><tbody>
-                  {traffic.regions.map((item, index) => <tr key={`${item.country_code || item.timezone_name}-${index}`}><td>{formatRegion(item)}</td><td>{formatNumber(item.sessions)}</td></tr>)}
+                <table><thead><tr><th>Country or region</th><th>Visitor time zone</th><th>Sessions</th><th>Most recent visit (SA time)</th></tr></thead><tbody>
+                  {traffic.regions.map((item, index) => (
+                    <tr key={`${item.country_code || item.timezone_name}-${index}`}>
+                      <td>{formatRegion(item)}</td>
+                      <td>{item.timezone_name || '-'}</td>
+                      <td>{formatNumber(item.sessions)}</td>
+                      <td>{formatVisitTime(item.latest_visit)}</td>
+                    </tr>
+                  ))}
                 </tbody></table>
               ) : <p>No visitor-region information recorded yet.</p>}
+            </div>
+
+            <div className="customer-journeys">
+              <div className="customer-journeys-heading">
+                <div>
+                  <h3>Recent anonymous customer journeys</h3>
+                  <p>Pages, product activity, shopping steps, and scroll milestones. No typing, form contents, or video is recorded.</p>
+                </div>
+                <span>Last 7 days</span>
+              </div>
+              {traffic.journeys?.length ? traffic.journeys.map((journey) => {
+                const steps = Array.isArray(journey.steps) ? journey.steps : [];
+                const source = journey.source || journey.referrer_host || 'Direct';
+                return (
+                  <details className="customer-journey" key={journey.session_id}>
+                    <summary>
+                      <span>Anonymous visit {String(journey.session_id || '').slice(-6).toUpperCase()}</span>
+                      <span>{source}</span>
+                      <span>{formatVisitTime(journey.started_at)}</span>
+                      <strong>{formatNumber(steps.length)} steps</strong>
+                    </summary>
+                    <ol>
+                      {steps.map((step, index) => (
+                        <li key={`${step.occurredAt}-${index}`}>
+                          <time>{new Date(step.occurredAt).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' })}</time>
+                          <span>{formatJourneyStep(step)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                );
+              }) : <p>No customer journeys recorded yet.</p>}
             </div>
 
             <div className="analytics-table" style={{ marginTop: '24px' }}>
