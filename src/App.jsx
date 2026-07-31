@@ -30,7 +30,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
-import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused } from './lib/analytics';
+import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused, getStorefrontAnalyticsIdentity } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
@@ -270,6 +270,19 @@ function App() {
     });
     throw lastErr || new Error('All API bases failed');
   };
+
+  useEffect(() => {
+    if (!token || !isAdmin) return;
+    const identity = getStorefrontAnalyticsIdentity();
+    fetch(`${API_BASES[0] || FALLBACK_API_BASE}/api/analytics/session-role`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(identity),
+    }).catch(() => {});
+  }, [token, isAdmin, adminAccess.role]);
 
   const pushProductPath = (path, replace = false) => {
     if (typeof window === 'undefined' || !path) return;
