@@ -21,6 +21,21 @@ export default function PrivacyPolicy() {
         payment details, precise GPS location, or stored IP address in this analytics activity. We use the information to improve the store,
         identify confusing shopping steps, and understand whether our advertising is useful.
       </p>
+      <p>
+        We may record an anonymous sequence of store actions, such as pages and products viewed, cart and checkout steps, and whether a visitor
+        reached a general scroll-depth milestone. We do not record keystrokes, form contents, passwords, payment information, or a video of the
+        visitor's screen.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          window.localStorage.setItem('snuggleup_analytics_opt_out', '1');
+          window.alert('Anonymous store analytics have been disabled on this browser.');
+        }}
+        style={{ background: '#126F71', color: '#fff', border: 0, padding: '10px 16px', cursor: 'pointer' }}
+      >
+        Disable anonymous analytics on this browser
+      </button>
       
       <h2>Contact Us</h2>
       <p>For privacy concerns, please contact us at <strong>support@snuggleup.co.za</strong></p>
