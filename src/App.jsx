@@ -2251,6 +2251,7 @@ function App() {
               <p>Made with <span className="heart">❤️</span> for all parents.</p>
               <p>Contact: support@snuggleup.co.za </p>
               <p style={{ marginTop: '0.5rem' }}>
+                <a href="/about.html" style={{ color: '#999', marginRight: '1rem' }}>About SnuggleUp</a>
                 <a href="#" onClick={() => setCurrentPage('privacy')} style={{ color: '#999', marginRight: '1rem' }}>Privacy Policy</a>
                 <a href="#" onClick={() => setCurrentPage('shipping')} style={{ color: '#999', marginRight: '1rem' }}>Shipping Policy</a>
                 <a href="#" onClick={() => setCurrentPage('returns')} style={{ color: '#999', marginRight: '1rem' }}>Returns Policy</a>
