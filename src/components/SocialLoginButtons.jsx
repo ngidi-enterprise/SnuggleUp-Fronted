@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
-const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+// Google OAuth client IDs are public browser identifiers, not secrets.
+const GOOGLE_CLIENT_ID =
+  '890890309730-5h3r5rr1muhfnbl25oa6shgqcjhsvb19.apps.googleusercontent.com';
 
 const loadGoogleIdentityServices = () => new Promise((resolve, reject) => {
   if (window.google?.accounts?.id) {
