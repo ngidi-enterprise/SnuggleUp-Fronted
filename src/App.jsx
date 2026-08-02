@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
 const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
+const formatMoney = (value) => Number(value || 0).toFixed(2);
 
 const reconcileBundleSelections = (items, selections, bundles) => (
   (Array.isArray(selections) ? selections : []).map(selection => {
@@ -854,7 +855,7 @@ function App() {
         <img src={item.image} alt={item.name} className="cart-item-image" />
         <div className="cart-item-details">
           <h4>{item.name}</h4>
-          <p>R{item.price} each</p>
+          <p>R{formatMoney(item.price)} each</p>
           {bundleNamesForItem(item).map(bundleName => (
             <span className="cart-kit-label" key={bundleName}>Included in {bundleName}</span>
           ))}
@@ -875,7 +876,7 @@ function App() {
           </div>
         </div>
         <div className="cart-item-total">
-          R{item.price * item.quantity}
+          R{formatMoney(Number(item.price) * Number(item.quantity))}
         </div>
       </div>
     );
@@ -2302,7 +2303,7 @@ function App() {
                           <img src={item.image} alt={item.name} className="cart-item-image" />
                           <div className="cart-item-details">
                             <h4>{item.name}</h4>
-                            <p>R{item.price} each</p>
+                            <p>R{formatMoney(item.price)} each</p>
                             {isOutOfStock && (
                               <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
                                 ⚠️ Sold out
@@ -2320,7 +2321,7 @@ function App() {
                             </div>
                           </div>
                           <div className="cart-item-total">
-                            R{item.price * item.quantity}
+                            R{formatMoney(Number(item.price) * Number(item.quantity))}
                           </div>
                         </div>
                       );
