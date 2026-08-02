@@ -534,11 +534,11 @@ body {
 }
 
 /* Shopping Cart Full Page Display */
-/* banner shown to guests after first purchase */
+/* First-order offer shown only while the customer is eligible. */
 .account-prompt-banner {
-  background: #fff3cd;
-  color: #856404;
-  padding: 6px 12px;
+  background: #fff4f7;
+  color: #7b2349;
+  padding: 8px 12px;
   text-align: center;
   font-size: 0.9rem;
   display: flex;
@@ -546,14 +546,26 @@ body {
   align-items: center;
   gap: 8px;
 }
-.account-prompt-banner .btn-small {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
+
+.app.has-account-prompt {
+  --header-height: 150px;
+}
+
+.app.has-account-prompt .header {
+  flex-wrap: wrap;
+}
+
+.app.has-account-prompt .account-prompt-banner {
+  order: -1;
+  flex: 1 0 100%;
+  width: calc(100% + 1.5rem);
+  margin: -0.75rem -0.75rem 0;
+}
+
+.cart-first-order-saving {
+  margin-bottom: 8px;
+  color: #0c7376;
+  font-weight: 700;
 }
 
 .cart-page {
@@ -940,26 +952,18 @@ body {
     min-height: var(--header-height);
   }
 
-  .account-prompt-banner {
+  .app.has-account-prompt .account-prompt-banner {
     order: 0;
     width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    margin: 0;
+    flex: none;
+    display: block;
     align-items: center;
-    gap: 8px;
     padding: 8px 10px;
     border-radius: 0;
     font-size: 0.92rem;
     line-height: 1.25;
-  }
-
-  .account-prompt-banner .btn-small {
-    min-height: 38px;
-    padding: 6px 12px;
-    border-radius: 7px;
-    font-size: 0.88rem;
-    font-weight: 700;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .logo-section {
@@ -1214,17 +1218,11 @@ body {
     min-height: var(--header-height);
   }
 
-  .account-prompt-banner {
+  .app.has-account-prompt .account-prompt-banner {
     font-size: 0.84rem;
     padding: 7px 8px;
   }
 
-  .account-prompt-banner .btn-small {
-    min-height: 34px;
-    padding: 5px 9px;
-    font-size: 0.78rem;
-  }
-  
   .logo {
     width: 48px;
     min-width: 48px;
@@ -2045,6 +2043,148 @@ body {
     top: 12px;
     right: 12px;
     bottom: auto;
+  }
+}
+
+/* Official brand artwork remains unaltered inside a quiet, horizontal shop strip. */
+.favourite-brands {
+  width: 100%;
+  margin: 18px 0 24px;
+  padding: 30px max(24px, calc((100% - 1180px) / 2));
+  background: #fff;
+  border-top: 1px solid #e2eceb;
+  border-bottom: 1px solid #e2eceb;
+}
+
+.favourite-brands-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.favourite-brands-heading p {
+  margin: 0 0 4px;
+  color: #c53c72;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.favourite-brands-heading h2 {
+  margin: 0;
+  color: #233142;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.brand-scroll-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.brand-scroll-controls button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #b9d5d2;
+  border-radius: 50%;
+  background: #fff;
+  color: #0c7376;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.brand-scroll-controls button:hover,
+.brand-scroll-controls button:focus-visible {
+  border-color: #0c7376;
+  background: #edf8f6;
+}
+
+.favourite-brands-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: #b9d5d2 transparent;
+}
+
+.brand-logo-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  height: 94px;
+  padding: 14px 18px;
+  border: 1px solid #e2eceb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.brand-logo-button:hover,
+.brand-logo-button:focus-visible {
+  border-color: #8ac8c1;
+  box-shadow: 0 5px 16px rgba(12, 115, 118, 0.1);
+  transform: translateY(-2px);
+}
+
+.brand-logo-button img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 58px;
+  object-fit: contain;
+}
+
+@media (max-width: 700px) {
+  .favourite-brands {
+    margin-top: 12px;
+    padding: 24px 16px;
+  }
+
+  .favourite-brands-heading {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .favourite-brands-heading h2 {
+    font-size: 1.4rem;
+  }
+
+  .favourite-brands-heading p {
+    font-size: 0.72rem;
+  }
+
+  .brand-scroll-controls button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .favourite-brands-track {
+    grid-auto-columns: 138px;
+  }
+
+  .brand-logo-button {
+    min-width: 138px;
+    height: 82px;
+    padding: 12px 15px;
+  }
+
+  .brand-logo-button img {
+    max-height: 50px;
   }
 }
 

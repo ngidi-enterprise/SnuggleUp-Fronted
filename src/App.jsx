@@ -36,6 +36,7 @@ import CJProductDetail from './components/CJProductDetail';
 import LocalProductsCatalog from './components/LocalProductsCatalog';
 import LocalProductDetail from './components/LocalProductDetail';
 import LocalBundleShowcase from './components/LocalBundleShowcase';
+import FavouriteBrands from './components/FavouriteBrands';
 import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
  
@@ -117,6 +118,8 @@ function App() {
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+  const [firstOrderEligible, setFirstOrderEligible] = useState(false);
+  const [firstOrderEligibilityReady, setFirstOrderEligibilityReady] = useState(false);
   
   // Local Products State
   const [selectedLocalProductId, setSelectedLocalProductId] = useState(null);
@@ -223,22 +226,6 @@ function App() {
     }
   ];
 
-  // determine whether to show the post-purchase account creation prompt
-  useEffect(() => {
-    if (!isAuthenticated) {
-      try {
-        const madeFirst = localStorage.getItem('hasMadeFirstPurchase');
-        if (madeFirst === 'true') {
-          setShowAccountPrompt(true);
-        }
-      } catch {};
-    } else {
-      // user logged in – no need to prompt and clear flag
-      setShowAccountPrompt(false);
-      try { localStorage.removeItem('hasMadeFirstPurchase'); } catch {};
-    }
-  }, [isAuthenticated]);
-
   // Prefill shipping name from user profile when available (editable by user)
   const defaultCustomerName = (
     user?.name ||
@@ -299,6 +286,58 @@ function App() {
     });
     throw lastErr || new Error('All API bases failed');
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkEligibility = async () => {
+      try {
+        if (!isAuthenticated && localStorage.getItem('hasMadeFirstPurchase') === 'true') {
+          if (!cancelled) {
+            setFirstOrderEligible(false);
+            setFirstOrderEligibilityReady(true);
+          }
+          return;
+        }
+      } catch {}
+
+      try {
+        const response = await fetchApi('/api/payments/first-order-eligibility', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const data = await response.json();
+        if (!cancelled) {
+          setFirstOrderEligible(Boolean(data.eligible));
+        }
+      } catch (error) {
+        console.warn('Could not verify first-order discount eligibility:', error);
+        if (!cancelled) {
+          setFirstOrderEligible(!isAuthenticated);
+        }
+      } finally {
+        if (!cancelled) setFirstOrderEligibilityReady(true);
+      }
+    };
+
+    checkEligibility();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, token]);
+
+  useEffect(() => {
+    setShowAccountPrompt(
+      firstOrderEligibilityReady
+      && firstOrderEligible
+      && !isAdmin
+      && !showAdminDashboard
+    );
+  }, [
+    firstOrderEligibilityReady,
+    firstOrderEligible,
+    isAdmin,
+    showAdminDashboard,
+  ]);
 
   useEffect(() => {
     if (!token || !isAdmin) return;
@@ -1245,8 +1284,14 @@ function App() {
     return total + (Number(bundle?.saving || 0) * Number(selection.quantity || 0));
   }, 0);
 
+  const getFirstOrderDiscount = () => {
+    if (!firstOrderEligibilityReady || !firstOrderEligible) return 0;
+    const eligibleSubtotal = Math.max(getSubtotal() - getBundleDiscount(), 0);
+    return Math.round(eligibleSubtotal * 10) / 100;
+  };
+
   const getDiscount = () => {
-    return getVoucherDiscount() + getBundleDiscount();
+    return getVoucherDiscount() + getBundleDiscount() + getFirstOrderDiscount();
   };
 
   const getInsuranceCost = () => {
@@ -1637,10 +1682,7 @@ function App() {
       <header className="header" ref={headerRef}>
         {showAccountPrompt && (
           <div className="account-prompt-banner">
-            <span>Create an account &amp; get 3% off your next purchase!</span>
-            <button className="btn-small" onClick={() => { setShowOrderTracking(false); setShowUserAccount(false); setAuthView('register'); setShowAuthModal(true); }}>
-              Register Now
-            </button>
+            <span><strong>New here?</strong> Enjoy 10% off your first SnuggleUp order. Applied automatically.</span>
           </div>
         )}
         <div className="logo-section">
@@ -2052,6 +2094,15 @@ function App() {
                         bundles={localBundles}
                         onAddBundle={addLocalBundle}
                       />
+                      <FavouriteBrands
+                        onSelectBrand={(brandSearch) => {
+                          setSearchTerm(brandSearch);
+                          setCatalogView('local');
+                          window.setTimeout(() => {
+                            document.getElementById('local-anchor')?.scrollIntoView({ behavior: 'smooth' });
+                          }, 50);
+                        }}
+                      />
                       <LocalProductsCatalog
                         query={searchTerm}
                         onOpenProduct={openLocalProduct}
@@ -2253,6 +2304,11 @@ function App() {
                               Kit saving: -R{getBundleDiscount().toFixed(2)}
                             </p>
                           )}
+                          {getFirstOrderDiscount() > 0 && (
+                            <p className="cart-first-order-saving">
+                              First-order saving (10%): -R{getFirstOrderDiscount().toFixed(2)}
+                            </p>
+                          )}
                         </div>
                         {!appliedVoucher && (
                           <div style={{marginTop: '12px', marginBottom: '12px'}}>
@@ -2348,6 +2404,11 @@ function App() {
                       {getBundleDiscount() > 0 && (
                         <p className="cart-kit-saving">
                           Kit saving: -R{getBundleDiscount().toFixed(2)}
+                        </p>
+                      )}
+                      {getFirstOrderDiscount() > 0 && (
+                        <p className="cart-first-order-saving">
+                          First-order saving (10%): -R{getFirstOrderDiscount().toFixed(2)}
                         </p>
                       )}
                       <strong>Total: R{getTotalPrice().toFixed(2)}</strong>
