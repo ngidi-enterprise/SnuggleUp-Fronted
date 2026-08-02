@@ -2,6 +2,24 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
 // Brand logo asset path (place the provided PNG here): public/images/snuggleup-logo-brand.png
 const BRAND_LOGO_SRC = '/images/snuggleup-logo-brand.png';
+
+const reconcileBundleSelections = (items, selections, bundles) => (
+  (Array.isArray(selections) ? selections : []).map(selection => {
+    const bundle = bundles.find(item => item.id === selection.id);
+    if (!bundle) return null;
+    const availableSets = Math.min(
+      ...bundle.productIds.map(productId => {
+        const cartItem = items.find(item => String(item.id) === String(productId));
+        return Math.max(0, Number(cartItem?.quantity || 0));
+      })
+    );
+    const quantity = Math.min(
+      Math.max(0, Number(selection.quantity || 0)),
+      availableSets
+    );
+    return quantity > 0 ? { id: selection.id, quantity } : null;
+  }).filter(Boolean)
+);
 import CheckoutSuccess from './CheckoutSuccess';
 import CheckoutCancel from './CheckoutCancel';
 import Login from './components/Login';
@@ -16,6 +34,7 @@ import CJCatalog from './components/CJCatalog';
 import CJProductDetail from './components/CJProductDetail';
 import LocalProductsCatalog from './components/LocalProductsCatalog';
 import LocalProductDetail from './components/LocalProductDetail';
+import LocalBundleShowcase from './components/LocalBundleShowcase';
 import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
  
@@ -85,6 +104,15 @@ function App() {
   const [shippingFormData, setShippingFormData] = useState(null);
   const [backendDown, setBackendDown] = useState(false);
   const [localProductsCache, setLocalProductsCache] = useState([]);
+  const [localBundles, setLocalBundles] = useState([]);
+  const [bundleSelections, setBundleSelections] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cartBundles') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
   const [backendCheckFailed, setBackendCheckFailed] = useState(0);
   const [lastFailureTime, setLastFailureTime] = useState(0);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
@@ -394,6 +422,28 @@ function App() {
   }, [cartItems]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem('cartBundles', JSON.stringify(bundleSelections));
+    } catch (error) {
+      console.warn('Failed to save selected kits to localStorage:', error);
+    }
+  }, [bundleSelections]);
+
+  useEffect(() => {
+    if (localBundles.length === 0) return;
+    setBundleSelections(currentSelections => {
+      const reconciled = reconcileBundleSelections(
+        cartItems,
+        currentSelections,
+        localBundles
+      );
+      return JSON.stringify(reconciled) === JSON.stringify(currentSelections)
+        ? currentSelections
+        : reconciled;
+    });
+  }, [cartItems, localBundles]);
+
+  useEffect(() => {
     setCartCount(
       cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
     );
@@ -630,11 +680,20 @@ function App() {
     let mounted = true;
     const prefetchLocal = async () => {
       try {
-        const res = await fetchApi('/api/local-products?limit=200');
-        if (!res || !res.ok) return;
-        const data = await res.json();
+        const [productsResponse, bundlesResponse] = await Promise.all([
+          fetchApi('/api/local-products?limit=200'),
+          fetchApi('/api/local-products/bundles/available'),
+        ]);
+        if (!productsResponse || !productsResponse.ok) return;
+        const data = await productsResponse.json();
         if (mounted && Array.isArray(data.products)) {
           setLocalProductsCache(data.products);
+        }
+        if (bundlesResponse?.ok) {
+          const bundleData = await bundlesResponse.json();
+          if (mounted && Array.isArray(bundleData.bundles)) {
+            setLocalBundles(bundleData.bundles);
+          }
         }
       } catch (e) {
         // Ignore prefetch errors silently
@@ -777,6 +836,13 @@ function App() {
   const localSubtotal = subtotalFor(localItems);
   const importSubtotal = subtotalFor(importItems);
 
+  const bundleNamesForItem = (item) => localBundles
+    .filter(bundle => (
+      bundleSelections.some(selection => selection.id === bundle.id && selection.quantity > 0) &&
+      bundle.productIds.some(productId => String(productId) === String(item.id))
+    ))
+    .map(bundle => bundle.name);
+
   // helper for rendering a single cart-item row (used in both groups)
   const renderItemRow = (item) => {
     const stockQty = item.stock_quantity || 0;
@@ -789,6 +855,9 @@ function App() {
         <div className="cart-item-details">
           <h4>{item.name}</h4>
           <p>R{item.price} each</p>
+          {bundleNamesForItem(item).map(bundleName => (
+            <span className="cart-kit-label" key={bundleName}>Included in {bundleName}</span>
+          ))}
           {isOutOfStock && (
             <p style={{ color: '#e74c3c', fontSize: '0.85em', fontWeight: 'bold', margin: '4px 0' }}>
               ⚠️ Sold out
@@ -984,6 +1053,61 @@ function App() {
     trackAddToCart(normalizedProduct, 1);
   };
 
+  const addLocalBundle = (bundle) => {
+    if (!bundle?.isAvailable || !Array.isArray(bundle.products)) {
+      return { message: 'This kit is not available right now.' };
+    }
+
+    const unavailableProduct = bundle.products.find(product => {
+      const existingItem = cartItems.find(item => String(item.id) === String(product.id));
+      const nextQuantity = Number(existingItem?.quantity || 0) + 1;
+      return nextQuantity > Number(product.stock_quantity || 0);
+    });
+
+    if (unavailableProduct) {
+      return { message: `${unavailableProduct.name} does not have enough stock for another kit.` };
+    }
+
+    setCartItems(previousItems => {
+      const nextItems = [...previousItems];
+      bundle.products.forEach(product => {
+        const normalizedProduct = normalizeCartItem({
+          ...product,
+          isLocal: true,
+          source: 'local',
+        }, 1);
+        const existingIndex = nextItems.findIndex(
+          item => String(item.id) === String(normalizedProduct.id)
+        );
+
+        if (existingIndex >= 0) {
+          nextItems[existingIndex] = {
+            ...nextItems[existingIndex],
+            quantity: Number(nextItems[existingIndex].quantity || 0) + 1,
+          };
+        } else {
+          nextItems.push(normalizedProduct);
+        }
+        trackAddToCart(normalizedProduct, 1);
+      });
+      return nextItems;
+    });
+
+    setBundleSelections(previousSelections => {
+      const existing = previousSelections.find(selection => selection.id === bundle.id);
+      if (existing) {
+        return previousSelections.map(selection => (
+          selection.id === bundle.id
+            ? { ...selection, quantity: Number(selection.quantity || 0) + 1 }
+            : selection
+        ));
+      }
+      return [...previousSelections, { id: bundle.id, quantity: 1 }];
+    });
+
+    return { message: `${bundle.name} added to your cart. You saved R${Number(bundle.saving).toFixed(0)}.` };
+  };
+
   const removeFromCart = (productId) => {
     setCartItems(prevItems => {
       const item = prevItems.find(item => String(item.id) === String(productId));
@@ -996,11 +1120,18 @@ function App() {
             : item
         );
         trackRemoveFromCart(item, 1);
+        setBundleSelections(selections => (
+          reconcileBundleSelections(updated, selections, localBundles)
+        ));
         return updated;
       }
 
       trackRemoveFromCart(item, item.quantity || 0);
-      return prevItems.filter(item => String(item.id) !== String(productId));
+      const updated = prevItems.filter(item => String(item.id) !== String(productId));
+      setBundleSelections(selections => (
+        reconcileBundleSelections(updated, selections, localBundles)
+      ));
+      return updated;
     });
   };
 
@@ -1106,8 +1237,15 @@ function App() {
     return selectedShipping?.logisticName || null;
   };
 
+  const getVoucherDiscount = () => Number(appliedVoucher?.value || 0);
+
+  const getBundleDiscount = () => bundleSelections.reduce((total, selection) => {
+    const bundle = localBundles.find(item => item.id === selection.id);
+    return total + (Number(bundle?.saving || 0) * Number(selection.quantity || 0));
+  }, 0);
+
   const getDiscount = () => {
-    return appliedVoucher ? appliedVoucher.value : 0;
+    return getVoucherDiscount() + getBundleDiscount();
   };
 
   const getInsuranceCost = () => {
@@ -1305,7 +1443,8 @@ function App() {
         subtotal: getSubtotal(),
         importShipping,
         localShipping,
-        discount: getDiscount()
+        discount: getDiscount(),
+        bundleSelections,
       }));
 
       // build headers; only include auth when the framework says user is authenticated
@@ -1327,7 +1466,8 @@ function App() {
             subtotal: Math.round(getSubtotal() * 100) / 100,
             shipping: Math.round(importShipping * 100) / 100,
             localShipping: Math.round(localShipping * 100) / 100,
-            discount: Math.round(getDiscount() * 100) / 100,
+            discount: Math.round(getVoucherDiscount() * 100) / 100,
+            bundleSelections,
             shippingMethod: importShippingMethod,
             localShippingMethod,
             localDeliveryMode,
@@ -1906,15 +2046,21 @@ function App() {
               {catalogView === 'local' && (
                 <div id="local-anchor" style={{ flex: '1 0 auto' }}>
                   {!selectedLocalProductId ? (
-                    <LocalProductsCatalog
-                      query={searchTerm}
-                      onOpenProduct={openLocalProduct}
-                      isAdmin={isAdmin}
-                      onShowUpload={() => setShowLocalProductUpload(true)}
-                      initialProducts={localProductsCache}
-                      onAddToCart={addToCart}
-                      onSearch={setSearchTerm}
-                    />
+                    <>
+                      <LocalBundleShowcase
+                        bundles={localBundles}
+                        onAddBundle={addLocalBundle}
+                      />
+                      <LocalProductsCatalog
+                        query={searchTerm}
+                        onOpenProduct={openLocalProduct}
+                        isAdmin={isAdmin}
+                        onShowUpload={() => setShowLocalProductUpload(true)}
+                        initialProducts={localProductsCache}
+                        onAddToCart={addToCart}
+                        onSearch={setSearchTerm}
+                      />
+                    </>
                   ) : (
                     <LocalProductDetail
                       product={selectedLocalProductId}
@@ -2101,6 +2247,11 @@ function App() {
                               </button>
                             </p>
                           )}
+                          {getBundleDiscount() > 0 && (
+                            <p className="cart-kit-saving">
+                              Kit saving: -R{getBundleDiscount().toFixed(2)}
+                            </p>
+                          )}
                         </div>
                         {!appliedVoucher && (
                           <div style={{marginTop: '12px', marginBottom: '12px'}}>
@@ -2191,6 +2342,11 @@ function App() {
                           >
                             ✕
                           </button>
+                        </p>
+                      )}
+                      {getBundleDiscount() > 0 && (
+                        <p className="cart-kit-saving">
+                          Kit saving: -R{getBundleDiscount().toFixed(2)}
                         </p>
                       )}
                       <strong>Total: R{getTotalPrice().toFixed(2)}</strong>
