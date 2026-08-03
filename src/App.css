@@ -33,24 +33,6 @@ body {
   padding-top: var(--header-height);
 }
 
-/*
- * Desktop campaign landing view:
- * render the storefront at the same visual density customers previously saw
- * only after changing their browser zoom to 80%. Keeping this desktop-only
- * preserves the existing tablet and mobile layouts.
- */
-@media (min-width: 1200px) {
-  body {
-    overflow-x: hidden;
-  }
-
-  .app:has(.local-product-detail-page) {
-    width: 125%;
-    max-width: 125%;
-    zoom: 0.8;
-  }
-}
-
 /* Header Styling */
 .header {
   position: fixed;
