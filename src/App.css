@@ -2150,13 +2150,24 @@ body {
   transform: translateY(-2px);
 }
 
-.brand-logo-button img {
+.favourite-brand-logo {
   display: block;
   width: auto;
   height: auto;
-  max-width: 100%;
+  max-width: 82%;
   max-height: 58px;
   object-fit: contain;
+}
+
+.brand-name-fallback {
+  display: none;
+  font-weight: 600;
+  color: #126f71;
+  text-align: center;
+}
+
+.brand-image-error .brand-name-fallback {
+  display: block;
 }
 
 @media (max-width: 700px) {
@@ -2194,7 +2205,7 @@ body {
     padding: 12px 15px;
   }
 
-  .brand-logo-button img {
+  .favourite-brand-logo {
     max-height: 50px;
   }
 }
