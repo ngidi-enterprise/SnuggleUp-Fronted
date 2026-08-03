@@ -249,6 +249,13 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                 )}
               </div>
 
+              <div className="product-trust-strip" aria-label="Shopping benefits">
+                <span>🔒 Secure Payfast Card Payments</span>
+                <span>🚚 Fast National Delivery</span>
+                <span>🔄 Easy Returns</span>
+                <span className="first-order-benefit">🎉 First order? Get 10% OFF Your Order Immediately</span>
+              </div>
+
               {/* Fast Delivery Info */}
               <div className="fast-shipping-info">
                 <div className="shipping-badge">⚡ Delivery in 2-3 Working Days</div>
@@ -260,7 +267,7 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                 {inStock ? (
                   <>
                     <span className="stock-icon">✓</span>
-                    <span>{product.stock_quantity} in stock</span>
+                    <span>In stock</span>
                   </>
                 ) : (
                   <>
