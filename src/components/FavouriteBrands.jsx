@@ -1,13 +1,20 @@
 import React, { useRef } from 'react';
+import bennettsLogo from '../assets/brands/bennetts.png';
+import huggiesLogo from '../assets/brands/huggies.png';
+import johnsonsLogo from '../assets/brands/johnsons.png';
+import lilMastersLogo from '../assets/brands/lil-masters.png';
+import nestleLogo from '../assets/brands/nestle.png';
+import pampersLogo from '../assets/brands/pampers.png';
+import purityLogo from '../assets/brands/purity.png';
 
 const BRANDS = [
-  { name: "Johnson's", logo: '/images/brands/johnsons.png', search: 'johnson' },
-  { name: 'Nestlé', logo: '/images/brands/nestle.png', search: 'nestl' },
-  { name: 'Huggies', logo: '/images/brands/huggies.png', search: 'huggies' },
-  { name: 'Pampers', logo: '/images/brands/pampers.png', search: 'pampers' },
-  { name: 'Lil Masters', logo: '/images/brands/lil-masters.png', search: 'lil masters' },
-  { name: 'Bennetts', logo: '/images/brands/bennetts.png', search: 'bennetts' },
-  { name: 'Purity', logo: '/images/brands/purity.png', search: 'purity' },
+  { name: "Johnson's", logo: johnsonsLogo, search: 'johnson' },
+  { name: 'Nestlé', logo: nestleLogo, search: 'nestl' },
+  { name: 'Huggies', logo: huggiesLogo, search: 'huggies' },
+  { name: 'Pampers', logo: pampersLogo, search: 'pampers' },
+  { name: 'Lil Masters', logo: lilMastersLogo, search: 'lil masters' },
+  { name: 'Bennetts', logo: bennettsLogo, search: 'bennetts' },
+  { name: 'Purity', logo: purityLogo, search: 'purity' },
 ];
 
 export default function FavouriteBrands({ onSelectBrand }) {
@@ -53,14 +60,7 @@ export default function FavouriteBrands({ onSelectBrand }) {
               loading="lazy"
               decoding="async"
               className="favourite-brand-logo"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none';
-                event.currentTarget
-                  .closest('.favourite-brand-card')
-                  ?.classList.add('brand-image-error');
-              }}
             />
-            <span className="brand-name-fallback">{brand.name}</span>
           </button>
         ))}
       </div>
