@@ -2069,10 +2069,12 @@ body {
 
 .favourite-brands-heading {
   display: flex;
-  align-items: end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   gap: 24px;
-  margin-bottom: 22px;
+  margin-bottom: 26px;
+  text-align: center;
 }
 
 .favourite-brands-heading p {
@@ -2091,9 +2093,21 @@ body {
   letter-spacing: 0;
 }
 
+.favourite-brands-heading h2::after {
+  content: "";
+  display: block;
+  width: 96px;
+  height: 3px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  background: #e990b4;
+}
+
 .brand-scroll-controls {
   display: flex;
   gap: 8px;
+  position: absolute;
+  right: 0;
 }
 
 .brand-scroll-controls button {
@@ -2118,10 +2132,10 @@ body {
 .favourite-brands-track {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
-  gap: 12px;
+  grid-auto-columns: minmax(145px, 1fr);
+  gap: 26px;
   overflow-x: auto;
-  padding: 2px 2px 10px;
+  padding: 12px 2px 16px;
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
@@ -2132,31 +2146,36 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 150px;
-  height: 112px;
-  padding: 18px;
-  border: 1px solid #e2eceb;
-  border-radius: 6px;
-  background: #fff;
+  min-width: 145px;
+  height: 96px;
+  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
   scroll-snap-align: start;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .brand-logo-button:hover,
 .brand-logo-button:focus-visible {
-  border-color: #8ac8c1;
-  box-shadow: 0 5px 16px rgba(12, 115, 118, 0.1);
-  transform: translateY(-2px);
+  box-shadow: none;
+  opacity: 0.82;
+  transform: translateY(-3px);
+  outline: 2px solid transparent;
 }
 
 .favourite-brand-logo {
   display: block;
   width: auto;
   height: auto;
-  max-width: 82%;
-  max-height: 64px;
+  max-width: 94%;
+  max-height: 68px;
   object-fit: contain;
+}
+
+.favourite-brand-logo[src*="nestle-logo"] {
+  max-height: 82px;
 }
 
 @media (max-width: 700px) {
@@ -2167,8 +2186,10 @@ body {
 
   .favourite-brands-heading {
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: 18px;
+    text-align: left;
   }
 
   .favourite-brands-heading h2 {
@@ -2184,6 +2205,15 @@ body {
     height: 36px;
   }
 
+  .brand-scroll-controls {
+    position: static;
+  }
+
+  .favourite-brands-heading h2::after {
+    width: 72px;
+    margin: 9px 0 0;
+  }
+
   .favourite-brands-track {
     grid-auto-columns: 138px;
   }
@@ -2191,7 +2221,7 @@ body {
   .brand-logo-button {
     min-width: 138px;
     height: 82px;
-    padding: 12px 15px;
+    padding: 9px;
   }
 
   .favourite-brand-logo {
