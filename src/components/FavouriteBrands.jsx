@@ -1,16 +1,18 @@
 import React, { useRef } from 'react';
-import bennettsLogo from '../assets/brands/bennetts.png';
-import huggiesLogo from '../assets/brands/huggies.png';
 import johnsonsLogo from '../assets/brands/johnsons.png';
-import lilMastersLogo from '../assets/brands/lil-masters.png';
-import nestleLogo from '../assets/brands/nestle.png';
-import pampersLogo from '../assets/brands/pampers.png';
+import bennettsLogo from '../assets/brands/bennetts.svg';
+import lilMastersLogo from '../assets/brands/lil-masters.svg';
+import nestleLogo from '../assets/brands/nestle.svg';
+import pampersLogo from '../assets/brands/pampers.svg';
 import purityLogo from '../assets/brands/purity.png';
+
+const HUGGIES_LOGO =
+  'https://images.seeklogo.com/logo-png/32/1/huggies-logo-png_seeklogo-324264.png';
 
 const BRANDS = [
   { name: "Johnson's", logo: johnsonsLogo, search: 'johnson' },
   { name: 'Nestlé', logo: nestleLogo, search: 'nestl' },
-  { name: 'Huggies', logo: huggiesLogo, search: 'huggies' },
+  { name: 'Huggies', logo: HUGGIES_LOGO, search: 'huggies' },
   { name: 'Pampers', logo: pampersLogo, search: 'pampers' },
   { name: 'Lil Masters', logo: lilMastersLogo, search: 'lil masters' },
   { name: 'Bennetts', logo: bennettsLogo, search: 'bennetts' },
