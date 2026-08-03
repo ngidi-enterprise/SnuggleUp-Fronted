@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
 
 const BRANDS = [
-  { name: "Johnson's", image: '/images/brands/johnsons.png', search: 'johnson' },
-  { name: 'Nestle', image: '/images/brands/nestle.svg', search: 'nestl' },
-  { name: 'Huggies', image: '/images/brands/huggies.svg', search: 'huggies' },
-  { name: 'Pampers', image: '/images/brands/pampers.svg', search: 'pampers' },
-  { name: 'Lil Masters', image: '/images/brands/lil-masters.svg', search: 'lil masters' },
-  { name: 'Bennetts', image: '/images/brands/bennetts.svg', search: 'bennetts' },
-  { name: 'Purity', image: '/images/brands/purity.png', search: 'purity' },
+  { name: "Johnson's", logo: '/images/brands/johnsons.png', search: 'johnson' },
+  { name: 'Nestlé', logo: '/images/brands/nestle.png', search: 'nestl' },
+  { name: 'Huggies', logo: '/images/brands/huggies.png', search: 'huggies' },
+  { name: 'Pampers', logo: '/images/brands/pampers.png', search: 'pampers' },
+  { name: 'Lil Masters', logo: '/images/brands/lil-masters.png', search: 'lil masters' },
+  { name: 'Bennetts', logo: '/images/brands/bennetts.png', search: 'bennetts' },
+  { name: 'Purity', logo: '/images/brands/purity.png', search: 'purity' },
 ];
 
 export default function FavouriteBrands({ onSelectBrand }) {
@@ -40,14 +40,27 @@ export default function FavouriteBrands({ onSelectBrand }) {
       <div className="favourite-brands-track" ref={trackRef}>
         {BRANDS.map(brand => (
           <button
-            className="brand-logo-button"
+            className="brand-logo-button favourite-brand-card"
             key={brand.name}
             type="button"
             onClick={() => onSelectBrand?.(brand.search)}
             aria-label={`Shop ${brand.name} products`}
             title={`Shop ${brand.name}`}
           >
-            <img src={brand.image} alt={`${brand.name} logo`} loading="lazy" />
+            <img
+              src={brand.logo}
+              alt={`${brand.name} logo`}
+              loading="lazy"
+              decoding="async"
+              className="favourite-brand-logo"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+                event.currentTarget
+                  .closest('.favourite-brand-card')
+                  ?.classList.add('brand-image-error');
+              }}
+            />
+            <span className="brand-name-fallback">{brand.name}</span>
           </button>
         ))}
       </div>
