@@ -2159,6 +2159,11 @@ body {
   object-fit: contain;
 }
 
+/* Never display legacy text fallbacks beside or instead of a brand mark. */
+.brand-logo-button .brand-name-fallback {
+  display: none !important;
+}
+
 @media (max-width: 700px) {
   .favourite-brands {
     margin-top: 12px;
