@@ -47,7 +47,7 @@ export default function FavouriteBrands({ onSelectBrand }) {
       <div className="favourite-brands-track" ref={trackRef}>
         {BRANDS.map(brand => (
           <button
-            className="brand-logo-button favourite-brand-card"
+            className="brand-logo-button"
             key={brand.name}
             type="button"
             onClick={() => onSelectBrand?.(brand.search)}
@@ -56,10 +56,14 @@ export default function FavouriteBrands({ onSelectBrand }) {
           >
             <img
               src={brand.logo}
-              alt={`${brand.name} logo`}
+              alt=""
+              aria-hidden="true"
               loading="lazy"
               decoding="async"
               className="favourite-brand-logo"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
             />
           </button>
         ))}
