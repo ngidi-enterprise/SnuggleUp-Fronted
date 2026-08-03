@@ -2159,17 +2159,6 @@ body {
   object-fit: contain;
 }
 
-.brand-name-fallback {
-  display: none;
-  font-weight: 600;
-  color: #126f71;
-  text-align: center;
-}
-
-.brand-image-error .brand-name-fallback {
-  display: block;
-}
-
 @media (max-width: 700px) {
   .favourite-brands {
     margin-top: 12px;
