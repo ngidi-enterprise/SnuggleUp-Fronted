@@ -51,7 +51,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
-import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused, getStorefrontAnalyticsIdentity } from './lib/analytics';
+import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused, setStorefrontAnalyticsAuthToken, getStorefrontAnalyticsIdentity } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
@@ -135,6 +135,10 @@ function App() {
   });
   
   const { user, token, isAuthenticated, logout } = useAuth();
+
+  useEffect(() => {
+    setStorefrontAnalyticsAuthToken(token);
+  }, [token]);
 
   useEffect(() => {
     const updateHeaderHeight = () => {
