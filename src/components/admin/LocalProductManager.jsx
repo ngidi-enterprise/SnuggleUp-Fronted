@@ -434,7 +434,7 @@ export default function LocalProductManager({ access = {}, onProductStatsChange 
 
       {isProductAssistant && (
         <div className="assistant-access-card">
-          <strong>Product assistant access</strong>
+          <strong>Team Assistant workspace</strong>
           <p>You can upload product details, descriptions, images, stock, weight, and dimensions.</p>
         </div>
       )}

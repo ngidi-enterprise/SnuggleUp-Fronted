@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { getStorefrontAnalyticsIdentity } from '../../lib/analytics';
 
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,21 @@ export default function Analytics() {
     }
     
     try {
+      // Reclassify this browser's existing anonymous events before querying the
+      // customer report. This prevents an immediate login/dashboard navigation
+      // from briefly showing the superuser's session under customer journeys.
+      const classificationRes = await fetch(`${API_BASE}/api/analytics/session-role`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(getStorefrontAnalyticsIdentity()),
+      });
+      if (!classificationRes.ok) {
+        throw new Error(`Unable to classify the current analytics session: ${classificationRes.status}`);
+      }
+
       const [res, trafficRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/analytics`, {
           headers: {

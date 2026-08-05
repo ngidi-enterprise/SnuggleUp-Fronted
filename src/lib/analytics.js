@@ -70,9 +70,12 @@ const sendStorefrontEvent = (eventName, details = {}) => {
   };
   const body = JSON.stringify(payload);
   try {
-    if (!analyticsAuthToken && navigator.sendBeacon) {
-      navigator.sendBeacon(`${API_BASE}/api/analytics/events`, new Blob([body], { type: 'application/json' }));
-      return;
+    if (eventName === 'page_exit' && !analyticsAuthToken && navigator.sendBeacon) {
+      const queued = navigator.sendBeacon(
+        `${API_BASE}/api/analytics/events`,
+        new Blob([body], { type: 'application/json' })
+      );
+      if (queued) return;
     }
     const headers = { 'Content-Type': 'application/json' };
     if (analyticsAuthToken) headers.Authorization = `Bearer ${analyticsAuthToken}`;
@@ -159,8 +162,8 @@ export const trackPageView = (path, title = '') => {
 export const trackProductView = (product) => {
   sendStorefrontEvent('product_view', {
     productId: product.id || product.pid,
-    productName: product.name,
-    productCategory: product.category,
+    productName: product.name || product.product_name || product.title,
+    productCategory: product.category || product.product_category,
   });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'view_item', {

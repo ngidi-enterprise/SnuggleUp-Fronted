@@ -108,7 +108,7 @@ export default function UserManagement() {
   };
 
   const roleLabel = (role, isAdmin) => {
-    if (role === 'product_assistant') return 'Product assistant';
+    if (role === 'product_assistant') return 'Team Assistant';
     if (role === 'superuser' || isAdmin) return 'Superuser';
     return 'Customer';
   };
@@ -167,7 +167,7 @@ export default function UserManagement() {
                     onChange={(event) => updateUserRole(user.id, event.target.value)}
                   >
                     <option value="customer">Customer</option>
-                    <option value="product_assistant">Product assistant</option>
+                    <option value="product_assistant">Team Assistant</option>
                     <option value="superuser">Superuser</option>
                   </select>
                 </td>

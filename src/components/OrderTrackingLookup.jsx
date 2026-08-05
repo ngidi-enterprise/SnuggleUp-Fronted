@@ -81,11 +81,16 @@ export default function OrderTrackingLookup({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoLookupDone, setAutoLookupDone] = useState(false);
+  const [flaggingLate, setFlaggingLate] = useState(false);
+  const [lateFlagMessage, setLateFlagMessage] = useState('');
+  const [lateFlagError, setLateFlagError] = useState('');
 
   const lookupOrder = async () => {
     setLoading(true);
     setError('');
     setOrder(null);
+    setLateFlagMessage('');
+    setLateFlagError('');
 
     try {
       const usingToken = Boolean(token);
@@ -130,6 +135,38 @@ export default function OrderTrackingLookup({
     lookupOrder();
   };
 
+  const flagLateOrder = async () => {
+    if (!order?.order_number) return;
+
+    setFlaggingLate(true);
+    setLateFlagMessage('');
+    setLateFlagError('');
+
+    try {
+      const usingToken = Boolean(token);
+      const response = await fetch(`${API_BASE}/api/orders/flag-late`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(usingToken
+          ? { orderNumber: order.order_number, token }
+          : { orderNumber: order.order_number, email }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLateFlagError(data.error || 'We could not flag that order right now.');
+        return;
+      }
+
+      setOrder(data.order || order);
+      setLateFlagMessage(data.message || 'Thanks, our team will investigate and email you promptly.');
+    } catch (err) {
+      setLateFlagError(err.message || 'Late-order flag failed.');
+    } finally {
+      setFlaggingLate(false);
+    }
+  };
+
   const events = normalizeEvents(order);
   const trackingRef = order?.bob_tracking_reference || order?.cj_tracking_number;
   const trackingStatus = order?.bob_tracking_status || order?.cj_status;
@@ -137,6 +174,7 @@ export default function OrderTrackingLookup({
   const hasTracking = Boolean(trackingRef || trackingStatus || events.length);
   const activeStep = trackingStepIndex(trackingStatus, order?.status);
   const steps = ['Created', 'Collected', 'In transit', 'Out for delivery', 'Delivered'];
+  const lateOrderFlagged = Boolean(order?.late_order_flagged_at);
 
   const form = (!order || !token) && (
     <form className="tracking-lookup-form" onSubmit={submit}>
@@ -230,6 +268,27 @@ export default function OrderTrackingLookup({
             ))}
           </div>
         )}
+      </div>
+
+      <div className={`late-order-flag-panel ${lateOrderFlagged ? 'is-flagged' : ''}`}>
+        <div>
+          <strong>{lateOrderFlagged ? 'Late order flagged' : 'Order running late?'}</strong>
+          <p>
+            {lateOrderFlagged
+              ? 'This order is on our admin follow-up list. Our team will investigate and email you promptly.'
+              : 'Click to flag a late delivery or pickup order. Our team will investigate and email you promptly.'}
+          </p>
+        </div>
+        <button
+          className="late-order-flag-action"
+          type="button"
+          onClick={flagLateOrder}
+          disabled={flaggingLate || lateOrderFlagged}
+        >
+          {flaggingLate ? 'Flagging...' : lateOrderFlagged ? 'Late order flagged' : 'Click to flag late order'}
+        </button>
+        {lateFlagMessage && <p className="late-order-flag-message">{lateFlagMessage}</p>}
+        {lateFlagError && <p className="late-order-flag-error">{lateFlagError}</p>}
       </div>
 
       {isPage && (

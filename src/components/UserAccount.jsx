@@ -11,6 +11,29 @@ function UserAccount({ onClose, isAdmin }) {
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
   useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
+
+  const handleBackdropMouseDown = (event) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
     if (activeTab === 'orders') {
       fetchOrders();
     }
@@ -163,10 +186,16 @@ function UserAccount({ onClose, isAdmin }) {
   };
 
   return (
-    <div className="user-account-modal">
-      <div className="user-account-content">
-        <button className="close-account" onClick={onClose}>✕</button>
-        <button className="back-to-shop-btn" onClick={onClose} style={{position:'absolute',left:16,top:16,background:'#ff6600',color:'#fff',border:'none',borderRadius:'25px',padding:'8px 20px',fontWeight:'600',fontSize:'14px',cursor:'pointer',zIndex:1000,boxShadow:'0 2px 8px rgba(0,0,0,0.2)'}}>← Back to Shopping</button>
+    <div
+      className="user-account-modal"
+      onMouseDown={handleBackdropMouseDown}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Your account"
+    >
+      <div className="user-account-content" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="close-account" onClick={onClose} aria-label="Close account panel" title="Close">×</button>
+        <button className="back-to-shop-btn" onClick={onClose}>← Back to Shopping</button>
         <div className="account-header">
           <div className="user-avatar">👤</div>
           <h2>{user?.name || user?.email || 'User'}</h2>
