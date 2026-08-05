@@ -7,6 +7,7 @@ const VISITOR_KEY = 'snuggleup_analytics_visitor';
 const OPT_OUT_KEY = 'snuggleup_analytics_opt_out';
 let activePage = null;
 let analyticsPaused = false;
+let analyticsAuthToken = '';
 let scrollMilestones = new Set();
 
 const randomId = () => {
@@ -33,9 +34,12 @@ const trafficSource = () => {
   const source = params.get('utm_source') || (isGoogleAdsClick ? 'google' : '');
   const medium = params.get('utm_medium') || (isGoogleAdsClick ? 'cpc' : '');
   const campaign = params.get('utm_campaign') || '';
+  const utmTerm = params.get('utm_term') || '';
+  const utmContent = params.get('utm_content') || '';
+  const gclid = params.get('gclid') || '';
   let referrerHost = '';
   try { referrerHost = document.referrer ? new URL(document.referrer).hostname : ''; } catch {}
-  return { source, medium, campaign, referrerHost };
+  return { source, medium, campaign, utmTerm, utmContent, gclid, referrerHost };
 };
 
 const approximateRegion = () => {
@@ -66,11 +70,19 @@ const sendStorefrontEvent = (eventName, details = {}) => {
   };
   const body = JSON.stringify(payload);
   try {
-    if (navigator.sendBeacon) {
+    if (!analyticsAuthToken && navigator.sendBeacon) {
       navigator.sendBeacon(`${API_BASE}/api/analytics/events`, new Blob([body], { type: 'application/json' }));
       return;
     }
-    fetch(`${API_BASE}/api/analytics/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    const headers = { 'Content-Type': 'application/json' };
+    if (analyticsAuthToken) headers.Authorization = `Bearer ${analyticsAuthToken}`;
+    fetch(`${API_BASE}/api/analytics/events`, {
+      method: 'POST',
+      headers,
+      body,
+      keepalive: true,
+      credentials: 'include',
+    }).catch(() => {});
   } catch {}
 };
 
@@ -84,6 +96,10 @@ const closeActivePage = () => {
 export const setStorefrontAnalyticsPaused = (paused) => {
   analyticsPaused = Boolean(paused);
   if (analyticsPaused) activePage = null;
+};
+
+export const setStorefrontAnalyticsAuthToken = (token) => {
+  analyticsAuthToken = String(token || '');
 };
 
 export const getStorefrontAnalyticsIdentity = () => ({
