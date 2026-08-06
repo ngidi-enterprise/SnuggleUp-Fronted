@@ -2130,16 +2130,23 @@ body {
 }
 
 .favourite-brands-track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(145px, 1fr);
-  gap: 26px;
+  display: flex;
   overflow-x: auto;
   padding: 12px 2px 16px;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: #b9d5d2 transparent;
+  scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.favourite-brands-track::-webkit-scrollbar {
+  display: none;
+}
+
+.favourite-brands-sequence {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 26px;
+  padding-right: 26px;
 }
 
 .brand-logo-button {
@@ -2153,7 +2160,6 @@ body {
   border-radius: 0;
   background: transparent;
   cursor: pointer;
-  scroll-snap-align: start;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -2214,8 +2220,9 @@ body {
     margin: 9px 0 0;
   }
 
-  .favourite-brands-track {
-    grid-auto-columns: 138px;
+  .favourite-brands-sequence {
+    gap: 18px;
+    padding-right: 18px;
   }
 
   .brand-logo-button {
@@ -2226,6 +2233,16 @@ body {
 
   .favourite-brand-logo {
     max-height: 50px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favourite-brands-track {
+    scroll-behavior: auto;
+  }
+
+  .brand-logo-button {
+    transition: none;
   }
 }
 
