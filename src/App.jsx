@@ -1849,7 +1849,7 @@ function App() {
           <div style={{
             display: 'flex',
             gap: '10px',
-            padding: '15px 20px',
+            padding: '22px 20px 14px',
             background: '#f9f9f9',
             borderBottom: '1px solid #eee',
             justifyContent: 'center',
@@ -1997,7 +1997,7 @@ function App() {
               <div style={{
                 display: 'flex',
                 gap: '10px',
-                padding: '15px 20px',
+                padding: '22px 20px 14px',
                 background: '#f9f9f9',
                 borderBottom: '1px solid #eee',
                 justifyContent: 'center',
@@ -2107,19 +2107,23 @@ function App() {
                 <div id="local-anchor" style={{ flex: '1 0 auto' }}>
                   {!selectedLocalProductId ? (
                     <>
-                      <LocalBundleShowcase
-                        bundles={localBundles}
-                        onAddBundle={addLocalBundle}
-                      />
-                      <FavouriteBrands
-                        onSelectBrand={(brandSearch) => {
-                          setSearchTerm(brandSearch);
-                          setCatalogView('local');
-                          window.setTimeout(() => {
-                            document.getElementById('local-anchor')?.scrollIntoView({ behavior: 'smooth' });
-                          }, 50);
-                        }}
-                      />
+                      {!searchTerm.trim() && (
+                        <>
+                          <LocalBundleShowcase
+                            bundles={localBundles}
+                            onAddBundle={addLocalBundle}
+                          />
+                          <FavouriteBrands
+                            onSelectBrand={(brandSearch) => {
+                              setSearchTerm(brandSearch);
+                              setCatalogView('local');
+                              window.setTimeout(() => {
+                                document.getElementById('local-anchor')?.scrollIntoView({ behavior: 'smooth' });
+                              }, 50);
+                            }}
+                          />
+                        </>
+                      )}
                       <LocalProductsCatalog
                         query={searchTerm}
                         onOpenProduct={openLocalProduct}
