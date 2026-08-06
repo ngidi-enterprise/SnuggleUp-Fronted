@@ -61,10 +61,10 @@ body {
 
 
 .logo {
-  width: 64px;
-  min-width: 64px;
-  max-width: 64px;
-  height: 64px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  height: 84px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,7 +87,8 @@ body {
 
 
 .logo img {
-  width: 100%;
+  width: 108%;
+  max-width: none;
   height: auto;
   display: block;
   object-fit: contain;
@@ -97,7 +98,7 @@ body {
 
 .brand-info h1 {
   color: var(--brand);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.15;
   margin: 0;
@@ -559,7 +560,7 @@ body {
 }
 
 .app.has-account-prompt {
-  --header-height: 112px;
+  --header-height: 142px;
 }
 
 .app.has-account-prompt .header {
