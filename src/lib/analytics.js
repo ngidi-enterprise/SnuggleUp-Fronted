@@ -9,10 +9,46 @@ let activePage = null;
 let analyticsPaused = false;
 let analyticsAuthToken = '';
 let scrollMilestones = new Set();
+let currentPageLoadId = null;
+const recentEvents = new Map();
 
 const randomId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+currentPageLoadId = randomId();
+
+const AUTOMATIC_EVENT_NAMES = new Set([
+  'session_start',
+  'page_view',
+  'page_exit',
+  'product_view',
+  'scroll_depth',
+  'image_view',
+]);
+
+const shouldSuppressClientDuplicate = (eventName, details, pagePath, pageLoadId) => {
+  const now = Date.now();
+  const productId = details.productId || '';
+  const eventValue = details.eventValue ?? '';
+  const key = [
+    eventName,
+    pagePath,
+    productId,
+    eventValue,
+    AUTOMATIC_EVENT_NAMES.has(eventName) ? pageLoadId : '',
+  ].join('|');
+  const windowMs = AUTOMATIC_EVENT_NAMES.has(eventName) ? 30 * 60 * 1000 : 1500;
+  const lastSentAt = recentEvents.get(key);
+  if (lastSentAt && now - lastSentAt < windowMs) return true;
+  recentEvents.set(key, now);
+
+  if (recentEvents.size > 250) {
+    for (const [storedKey, sentAt] of recentEvents) {
+      if (now - sentAt > 30 * 60 * 1000) recentEvents.delete(storedKey);
+    }
+  }
+  return false;
 };
 
 const getStorageId = (key, storage) => {
@@ -36,10 +72,11 @@ const trafficSource = () => {
   const campaign = params.get('utm_campaign') || '';
   const utmTerm = params.get('utm_term') || '';
   const utmContent = params.get('utm_content') || '';
+  const adGroup = params.get('utm_adgroup') || params.get('adgroup') || utmContent;
   const gclid = params.get('gclid') || '';
   let referrerHost = '';
   try { referrerHost = document.referrer ? new URL(document.referrer).hostname : ''; } catch {}
-  return { source, medium, campaign, utmTerm, utmContent, gclid, referrerHost };
+  return { source, medium, campaign, utmTerm, utmContent, adGroup, gclid, referrerHost };
 };
 
 const approximateRegion = () => {
@@ -57,13 +94,20 @@ const sendStorefrontEvent = (eventName, details = {}) => {
     || typeof window === 'undefined'
     || window.location.pathname.startsWith('/admin')
     || window.localStorage.getItem(OPT_OUT_KEY) === '1'
-  ) return;
+  ) return false;
+  const pagePath = details.pagePath || window.location.pathname || '/';
+  const pageLoadId = details.pageLoadId || activePage?.pageLoadId || currentPageLoadId;
+  if (shouldSuppressClientDuplicate(eventName, details, pagePath, pageLoadId)) {
+    return false;
+  }
   const payload = {
     eventName,
     sessionId: getStorageId(SESSION_KEY, window.sessionStorage),
     visitorId: getStorageId(VISITOR_KEY, window.localStorage),
-    pagePath: details.pagePath || window.location.pathname || '/',
+    pagePath,
     pageTitle: details.pageTitle || document.title || '',
+    pageLoadId,
+    clientOccurredAt: new Date().toISOString(),
     ...trafficSource(),
     ...approximateRegion(),
     ...details,
@@ -86,13 +130,21 @@ const sendStorefrontEvent = (eventName, details = {}) => {
       keepalive: true,
       credentials: 'include',
     }).catch(() => {});
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const closeActivePage = () => {
   if (!activePage) return;
   const seconds = Math.max(0, Math.round((Date.now() - activePage.startedAt) / 1000));
-  sendStorefrontEvent('page_exit', { pagePath: activePage.path, pageTitle: activePage.title, durationSeconds: seconds });
+  sendStorefrontEvent('page_exit', {
+    pagePath: activePage.path,
+    pageTitle: activePage.title,
+    pageLoadId: activePage.pageLoadId,
+    durationSeconds: seconds,
+  });
   activePage = null;
 };
 
@@ -123,6 +175,7 @@ if (typeof window !== 'undefined') {
         sendStorefrontEvent('scroll_depth', {
           pagePath: activePage.path,
           pageTitle: activePage.title,
+          pageLoadId: activePage.pageLoadId,
           eventValue: milestone,
         });
       }
@@ -139,13 +192,30 @@ export const trackPageView = (path, title = '') => {
   if (activePage?.path === path) return;
   closeActivePage();
   scrollMilestones = new Set();
-  activePage = { path, title: title || document.title, startedAt: Date.now() };
+  currentPageLoadId = randomId();
+  activePage = {
+    path,
+    title: title || document.title,
+    pageLoadId: currentPageLoadId,
+    startedAt: Date.now(),
+  };
   const sessionId = getStorageId(SESSION_KEY, window.sessionStorage);
   if (!window.sessionStorage.getItem(`${SESSION_KEY}:started`)) {
     window.sessionStorage.setItem(`${SESSION_KEY}:started`, '1');
-    sendStorefrontEvent('session_start', { pagePath: path, pageTitle: title || document.title, sessionId });
+    sendStorefrontEvent('session_start', {
+      pagePath: path,
+      pageTitle: title || document.title,
+      pageLoadId: currentPageLoadId,
+      sessionId,
+    });
   }
-  sendStorefrontEvent('page_view', { pagePath: path, pageTitle: title || document.title, sessionId });
+  const recorded = sendStorefrontEvent('page_view', {
+    pagePath: path,
+    pageTitle: title || document.title,
+    pageLoadId: currentPageLoadId,
+    sessionId,
+  });
+  if (!recorded) return;
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'page_view', {
       page_path: path,
@@ -160,11 +230,12 @@ export const trackPageView = (path, title = '') => {
  * @param {object} product - Product data
  */
 export const trackProductView = (product) => {
-  sendStorefrontEvent('product_view', {
+  const recorded = sendStorefrontEvent('product_view', {
     productId: product.id || product.pid,
     productName: product.name || product.product_name || product.title,
     productCategory: product.category || product.product_category,
   });
+  if (!recorded) return;
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'view_item', {
       currency: 'ZAR',
@@ -211,6 +282,12 @@ export const trackAddToCart = (product, quantity = 1) => {
  * @param {number} quantity - Quantity removed
  */
 export const trackRemoveFromCart = (product, quantity = 1) => {
+  sendStorefrontEvent('remove_from_cart', {
+    productId: product.id || product.pid,
+    productName: product.name || product.product_name,
+    productCategory: product.category,
+    eventValue: Math.max(1, Number(quantity) || 1),
+  });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'remove_from_cart', {
       currency: 'ZAR',
@@ -257,6 +334,11 @@ export const trackBeginCheckout = (cartItems, totalValue) => {
  * @param {number} tax - Tax amount (if applicable)
  */
 export const trackPurchase = (transactionId, items, total, shipping = 0, tax = 0) => {
+  sendStorefrontEvent('purchase', {
+    productId: transactionId,
+    productName: 'Completed order',
+    eventValue: Array.isArray(items) ? items.length : 0,
+  });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'purchase', {
       transaction_id: transactionId,
@@ -339,4 +421,20 @@ export const trackCategoryView = (categoryName) => {
 
 export const trackPaymentStarted = () => {
   sendStorefrontEvent('payment_started', { pageTitle: 'PayFast payment opened' });
+};
+
+export const trackImageView = (product, imageIndex) => {
+  sendStorefrontEvent('image_view', {
+    productId: product?.id || product?.pid || product?.cj_pid,
+    productName: product?.name || product?.product_name,
+    eventValue: Math.max(1, Number(imageIndex) || 1),
+  });
+};
+
+export const trackSectionOpen = (sectionName, product = null) => {
+  sendStorefrontEvent('section_open', {
+    productId: product?.id || product?.pid || product?.cj_pid,
+    productName: product?.name || product?.product_name,
+    pageTitle: String(sectionName || 'Product information').slice(0, 120),
+  });
 };

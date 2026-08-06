@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './LocalProductDetail.css';
 import WhatsAppIcon from './WhatsAppIcon.jsx';
 import ProductReviews from './ProductReviews.jsx';
+import { trackImageView } from '../lib/analytics';
 import {
   buildProductJsonLd,
   getLocalProductUrl,
@@ -220,7 +221,10 @@ function LocalProductDetail({ product, onClose, onAddToCart, allProducts }) {
                     <button
                       key={idx}
                       className={`thumbnail ${selectedImage === img ? 'active' : ''}`}
-                      onClick={() => setSelectedImage(img)}
+                      onClick={() => {
+                        setSelectedImage(img);
+                        trackImageView(product, idx + 1);
+                      }}
                       title={`Image ${idx + 1}`}
                     >
                       <img src={img} alt={`Thumbnail ${idx + 1}`} />

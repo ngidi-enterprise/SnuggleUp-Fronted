@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './ProductDetail.css';
 import ProductReviews from './ProductReviews.jsx';
 import WhatsAppIcon from './WhatsAppIcon.jsx';
-import { trackProductView } from '../lib/analytics';
+import { trackImageView, trackProductView } from '../lib/analytics';
 import {
   buildProductJsonLd,
   getCuratedProductUrl,
@@ -437,7 +437,10 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                   alt={`${activeProduct?.product_name || 'Product'} - Thumbnail ${idx + 1}`}
                   loading="lazy"
                   className={selectedImage === img ? 'active' : ''}
-                  onClick={() => setSelectedImage(img)}
+                  onClick={() => {
+                    setSelectedImage(img);
+                    trackImageView(product, idx + 1);
+                  }}
                 />
               ))}
             </div>
@@ -469,6 +472,7 @@ export default function CJProductDetail({ pid, onClose, onAddToCart, onAddToWish
                           if (!isUnavailable) {
                             setSelectedVariant(variant);
                             setSelectedImage(variant.image);
+                            trackImageView(product, galleryImages.indexOf(variant.image) + 1 || 1);
                           }
                         }}
                         disabled={isUnavailable}

@@ -110,6 +110,7 @@ export default function Analytics() {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
     });
   };
   const formatRegion = (item) => {
@@ -128,10 +129,16 @@ export default function Analytics() {
       case 'page_view': return `Visited ${page}`;
       case 'category_view': return `Browsed ${page}`;
       case 'product_view': return `Viewed ${step.productName || 'a product'}`;
+      case 'image_view': return `Viewed image ${step.eventValue || ''} of ${step.productName || 'a product'}`.trim();
+      case 'section_open': return `Opened ${page}`;
       case 'add_to_cart': return `Added ${step.productName || 'a product'} to cart`;
+      case 'remove_from_cart': return `Removed ${step.productName || 'a product'} from cart`;
       case 'begin_checkout': return 'Started checkout';
+      case 'checkout_step': return `Continued checkout${step.eventValue ? ` (step ${step.eventValue})` : ''}`;
       case 'payment_started': return 'Opened PayFast';
+      case 'purchase': return 'Completed a purchase';
       case 'scroll_depth': return `Scrolled ${step.eventValue || 0}% down ${page}`;
+      case 'page_exit': return `Exited from ${page}`;
       default: return step.eventName;
     }
   };
@@ -284,23 +291,62 @@ export default function Analytics() {
               {traffic.journeys?.length ? traffic.journeys.map((journey) => {
                 const steps = Array.isArray(journey.steps) ? journey.steps : [];
                 const source = journey.source || journey.referrer_host || 'Direct';
+                const products = Array.isArray(journey.products_viewed) ? journey.products_viewed : [];
+                const location = [
+                  journey.city_name,
+                  journey.region_name,
+                  formatRegion(journey),
+                ].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(', ');
+                const yesNo = (value) => value ? 'Yes' : 'No';
                 return (
-                  <details className="customer-journey" key={journey.session_id}>
-                    <summary>
-                      <span>Anonymous visit {String(journey.session_id || '').slice(-6).toUpperCase()}</span>
-                      <span>{source}</span>
-                      <span>{formatVisitTime(journey.started_at)}</span>
-                      <strong>{formatNumber(steps.length)} steps</strong>
-                    </summary>
-                    <ol>
+                  <article className="visitor-card" key={journey.session_id}>
+                    <header className="visitor-card-header">
+                      <div>
+                        <span className="visitor-card-eyebrow">Visitor ID</span>
+                        <strong>{String(journey.visitor_id || '').slice(-10).toUpperCase()}</strong>
+                      </div>
+                      <span className={`visitor-type-badge ${journey.is_returning ? 'returning' : ''}`}>
+                        {journey.is_returning ? 'Returning visitor' : 'New visitor'}
+                      </span>
+                      <time>{formatVisitTime(journey.started_at)}</time>
+                    </header>
+
+                    <dl className="visitor-card-grid">
+                      <div><dt>Traffic source</dt><dd>{source}</dd></div>
+                      {journey.google_search_term && <div><dt>Google search term</dt><dd>{journey.google_search_term}</dd></div>}
+                      <div><dt>Campaign / ad group</dt><dd>{[journey.campaign, journey.ad_group].filter(Boolean).join(' / ') || '—'}</dd></div>
+                      <div><dt>Device / browser</dt><dd>{[journey.device_type, journey.browser_name, journey.os_name].filter(Boolean).join(' · ') || 'Unknown'}</dd></div>
+                      <div><dt>City or region</dt><dd>{location || 'Unknown region'}</dd></div>
+                      <div><dt>Session duration</dt><dd>{formatDuration(journey.session_duration_seconds)}</dd></div>
+                      <div><dt>Pages viewed</dt><dd>{formatNumber(journey.pages_viewed)}</dd></div>
+                      <div><dt>Products viewed</dt><dd>{products.length ? products.join(', ') : formatNumber(journey.products_viewed_count)}</dd></div>
+                      <div><dt>Maximum scroll</dt><dd>{formatNumber(journey.scroll_depth)}%</dd></div>
+                      <div><dt>Images viewed</dt><dd>{formatNumber(journey.images_viewed)}</dd></div>
+                      <div><dt>Delivery / returns opened</dt><dd>{yesNo(journey.delivery_opened)} / {yesNo(journey.returns_opened)}</dd></div>
+                      <div><dt>Added to cart</dt><dd>{yesNo(journey.added_to_cart)}</dd></div>
+                      <div><dt>Checkout started</dt><dd>{yesNo(journey.checkout_started)}</dd></div>
+                      <div><dt>Purchase completed</dt><dd>{yesNo(journey.purchased)}</dd></div>
+                      <div><dt>Exit page</dt><dd>{journey.exit_page || 'Not recorded yet'}</dd></div>
+                    </dl>
+
+                    <div className="visitor-timeline-heading">
+                      <strong>Action timeline</strong>
+                      <span>{formatNumber(steps.length)} unique actions</span>
+                    </div>
+                    <ol className="visitor-timeline">
                       {steps.map((step, index) => (
-                        <li key={`${step.occurredAt}-${index}`}>
-                          <time>{new Date(step.occurredAt).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit' })}</time>
+                        <li key={`${step.eventName}-${step.pagePath}-${step.productName}-${step.eventValue}-${step.occurredAt}-${index}`}>
+                          <time>{new Date(step.occurredAt).toLocaleTimeString('en-ZA', {
+                            timeZone: 'Africa/Johannesburg',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}</time>
                           <span>{formatJourneyStep(step)}</span>
                         </li>
                       ))}
                     </ol>
-                  </details>
+                  </article>
                 );
               }) : <p>No customer journeys recorded yet.</p>}
             </div>

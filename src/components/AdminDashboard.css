@@ -1354,6 +1354,100 @@
   font-size: 0.85rem;
 }
 
+.visitor-card {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #d8e7e5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(18, 111, 113, 0.06);
+}
+
+.visitor-card-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5eceb;
+}
+
+.visitor-card-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visitor-card-eyebrow,
+.visitor-card-grid dt,
+.visitor-timeline-heading span {
+  color: #637381;
+  font-size: 0.78rem;
+}
+
+.visitor-type-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e9f7f4;
+  color: #126f71;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.visitor-type-badge.returning {
+  background: #fff0f6;
+  color: #c82f6b;
+}
+
+.visitor-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin: 16px 0;
+}
+
+.visitor-card-grid > div {
+  min-width: 0;
+}
+
+.visitor-card-grid dt,
+.visitor-card-grid dd {
+  margin: 0;
+}
+
+.visitor-card-grid dd {
+  margin-top: 3px;
+  color: #243746;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.visitor-timeline-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.visitor-timeline {
+  margin: 10px 0 0 22px;
+  padding: 12px 16px 12px 32px;
+  background: #f8fcfb;
+  border-left: 3px solid #147c7e;
+}
+
+.visitor-timeline li {
+  padding: 6px 0;
+}
+
+.visitor-timeline time {
+  display: inline-block;
+  width: 82px;
+  color: #637381;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 800px) {
   .customer-journeys {
     padding: 16px 12px;
@@ -1365,6 +1459,25 @@
 
   .customer-journey summary {
     grid-template-columns: 1fr auto;
+  }
+
+  .visitor-card-header {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .visitor-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .visitor-card {
+    padding: 14px;
+  }
+
+  .visitor-card-grid {
+    grid-template-columns: 1fr;
   }
 }
 

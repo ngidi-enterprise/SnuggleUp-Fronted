@@ -384,8 +384,9 @@ function App() {
     setCatalogView('cj');
     setSelectedLocalProductId(null);
     setSelectedCjPid(pid);
-    if (options.product) trackProductClick(options.product);
     pushProductPath(`/products/${pid}`, Boolean(options.replace));
+    trackPageView(`/products/${pid}`, options.product?.name || options.product?.product_name || 'Product');
+    if (options.product) trackProductClick(options.product);
     if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -396,13 +397,14 @@ function App() {
     setCatalogView('local');
     setSelectedCjPid(null);
     setSelectedLocalProductId(product);
+    if (id) pushProductPath(`/local-products/${id}`, Boolean(options.replace));
+    trackPageView(`/local-products/${id}`, product.name || product.product_name || 'Local Product');
     trackProductClick(product);
     trackProductView({
       id,
       name: product.name || product.product_name,
       category: product.category || 'General',
     });
-    if (id) pushProductPath(`/local-products/${id}`, Boolean(options.replace));
     if (!options.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
