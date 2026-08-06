@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onr
 const SESSION_KEY = 'snuggleup_analytics_session';
 const VISITOR_KEY = 'snuggleup_analytics_visitor';
 const OPT_OUT_KEY = 'snuggleup_analytics_opt_out';
+const EVENT_SEQUENCE_KEY = `${SESSION_KEY}:event_sequence`;
 let activePage = null;
 let analyticsPaused = false;
 let analyticsAuthToken = '';
@@ -75,6 +76,16 @@ const getStorageId = (key, storage) => {
     return randomId();
   }
 };
+const nextEventSequence = () => {
+  try {
+    const previous = Number.parseInt(window.sessionStorage.getItem(EVENT_SEQUENCE_KEY), 10);
+    const next = Number.isSafeInteger(previous) && previous > 0 ? previous + 1 : 1;
+    window.sessionStorage.setItem(EVENT_SEQUENCE_KEY, String(next));
+    return next;
+  } catch {
+    return Date.now();
+  }
+};
 
 const trafficSource = () => {
   const params = new URLSearchParams(window.location.search || '');
@@ -121,6 +132,7 @@ const sendStorefrontEvent = (eventName, details = {}) => {
     pageTitle: details.pageTitle || document.title || '',
     pageLoadId,
     clientOccurredAt: new Date().toISOString(),
+    eventSequence: nextEventSequence(),
     ...trafficSource(),
     ...approximateRegion(),
     ...details,
