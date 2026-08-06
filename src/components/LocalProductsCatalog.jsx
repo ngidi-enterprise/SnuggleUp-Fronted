@@ -82,17 +82,20 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
   }, [query]);
 
   const runSearch = (page = 1) => {
+    const submittedQuery = q.trim();
     setPageNum(page);
+    setQ(submittedQuery);
     if (onSearch) {
-      onSearch(q);
+      onSearch(submittedQuery);
     }
   };
 
   useEffect(() => {
     let list = products;
 
-    // apply text search (either toolbar q or external query)
-    const term = (q || query || '').toLowerCase().trim();
+    // Filter only by the submitted query. The draft input remains unchanged
+    // until the customer presses Enter or clicks the search button.
+    const term = (query || '').toLowerCase().trim();
     if (term) {
       list = list.filter(p =>
         p.name.toLowerCase().includes(term) ||
@@ -143,7 +146,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
 
     setFilteredProducts(list);
     setPageNum(1);
-  }, [q, query, products, selectedCategory, minPrice, maxPrice, sortBy]);
+  }, [query, products, selectedCategory, minPrice, maxPrice, sortBy]);
 
   // Normalize image URL
   const normalizeImageUrl = (url) => {
@@ -309,11 +312,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
             className="local-input local-search-input"
             placeholder="Search products..."
             value={q}
-            onChange={(e) => {
-              const nextQuery = e.target.value;
-              setQ(nextQuery);
-              onSearch?.(nextQuery);
-            }}
+            onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && runSearch(1)}
           />
           <button
@@ -360,9 +359,9 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
       </button>
 
       {/* Search Results Info */}
-      {(query || q) && (
+      {query?.trim() && (
         <div className="search-results-info">
-          <p>Search results for "<strong>{q || query}</strong>" ({filteredProducts.length} products)</p>
+          <p>Search results for "<strong>{query}</strong>" ({filteredProducts.length} products)</p>
         </div>
       )}
 
