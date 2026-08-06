@@ -304,13 +304,27 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
       {/* Toolbar (search/min-max/sort) */}
       <ToolbarPortal targetId={toolbarTargetId}>
       <div className="local-toolbar">
-        <input
-          className="local-input"
-          placeholder="Search products..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runSearch(1)}
-        />
+        <div className="local-search-field">
+          <input
+            className="local-input local-search-input"
+            placeholder="Search products..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && runSearch(1)}
+          />
+          <button
+            className="local-search-submit"
+            type="button"
+            onClick={() => runSearch(1)}
+            disabled={loading}
+            aria-label={loading ? 'Searching products' : 'Search products'}
+            title={loading ? 'Searching products' : 'Search products'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
+            </svg>
+          </button>
+        </div>
         <input
           className="local-input local-input-small"
           placeholder="Min R"
@@ -323,9 +337,6 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value.replace(/[^0-9.]/g, ''))}
         />
-        <button className="local-btn" onClick={() => runSearch(1)} disabled={loading}>
-          {loading ? 'Searching…' : 'Search'}
-        </button>
         <select className="local-input local-input-small" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
           <option value="relevance">Sort: Relevance</option>
           <option value="price_asc">Price: Low to High</option>

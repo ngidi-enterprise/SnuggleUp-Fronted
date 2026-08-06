@@ -61,10 +61,10 @@ body {
 
 
 .logo {
-  width: 52px;
-  min-width: 52px;
-  max-width: 52px;
-  height: 52px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -97,7 +97,7 @@ body {
 
 .brand-info h1 {
   color: var(--brand);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   line-height: 1.15;
   margin: 0;
@@ -1723,7 +1723,7 @@ body {
   grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
   min-height: 390px;
   margin: 22px auto 14px;
-  width: min(1180px, calc(100% - 40px));
+  width: calc(100% - 40px);
   overflow: hidden;
   background: #f3fbf9;
   border: 1px solid #cfe7e2;
@@ -1734,7 +1734,7 @@ body {
 .bundle-showcase-copy {
   z-index: 2;
   align-self: center;
-  padding: 44px 54px 54px;
+  padding: 44px clamp(54px, 5vw, 96px) 54px;
 }
 
 .bundle-eyebrow {
@@ -1867,8 +1867,8 @@ body {
 
 .bundle-image-stage {
   position: relative;
-  width: min(440px, 92%);
-  height: 310px;
+  width: min(620px, 88%);
+  height: 330px;
 }
 
 .bundle-product-image {
@@ -2012,6 +2012,7 @@ body {
   }
 
   .bundle-image-stage {
+    width: min(440px, 88%);
     height: 250px;
   }
 
@@ -2184,6 +2185,12 @@ body {
   max-height: 82px;
 }
 
+.favourite-brand-logo[src*="pampers-logo"] {
+  width: 132px;
+  max-width: 94%;
+  max-height: none;
+}
+
 @media (max-width: 700px) {
   .favourite-brands {
     margin-top: 12px;
@@ -2233,6 +2240,11 @@ body {
 
   .favourite-brand-logo {
     max-height: 50px;
+  }
+
+  .favourite-brand-logo[src*="pampers-logo"] {
+    width: 120px;
+    max-height: none;
   }
 }
 

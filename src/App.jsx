@@ -1862,7 +1862,7 @@ function App() {
                 setLearningSlug('');
                 window.location.hash = '';
               }}
-              style={{ padding: '10px 20px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+              style={{ padding: '12px 24px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '16px', cursor: 'pointer' }}
             >
               Import Store
             </button>
@@ -1873,14 +1873,14 @@ function App() {
                 setLearningSlug('');
                 window.location.hash = '';
               }}
-              style={{ padding: '10px 20px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+              style={{ padding: '12px 24px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '16px', cursor: 'pointer' }}
             >
               Local Warehouse (Fast Delivery)
             </button>
             <button
               type="button"
               aria-current="page"
-              style={{ padding: '10px 20px', background: '#ff6b9d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'default' }}
+              style={{ padding: '12px 24px', background: '#ff6b9d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '16px', cursor: 'default' }}
             >
               Learning Centre
             </button>
@@ -2011,13 +2011,13 @@ function App() {
                     if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
                   }}
                   style={{
-                    padding: '10px 20px',
+                    padding: '12px 24px',
                     background: catalogView === 'cj' ? '#ff6b9d' : '#f0f0f0',
                     color: catalogView === 'cj' ? 'white' : '#333',
                     border: 'none',
                     borderRadius: '6px',
                     fontWeight: '600',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
@@ -2032,13 +2032,13 @@ function App() {
                     if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
                   }}
                   style={{
-                    padding: '10px 20px',
+                    padding: '12px 24px',
                     background: catalogView === 'local' ? '#ff6b9d' : '#f0f0f0',
                     color: catalogView === 'local' ? 'white' : '#333',
                     border: 'none',
                     borderRadius: '6px',
                     fontWeight: '600',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
@@ -2053,13 +2053,13 @@ function App() {
                     window.location.hash = '/learning-centre';
                   }}
                   style={{
-                    padding: '10px 20px',
+                    padding: '12px 24px',
                     background: '#fff7fa',
                     color: '#c53c72',
                     border: '1px solid #ffc9dc',
                     borderRadius: '6px',
                     fontWeight: '600',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
