@@ -98,8 +98,11 @@ function App() {
   });
 
   useEffect(() => {
-    setStorefrontAnalyticsPaused(isAdmin || showAdminDashboard);
-  }, [isAdmin, showAdminDashboard]);
+    // Exclude the management dashboard itself. When a logged-in superuser
+    // browses the public store, events still reach the backend and are stored
+    // exclusively as internal/superuser traffic.
+    setStorefrontAnalyticsPaused(showAdminDashboard && !isStorePreviewActive);
+  }, [showAdminDashboard, isStorePreviewActive]);
   
   const [cartLoaded, setCartLoaded] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
