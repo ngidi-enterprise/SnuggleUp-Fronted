@@ -23,6 +23,7 @@ export default function FavouriteBrands({ onSelectBrand }) {
     let shouldReduceMotion = reducedMotion.matches;
     let animationFrame;
     let previousTime;
+    let accumulatedScrollLeft = 0;
 
     const positionAtMiddleSequence = () => {
       const sequenceWidth = track.scrollWidth / 3;
@@ -33,7 +34,7 @@ export default function FavouriteBrands({ onSelectBrand }) {
 
     const animate = (time) => {
       if (previousTime === undefined) previousTime = time;
-      const elapsed = Math.min(time - previousTime, 50);
+      const elapsed = Math.min(time - previousTime, 250);
       previousTime = time;
 
       if (
@@ -42,12 +43,18 @@ export default function FavouriteBrands({ onSelectBrand }) {
         && time >= pauseUntilRef.current
       ) {
         const sequenceWidth = track.scrollWidth / 3;
-        const glideSpeed = shouldReduceMotion ? 0.008 : 0.022;
-        track.scrollLeft += elapsed * glideSpeed;
+        const glideSpeed = shouldReduceMotion ? 0.012 : 0.024;
+        accumulatedScrollLeft += elapsed * glideSpeed;
 
-        if (sequenceWidth > 0 && track.scrollLeft >= sequenceWidth * 2) {
-          track.scrollLeft -= sequenceWidth;
+        if (sequenceWidth > 0 && accumulatedScrollLeft >= sequenceWidth * 2) {
+          accumulatedScrollLeft -= sequenceWidth;
         }
+
+        track.scrollLeft = accumulatedScrollLeft;
+      } else {
+        // Keep the accumulator in sync after arrow clicks, touch scrolling,
+        // keyboard focus, or any other manual movement.
+        accumulatedScrollLeft = track.scrollLeft;
       }
 
       animationFrame = window.requestAnimationFrame(animate);
@@ -58,6 +65,8 @@ export default function FavouriteBrands({ onSelectBrand }) {
     };
 
     positionAtMiddleSequence();
+    accumulatedScrollLeft = track.scrollLeft;
+
     animationFrame = window.requestAnimationFrame(animate);
     reducedMotion.addEventListener?.('change', handleMotionPreference);
 
