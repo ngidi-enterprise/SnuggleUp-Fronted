@@ -309,7 +309,11 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
             className="local-input local-search-input"
             placeholder="Search products..."
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              const nextQuery = e.target.value;
+              setQ(nextQuery);
+              onSearch?.(nextQuery);
+            }}
             onKeyDown={(e) => e.key === 'Enter' && runSearch(1)}
           />
           <button
