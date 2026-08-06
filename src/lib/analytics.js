@@ -11,6 +11,13 @@ let analyticsAuthToken = '';
 let scrollMilestones = new Set();
 let currentPageLoadId = null;
 const recentEvents = new Map();
+const MANAGEMENT_ROUTE_PATTERNS = [
+  /^\/admin(?:\/|$)/i,
+  /^\/superuser(?:\/|$)/i,
+  /^\/login\/admin(?:\/|$)/i,
+  /^\/admin-login(?:\/|$)/i,
+  /^\/management(?:\/|$)/i,
+];
 
 const randomId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -49,6 +56,11 @@ const shouldSuppressClientDuplicate = (eventName, details, pagePath, pageLoadId)
     }
   }
   return false;
+};
+
+const isManagementAnalyticsPath = (value) => {
+  const path = String(value || '/').split('?')[0];
+  return MANAGEMENT_ROUTE_PATTERNS.some((pattern) => pattern.test(path));
 };
 
 const getStorageId = (key, storage) => {
@@ -92,10 +104,11 @@ const sendStorefrontEvent = (eventName, details = {}) => {
   if (
     analyticsPaused
     || typeof window === 'undefined'
-    || window.location.pathname.startsWith('/admin')
+    || isManagementAnalyticsPath(window.location.pathname)
     || window.localStorage.getItem(OPT_OUT_KEY) === '1'
   ) return false;
   const pagePath = details.pagePath || window.location.pathname || '/';
+  if (isManagementAnalyticsPath(pagePath)) return false;
   const pageLoadId = details.pageLoadId || activePage?.pageLoadId || currentPageLoadId;
   if (shouldSuppressClientDuplicate(eventName, details, pagePath, pageLoadId)) {
     return false;
