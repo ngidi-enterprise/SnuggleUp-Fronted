@@ -101,13 +101,36 @@ export default function Analytics() {
     const value = Number(seconds || 0);
     return value >= 60 ? `${Math.floor(value / 60)}m ${value % 60}s` : `${value}s`;
   };
+  const parseAnalyticsDate = (value) => {
+    if (!value) return null;
+    const text = String(value);
+    // PostgreSQL JSON values from legacy deployments may contain a timestamp
+    // without an offset. Analytics timestamps are stored in UTC, so make that
+    // explicit before converting everything to South African local time.
+    const normalized = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(text)
+      ? `${text}Z`
+      : text;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
   const formatVisitTime = (value) => {
-    if (!value) return '-';
-    return new Date(value).toLocaleString('en-ZA', {
+    const date = parseAnalyticsDate(value);
+    if (!date) return '-';
+    return date.toLocaleString('en-ZA', {
       timeZone: 'Africa/Johannesburg',
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
+  const formatActionTime = (value) => {
+    const date = parseAnalyticsDate(value);
+    if (!date) return '-';
+    return date.toLocaleTimeString('en-ZA', {
+      timeZone: 'Africa/Johannesburg',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -336,12 +359,7 @@ export default function Analytics() {
                     <ol className="visitor-timeline">
                       {steps.map((step, index) => (
                         <li key={`${step.eventName}-${step.pagePath}-${step.productName}-${step.eventValue}-${step.occurredAt}-${index}`}>
-                          <time>{new Date(step.occurredAt).toLocaleTimeString('en-ZA', {
-                            timeZone: 'Africa/Johannesburg',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })}</time>
+                          <time>{formatActionTime(step.occurredAt)}</time>
                           <span>{formatJourneyStep(step)}</span>
                         </li>
                       ))}

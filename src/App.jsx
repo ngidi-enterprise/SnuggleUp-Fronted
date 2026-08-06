@@ -2069,6 +2069,14 @@ function App() {
                 </button>
               </div>
 
+              {catalogView === 'local' && !selectedLocalProductId && (
+                <div
+                  id="local-catalog-toolbar-top"
+                  className="local-catalog-toolbar-top"
+                  aria-label="Search and filter local products"
+                />
+              )}
+
               {/* CJ Catalog as main store */}
               {catalogView === 'cj' && (
                 <div id="cj-anchor" style={{ flex: '1 0 auto' }}>
@@ -2120,6 +2128,7 @@ function App() {
                         initialProducts={localProductsCache}
                         onAddToCart={addToCart}
                         onSearch={setSearchTerm}
+                        toolbarTargetId="local-catalog-toolbar-top"
                       />
                     </>
                   ) : (

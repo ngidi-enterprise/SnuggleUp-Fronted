@@ -65,6 +65,16 @@
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+
+.local-catalog-toolbar-top {
+  padding: 16px 20px 0;
+  background: #fff;
+}
+
+.local-catalog-toolbar-top .local-toolbar {
+  margin-bottom: 0;
+}
+
 .local-input {
   flex: 1;
   padding: 10px 12px;
@@ -105,6 +115,24 @@
 }
 
 @media (max-width: 640px) {
+  .local-catalog-toolbar-top {
+    padding: 12px 12px 0;
+  }
+
+  .local-catalog-toolbar-top .local-input {
+    min-width: 100%;
+  }
+
+  .local-catalog-toolbar-top .local-input-small {
+    min-width: 0;
+    width: calc(50% - 4px);
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .local-catalog-toolbar-top .local-btn {
+    flex: 1 1 auto;
+  }
+
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;

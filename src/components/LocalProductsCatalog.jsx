@@ -1,10 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './LocalProductsCatalog.css';
 import { trackCategoryView } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
 
-function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [], onAddToCart, onSearch }) {
+function ToolbarPortal({ targetId, children }) {
+  const [target, setTarget] = useState(null);
+
+  useEffect(() => {
+    if (!targetId || typeof document === 'undefined') {
+      setTarget(null);
+      return;
+    }
+    setTarget(document.getElementById(targetId));
+  }, [targetId]);
+
+  if (target) return createPortal(children, target);
+  return targetId ? null : children;
+}
+
+function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, initialProducts = [], onAddToCart, onSearch, toolbarTargetId }) {
   const [products, setProducts] = useState(initialProducts || []);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -286,6 +302,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
     <div className="local-products-catalog">
 
       {/* Toolbar (search/min-max/sort) */}
+      <ToolbarPortal targetId={toolbarTargetId}>
       <div className="local-toolbar">
         <input
           className="local-input"
@@ -315,6 +332,7 @@ function LocalProductsCatalog({ query, onOpenProduct, isAdmin, onShowUpload, ini
           <option value="price_desc">Price: High to Low</option>
         </select>
       </div>
+      </ToolbarPortal>
 
       {/* Delivery information */}
       <p style={{fontSize:'1rem', color:'#555', margin:'12px 0', textAlign: 'center'}}>
