@@ -37,13 +37,13 @@ export default function FavouriteBrands({ onSelectBrand }) {
       previousTime = time;
 
       if (
-        !shouldReduceMotion
-        && !document.hidden
+        !document.hidden
         && pauseReasonsRef.current.size === 0
         && time >= pauseUntilRef.current
       ) {
         const sequenceWidth = track.scrollWidth / 3;
-        track.scrollLeft += elapsed * 0.018;
+        const glideSpeed = shouldReduceMotion ? 0.008 : 0.022;
+        track.scrollLeft += elapsed * glideSpeed;
 
         if (sequenceWidth > 0 && track.scrollLeft >= sequenceWidth * 2) {
           track.scrollLeft -= sequenceWidth;
@@ -143,8 +143,6 @@ export default function FavouriteBrands({ onSelectBrand }) {
         className="favourite-brands-track"
         ref={trackRef}
         aria-label="Favourite brand logos"
-        onMouseEnter={() => pauseAutoScroll('hover')}
-        onMouseLeave={() => resumeAutoScroll('hover')}
         onFocusCapture={() => pauseAutoScroll('focus')}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
