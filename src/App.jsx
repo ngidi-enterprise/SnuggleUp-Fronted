@@ -37,6 +37,7 @@ import LocalProductsCatalog from './components/LocalProductsCatalog';
 import LocalProductDetail from './components/LocalProductDetail';
 import LocalBundleShowcase from './components/LocalBundleShowcase';
 import FavouriteBrands from './components/FavouriteBrands';
+import ShoppingFeedbackPrompt from './components/ShoppingFeedbackPrompt';
 import LocalProductUpload from './components/LocalProductUpload';
 import AdminDashboard from './components/AdminDashboard';
  
@@ -2614,6 +2615,21 @@ function App() {
       )}
       {showUserAccount && <UserAccount onClose={() => setShowUserAccount(false)} isAdmin={isAdmin} />}
       {showOrderTracking && <OrderTrackingLookup onClose={() => setShowOrderTracking(false)} />}
+      <ShoppingFeedbackPrompt
+        eligibleForSurvey={firstOrderEligibilityReady && firstOrderEligible && !isAdmin}
+        routeKey={`${currentPage}:${catalogView}:${selectedCjPid || ''}:${selectedLocalProductId || ''}`}
+        blocked={Boolean(
+          currentPage !== 'home'
+          || showCart
+          || showShippingForm
+          || showAuthModal
+          || showUserAccount
+          || showOrderTracking
+          || showAdminDashboard
+          || isStorePreviewActive
+          || backendDown
+        )}
+      />
     </div>
   );
 }

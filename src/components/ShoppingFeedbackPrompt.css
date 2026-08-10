@@ -1,0 +1,131 @@
+.shopping-feedback {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2200;
+  width: min(390px, calc(100vw - 32px));
+  padding: 22px;
+  border: 1px solid #cfe3df;
+  border-top: 4px solid #147a7d;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 16px 44px rgba(22, 48, 54, 0.18);
+  color: #24313d;
+  animation: shopping-feedback-enter 220ms ease-out both;
+}
+
+.shopping-feedback-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #60727a;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shopping-feedback-eyebrow {
+  display: block;
+  padding-right: 32px;
+  color: #147a7d;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.shopping-feedback h2 {
+  margin: 7px 34px 4px 0;
+  color: #24313d;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.shopping-feedback-note {
+  margin: 0 0 16px;
+  color: #66777e;
+  font-size: 13px;
+}
+
+.shopping-feedback-options {
+  display: grid;
+  gap: 8px;
+}
+
+.shopping-feedback-options button {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #d5e1df;
+  border-radius: 6px;
+  background: #f8fbfa;
+  color: #26363c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shopping-feedback-options button:hover,
+.shopping-feedback-options button:focus-visible {
+  border-color: #147a7d;
+  background: #eef8f6;
+  color: #0d686b;
+  outline: none;
+}
+
+.shopping-feedback-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  color: #77868c;
+  font-size: 12px;
+}
+
+.shopping-feedback-footer button {
+  border: 0;
+  background: transparent;
+  color: #147a7d;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shopping-feedback-thanks {
+  padding: 14px 28px 12px 0;
+}
+
+.shopping-feedback-thanks strong {
+  color: #147a7d;
+  font-size: 20px;
+}
+
+.shopping-feedback-thanks p {
+  margin: 6px 0 0;
+}
+
+@keyframes shopping-feedback-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .shopping-feedback {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    max-height: min(78vh, 620px);
+    overflow-y: auto;
+    padding: 19px;
+  }
+
+  .shopping-feedback h2 {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shopping-feedback { animation: none; }
+}

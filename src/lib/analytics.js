@@ -359,6 +359,9 @@ export const trackBeginCheckout = (cartItems, totalValue) => {
  * @param {number} tax - Tax amount (if applicable)
  */
 export const trackPurchase = (transactionId, items, total, shipping = 0, tax = 0) => {
+  try {
+    window.localStorage.setItem('hasMadeFirstPurchase', 'true');
+  } catch {}
   sendStorefrontEvent('purchase', {
     productId: transactionId,
     productName: 'Completed order',
@@ -428,6 +431,15 @@ export const trackEvent = (eventName, params = {}) => {
   if (typeof window.gtag === 'function') {
     window.gtag('event', eventName, params);
   }
+};
+
+export const trackSurveyResponse = (questionKey, question, answer, surveyVersion) => {
+  sendStorefrontEvent('survey_response', {
+    pageTitle: String(question || 'Shopping feedback').slice(0, 160),
+    productId: String(questionKey || '').slice(0, 120),
+    productName: String(answer || '').slice(0, 240),
+    productCategory: String(surveyVersion || 'shopping_feedback').slice(0, 120),
+  });
 };
 
 export const trackProductClick = (product) => {

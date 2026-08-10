@@ -1290,6 +1290,88 @@
   font-size: 0.9rem;
 }
 
+.visitor-feedback-report {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #d4e5e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.visitor-feedback-heading h3,
+.visitor-feedback-heading p {
+  margin: 0;
+}
+
+.visitor-feedback-heading p,
+.visitor-feedback-empty {
+  margin-top: 5px;
+  color: #687a82;
+}
+
+.visitor-feedback-questions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.visitor-feedback-question {
+  padding: 18px;
+  border: 1px solid #dce9e7;
+  border-radius: 7px;
+  background: #f8fbfa;
+}
+
+.visitor-feedback-question-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.visitor-feedback-question-title span {
+  color: #6e7e84;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.visitor-feedback-answer + .visitor-feedback-answer {
+  margin-top: 12px;
+}
+
+.visitor-feedback-answer > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.visitor-feedback-meter {
+  height: 7px;
+  margin: 5px 0 3px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #dfeae8;
+}
+
+.visitor-feedback-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #147a7d;
+}
+
+.visitor-feedback-answer small {
+  color: #75868c;
+}
+
+@media (max-width: 850px) {
+  .visitor-feedback-questions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .customer-journeys {
   margin-top: 24px;
   padding: 22px;
@@ -1378,6 +1460,13 @@
   gap: 2px;
 }
 
+.visitor-card-header > .visitor-card-badges {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .visitor-card-eyebrow,
 .visitor-card-grid dt,
 .visitor-timeline-heading span {
@@ -1397,6 +1486,16 @@
 .visitor-type-badge.returning {
   background: #fff0f6;
   color: #c82f6b;
+}
+
+.visitor-tabs-badge {
+  padding: 6px 10px;
+  border: 1px solid #cfe2df;
+  border-radius: 999px;
+  background: #fff;
+  color: #526b70;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .visitor-card-grid {

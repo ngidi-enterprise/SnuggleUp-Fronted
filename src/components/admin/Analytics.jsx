@@ -303,6 +303,43 @@ export default function Analytics() {
               ) : <p>No visitor-region information recorded yet.</p>}
             </div>
 
+            <div className="visitor-feedback-report">
+              <div className="visitor-feedback-heading">
+                <div>
+                  <h3>What visitors need before ordering</h3>
+                  <p>Anonymous, optional responses from engaged shoppers during the last 30 days.</p>
+                </div>
+              </div>
+              {traffic.surveyFeedback?.length ? (
+                <div className="visitor-feedback-questions">
+                  {traffic.surveyFeedback.map((group) => (
+                    <section className="visitor-feedback-question" key={group.key}>
+                      <div className="visitor-feedback-question-title">
+                        <strong>{group.question}</strong>
+                        <span>{formatNumber(group.total)} responses</span>
+                      </div>
+                      <div className="visitor-feedback-answers">
+                        {group.answers.map((answer) => (
+                          <div className="visitor-feedback-answer" key={answer.answer}>
+                            <div>
+                              <span>{answer.answer}</span>
+                              <strong>{answer.percent}%</strong>
+                            </div>
+                            <div className="visitor-feedback-meter" aria-hidden="true">
+                              <span style={{ width: `${answer.percent}%` }} />
+                            </div>
+                            <small>{formatNumber(answer.responses)} visitors</small>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <p className="visitor-feedback-empty">Responses will appear here after engaged shoppers answer the two-question prompt.</p>
+              )}
+            </div>
+
             <div className="customer-journeys">
               <div className="customer-journeys-heading">
                 <div>
@@ -322,15 +359,20 @@ export default function Analytics() {
                 ].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(', ');
                 const yesNo = (value) => value ? 'Yes' : 'No';
                 return (
-                  <article className="visitor-card" key={journey.session_id}>
+                  <article className="visitor-card" key={journey.journey_id || journey.session_id}>
                     <header className="visitor-card-header">
                       <div>
                         <span className="visitor-card-eyebrow">Visitor ID</span>
                         <strong>{String(journey.visitor_id || '').slice(-10).toUpperCase()}</strong>
                       </div>
-                      <span className={`visitor-type-badge ${journey.is_returning ? 'returning' : ''}`}>
-                        {journey.is_returning ? 'Returning visitor' : 'New visitor'}
-                      </span>
+                      <div className="visitor-card-badges">
+                        <span className={`visitor-type-badge ${journey.is_returning ? 'returning' : ''}`}>
+                          {journey.is_returning ? 'Returning visitor' : 'New visitor'}
+                        </span>
+                        {Number(journey.session_count) > 1 && (
+                          <span className="visitor-tabs-badge">{formatNumber(journey.session_count)} tabs combined</span>
+                        )}
+                      </div>
                       <time>{formatVisitTime(journey.started_at)}</time>
                     </header>
 
@@ -340,7 +382,7 @@ export default function Analytics() {
                       <div><dt>Campaign / ad group</dt><dd>{[journey.campaign, journey.ad_group].filter(Boolean).join(' / ') || '—'}</dd></div>
                       <div><dt>Device / browser</dt><dd>{[journey.device_type, journey.browser_name, journey.os_name].filter(Boolean).join(' · ') || 'Unknown'}</dd></div>
                       <div><dt>City or region</dt><dd>{location || 'Unknown region'}</dd></div>
-                      <div><dt>Session duration</dt><dd>{formatDuration(journey.session_duration_seconds)}</dd></div>
+                      <div><dt>Visit duration</dt><dd>{formatDuration(journey.session_duration_seconds)}</dd></div>
                       <div><dt>Pages viewed</dt><dd>{formatNumber(journey.pages_viewed)}</dd></div>
                       <div><dt>Products viewed</dt><dd>{products.length ? products.join(', ') : formatNumber(journey.products_viewed_count)}</dd></div>
                       <div><dt>Maximum scroll</dt><dd>{formatNumber(journey.scroll_depth)}%</dd></div>
@@ -354,7 +396,10 @@ export default function Analytics() {
 
                     <div className="visitor-timeline-heading">
                       <strong>Action timeline</strong>
-                      <span>{formatNumber(steps.length)} unique actions</span>
+                      <span>
+                        {formatNumber(steps.length)} actions
+                        {Number(journey.session_count) > 1 ? ` across ${formatNumber(journey.session_count)} tabs` : ''}
+                      </span>
                     </div>
                     <ol className="visitor-timeline">
                       {steps.map((step, index) => (
