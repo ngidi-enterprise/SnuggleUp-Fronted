@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './ShoppingFeedbackPrompt.css';
 import { trackSurveyResponse } from '../lib/analytics';
 
-const SURVEY_VERSION = 'shopping_feedback_v1';
-const DISMISSED_AT_KEY = 'snuggleup_shopping_feedback_dismissed_at';
-const COMPLETED_KEY = 'snuggleup_shopping_feedback_completed';
-const VISITED_ROUTES_KEY = 'snuggleup_shopping_feedback_routes';
+const SURVEY_VERSION = 'shopping_feedback_v2';
+const DISMISSED_AT_KEY = 'snuggleup_shopping_feedback_v2_dismissed_at';
+const COMPLETED_KEY = 'snuggleup_shopping_feedback_v2_completed';
+const VISITED_ROUTES_KEY = 'snuggleup_shopping_feedback_v2_routes';
 const DISMISS_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 const questions = [
@@ -21,14 +21,14 @@ const questions = [
     ],
   },
   {
-    key: 'purchase_barrier',
-    title: 'What would help you feel ready to order?',
+    key: 'stock_request_category',
+    title: 'What would you like SnuggleUp to stock next?',
     options: [
-      'A better price or deal',
-      'Clearer delivery cost or timing',
-      'Finding the right product',
-      'More product information',
-      'Nothing yet - I am still deciding',
+      'More nappies and sizes',
+      'Formula and feeding essentials',
+      'Bath and skincare',
+      'Baby gear and nursery items',
+      'Something else',
     ],
   },
 ];
@@ -60,6 +60,8 @@ export default function ShoppingFeedbackPrompt({ blocked, routeKey, eligibleForS
   const [dwellTimeReached, setDwellTimeReached] = useState(false);
   const [routeCount, setRouteCount] = useState(1);
   const [complete, setComplete] = useState(false);
+  const [stockCategory, setStockCategory] = useState('');
+  const [stockRequest, setStockRequest] = useState('');
 
   const question = questions[step];
   const permanentlyHidden = useMemo(() => shouldRemainHidden(), []);
@@ -130,10 +132,29 @@ export default function ShoppingFeedbackPrompt({ blocked, routeKey, eligibleForS
   };
 
   const selectAnswer = (answer) => {
-    trackSurveyResponse(question.key, question.title, answer, SURVEY_VERSION);
     if (step === 0) {
+      trackSurveyResponse(question.key, question.title, answer, SURVEY_VERSION);
       setStep(1);
       return;
+    }
+
+    setStockCategory(answer);
+  };
+
+  const submitStockRequest = () => {
+    const request = stockRequest.trim();
+    if (!stockCategory && !request) return;
+
+    if (stockCategory) {
+      trackSurveyResponse(question.key, question.title, stockCategory, SURVEY_VERSION);
+    }
+    if (request) {
+      trackSurveyResponse(
+        'stock_request_detail',
+        'Specific products or brands requested',
+        request,
+        SURVEY_VERSION,
+      );
     }
 
     try {
@@ -151,18 +172,54 @@ export default function ShoppingFeedbackPrompt({ blocked, routeKey, eligibleForS
       {complete ? (
         <div className="shopping-feedback-thanks" aria-live="polite">
           <strong>Thank you</strong>
-          <p>That helps us make SnuggleUp easier to shop.</p>
+          <p>We review every request when planning our local range. Please check back soon.</p>
         </div>
       ) : (
         <>
           <span className="shopping-feedback-eyebrow">Help us make shopping easier</span>
           <h2 id="shopping-feedback-title">{question.title}</h2>
-          <p className="shopping-feedback-note">Two quick taps. No personal details.</p>
+          <p className="shopping-feedback-note">
+            {step === 0
+              ? 'Two quick taps.'
+              : 'Choose a category and tell us the product or brand you have in mind.'}
+          </p>
           <div className="shopping-feedback-options">
             {question.options.map((option) => (
-              <button type="button" key={option} onClick={() => selectAnswer(option)}>{option}</button>
+              <button
+                type="button"
+                key={option}
+                className={step === 1 && stockCategory === option ? 'selected' : ''}
+                aria-pressed={step === 1 ? stockCategory === option : undefined}
+                onClick={() => selectAnswer(option)}
+              >
+                {option}
+              </button>
             ))}
           </div>
+          {step === 1 && (
+            <div className="shopping-feedback-request">
+              <label htmlFor="shopping-feedback-product">Product or brand (optional)</label>
+              <input
+                id="shopping-feedback-product"
+                type="text"
+                value={stockRequest}
+                maxLength={120}
+                placeholder="e.g. Huggies size 2 or baby bottles"
+                onChange={(event) => setStockRequest(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') submitStockRequest();
+                }}
+              />
+              <button
+                className="shopping-feedback-submit"
+                type="button"
+                disabled={!stockCategory && !stockRequest.trim()}
+                onClick={submitStockRequest}
+              >
+                Send my request
+              </button>
+            </div>
+          )}
           <div className="shopping-feedback-footer">
             <span>Question {step + 1} of 2</span>
             <button type="button" onClick={dismiss}>Not now</button>

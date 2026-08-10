@@ -68,11 +68,63 @@
 }
 
 .shopping-feedback-options button:hover,
-.shopping-feedback-options button:focus-visible {
+.shopping-feedback-options button:focus-visible,
+.shopping-feedback-options button.selected {
   border-color: #147a7d;
   background: #eef8f6;
   color: #0d686b;
   outline: none;
+}
+
+.shopping-feedback-options button.selected {
+  box-shadow: inset 0 0 0 1px #147a7d;
+  font-weight: 700;
+}
+
+.shopping-feedback-request {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.shopping-feedback-request label {
+  color: #42545b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shopping-feedback-request input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cddbd9;
+  border-radius: 6px;
+  color: #24313d;
+  font: inherit;
+}
+
+.shopping-feedback-request input:focus {
+  border-color: #147a7d;
+  box-shadow: 0 0 0 3px rgba(20, 122, 125, 0.12);
+  outline: none;
+}
+
+.shopping-feedback-request .shopping-feedback-submit {
+  min-height: 44px;
+  border: 1px solid #147a7d;
+  border-radius: 6px;
+  background: #147a7d;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shopping-feedback-request .shopping-feedback-submit:disabled {
+  border-color: #cdd8d6;
+  background: #e7edec;
+  color: #7d8b8e;
+  cursor: not-allowed;
 }
 
 .shopping-feedback-footer {

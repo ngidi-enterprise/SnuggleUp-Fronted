@@ -306,8 +306,8 @@ export default function Analytics() {
             <div className="visitor-feedback-report">
               <div className="visitor-feedback-heading">
                 <div>
-                  <h3>What visitors need before ordering</h3>
-                  <p>Anonymous, optional responses from engaged shoppers during the last 30 days.</p>
+                  <h3>What visitors came for and want stocked</h3>
+                  <p>Optional responses from engaged shoppers during the last 30 days, including specific product and brand requests.</p>
                 </div>
               </div>
               {traffic.surveyFeedback?.length ? (
