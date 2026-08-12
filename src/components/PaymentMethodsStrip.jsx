@@ -1,18 +1,29 @@
 import React from 'react';
 import './PaymentMethodsStrip.css';
+import visaLogo from '../assets/payment-methods/visa.svg';
+import mastercardLogo from '../assets/payment-methods/mastercard.svg';
+import americanExpressLogo from '../assets/payment-methods/american-express.svg';
+import applePayLogo from '../assets/payment-methods/apple-pay.png';
+import samsungPayLogo from '../assets/payment-methods/samsung-pay.png';
+import instantEftLogo from '../assets/payment-methods/instant-eft.svg';
+import scanToPayLogo from '../assets/payment-methods/scan-to-pay.svg';
+import snapScanLogo from '../assets/payment-methods/snapscan.svg';
+import zapperLogo from '../assets/payment-methods/zapper.svg';
+import mobicredLogo from '../assets/payment-methods/mobicred.svg';
+import rcsLogo from '../assets/payment-methods/rcs.svg';
 
 const PAYMENT_METHODS = [
-  { name: 'Visa', logo: '/images/payment-methods/visa.svg' },
-  { name: 'Mastercard', logo: '/images/payment-methods/mastercard.svg' },
-  { name: 'American Express', logo: '/images/payment-methods/american-express.svg' },
-  { name: 'Apple Pay', logo: '/images/payment-methods/apple-pay.png' },
-  { name: 'Samsung Pay', logo: '/images/payment-methods/samsung-pay.png' },
-  { name: 'Instant EFT', logo: '/images/payment-methods/instant-eft.svg' },
-  { name: 'Scan to Pay', logo: '/images/payment-methods/scan-to-pay.svg' },
-  { name: 'SnapScan', logo: '/images/payment-methods/snapscan.svg' },
-  { name: 'Zapper', logo: '/images/payment-methods/zapper.svg' },
-  { name: 'Mobicred', logo: '/images/payment-methods/mobicred.svg' },
-  { name: 'RCS Store Card', logo: '/images/payment-methods/rcs.svg' }
+  { name: 'Visa', logo: visaLogo },
+  { name: 'Mastercard', logo: mastercardLogo },
+  { name: 'American Express', logo: americanExpressLogo },
+  { name: 'Apple Pay', logo: applePayLogo },
+  { name: 'Samsung Pay', logo: samsungPayLogo },
+  { name: 'Instant EFT', logo: instantEftLogo },
+  { name: 'Scan to Pay', logo: scanToPayLogo },
+  { name: 'SnapScan', logo: snapScanLogo },
+  { name: 'Zapper', logo: zapperLogo },
+  { name: 'Mobicred', logo: mobicredLogo },
+  { name: 'RCS Store Card', logo: rcsLogo }
 ];
 
 export default function PaymentMethodsStrip({ compact = false }) {
