@@ -43,6 +43,8 @@ import AdminDashboard from './components/AdminDashboard';
  
 import TrustBadges from './components/TrustBadges';
 import PaymentMethodsStrip from './components/PaymentMethodsStrip';
+import payfastByNetworkLogo from './assets/payment-methods/payfast-by-network.svg';
+import payfastSecurePayments from './assets/payfast-secure-payments.png';
 import ShippingForm from './components/ShippingForm';
 import MaintenanceMode from './components/MaintenanceMode';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -2598,14 +2600,14 @@ function App() {
                   <div className="payfast-trust-heading">
                     <img
                       className="payfast-official-logo"
-                      src="/images/payment-methods/payfast-by-network.svg"
+                      src={payfastByNetworkLogo}
                       alt="PayFast by Network"
                       loading="lazy"
                     />
                     <span>Safe and secure payments</span>
                   </div>
                   <div className="payfast-bank-logos" role="img" aria-label="Instant EFT, Absa, FNB, Nedbank, Standard Bank, Capitec, Visa and Masterpass">
-                    <img src="/images/payfast-secure-payments.png" alt="" loading="lazy" />
+                    <img src={payfastSecurePayments} alt="" loading="lazy" />
                   </div>
                 </div>
                 <PaymentMethodsStrip compact />
