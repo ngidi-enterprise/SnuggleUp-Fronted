@@ -2,7 +2,7 @@
   margin-top: 16px;
   padding: 16px;
   border: 1px solid #d8eee8;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #f7fcfb;
   color: #17252a;
 }
@@ -12,15 +12,15 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .payment-methods-heading span {
   color: #126f71;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .payment-methods-heading strong {
@@ -31,99 +31,38 @@
 }
 
 .payment-methods-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 8px;
 }
 
-.payment-method-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 5px 10px 5px 6px;
-  border: 1px solid #dce5e8;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #31454f;
-  font-size: 0.84rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.payment-method-mark {
-  display: inline-flex;
+.payment-method-logo {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #eef4f6;
-  color: #24313a;
-  font-size: 0.68rem;
-  font-weight: 900;
-  line-height: 1;
+  min-width: 0;
+  height: 54px;
+  padding: 9px 12px;
+  border: 1px solid #dce5e8;
+  border-radius: 6px;
+  background: #ffffff;
+  overflow: hidden;
 }
 
-.payment-method-mark--visa {
-  color: #1434cb;
-  background: #eef2ff;
-}
-
-.payment-method-mark--debit {
-  color: #126f71;
-  background: #e9f8f7;
-}
-
-.payment-method-mark--amex {
-  color: #ffffff;
-  background: #2e77bc;
-}
-
-.payment-method-mark--apple,
-.payment-method-mark--samsung {
-  color: #111111;
-  background: #f1f1f1;
-}
-
-.payment-method-mark--google {
-  color: #1a73e8;
-  background: #eef5ff;
-}
-
-.payment-method-mark--eft {
-  color: #006f9f;
-  background: #e8f6fc;
-}
-
-.payment-method-mark--qr,
-.payment-method-mark--snapscan {
-  color: #2c6cbf;
-  background: #edf5ff;
-}
-
-.payment-method-mark--zapper {
-  color: #1e5f9f;
-  background: #edf7ff;
-}
-
-.payment-method-mark--mobicred {
-  color: #0096a6;
-  background: #e8fafb;
-}
-
-.payment-method-mark--rcs {
-  color: #f4511e;
-  background: #fff1ec;
+.payment-method-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 110px;
+  object-fit: contain;
 }
 
 .payment-methods-strip--compact {
-  max-width: 780px;
+  width: min(100%, 780px);
   margin: 14px auto 0;
   padding: 14px;
+  border-color: rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .payment-methods-strip--compact .payment-methods-heading {
@@ -140,17 +79,20 @@
 }
 
 .payment-methods-strip--compact .payment-methods-list {
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
 
-.payment-methods-strip--compact .payment-method-pill {
-  min-height: 30px;
-  border-color: rgba(255, 255, 255, 0.2);
-  background: #ffffff;
-  font-size: 0.78rem;
+.payment-methods-strip--compact .payment-method-logo {
+  height: 46px;
+  padding: 8px 10px;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 @media (max-width: 640px) {
+  .payment-methods-strip {
+    padding: 14px 12px;
+  }
+
   .payment-methods-heading {
     display: block;
   }
@@ -161,14 +103,21 @@
     text-align: left;
   }
 
-  .payment-method-pill {
-    width: calc(50% - 4px);
-    justify-content: flex-start;
-    font-size: 0.78rem;
+  .payment-methods-list,
+  .payment-methods-strip--compact .payment-methods-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .payment-method-mark {
-    min-width: 32px;
-    font-size: 0.62rem;
+  .payment-method-logo,
+  .payment-methods-strip--compact .payment-method-logo {
+    height: 50px;
+    padding: 9px;
+  }
+}
+
+@media (max-width: 360px) {
+  .payment-methods-list,
+  .payment-methods-strip--compact .payment-methods-list {
+    grid-template-columns: 1fr;
   }
 }

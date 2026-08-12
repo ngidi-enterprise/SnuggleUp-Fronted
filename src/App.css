@@ -1543,92 +1543,64 @@ body {
 .payfast-trust-panel {
   width: min(100%, 560px);
   margin: 0 auto;
-  padding: 14px 18px;
+  padding: 10px;
   background: #ffffff;
-  color: #20262a;
   border: 1px solid #d8dde1;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
 }
 
-.payfast-trust-main {
-  display: flex;
+.payfast-trust-heading {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.9fr) 1px minmax(170px, 1.1fr);
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-}
-
-.payfast-trust-logo {
-  color: #111111;
-  font-size: 2.15rem;
-  font-style: italic;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.payfast-trust-logo span {
-  color: #ed1c24;
-}
-
-.payfast-trust-company {
-  margin-top: 2px;
-  color: #3d3d3d;
-  font-size: 0.72rem;
+  gap: 18px;
+  padding: 5px 10px 14px;
+  color: #28343a;
+  font-size: 1rem;
   font-weight: 800;
-  text-align: center;
   text-transform: uppercase;
 }
 
-.payfast-trust-divider {
+.payfast-trust-heading::before {
+  content: '';
+  grid-column: 2;
+  grid-row: 1;
   width: 1px;
-  height: 46px;
+  height: 42px;
   background: #c7ced4;
 }
 
-.payfast-trust-message {
-  color: #3d3d3d;
-  font-size: 1.15rem;
-  font-weight: 800;
-  text-transform: uppercase;
+.payfast-official-logo {
+  display: block;
+  width: 100%;
+  max-width: 210px;
+  max-height: 58px;
+  justify-self: end;
+  object-fit: contain;
 }
 
-.payfast-trust-methods {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
+.payfast-trust-heading span {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: left;
 }
 
-.trust-method {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px 8px;
-  border: 1px solid #dce4ea;
-  border-radius: 999px;
-  background: #f7fafb;
-  color: #1f3038;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
+.payfast-bank-logos {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9.55 / 1;
+  overflow: hidden;
+  border-top: 1px solid #e1e6e9;
 }
 
-.trust-method-eft {
-  color: #006f9f;
-}
-
-.trust-method-bank {
-  color: #126f71;
-}
-
-.trust-method-visa {
-  color: #1434cb;
-}
-
-.trust-method-mastercard {
-  color: #d43d22;
+.payfast-bank-logos img {
+  position: absolute;
+  top: -160%;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 @media (max-width: 768px) {
@@ -1648,31 +1620,49 @@ body {
   }
 
   .payfast-trust-panel {
-    padding: 12px;
+    padding: 7px;
   }
 
-  .payfast-trust-main {
+  .payfast-trust-heading {
+    grid-template-columns: minmax(125px, 0.95fr) 1px minmax(120px, 1.05fr);
     gap: 10px;
+    padding: 5px 5px 11px;
+    font-size: 0.78rem;
   }
 
-  .payfast-trust-logo {
-    font-size: 1.6rem;
+  .payfast-trust-heading::before {
+    height: 34px;
   }
 
-  .payfast-trust-company {
-    font-size: 0.58rem;
+  .payfast-official-logo {
+    max-height: 46px;
+  }
+}
+
+@media (max-width: 390px) {
+  .payfast-trust-heading {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
-  .payfast-trust-divider {
-    height: 36px;
+  .payfast-trust-heading::before {
+    display: none;
   }
 
-  .payfast-trust-message {
-    font-size: 0.86rem;
+  .payfast-official-logo,
+  .payfast-trust-heading span {
+    grid-column: 1;
+    justify-self: center;
+    text-align: center;
   }
 
-  .trust-method {
-    font-size: 0.66rem;
+  .payfast-official-logo {
+    grid-row: 1;
+    width: min(100%, 190px);
+  }
+
+  .payfast-trust-heading span {
+    grid-row: 2;
   }
 }
 

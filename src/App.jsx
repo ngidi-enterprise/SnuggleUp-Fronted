@@ -2594,25 +2594,18 @@ function App() {
             </div>
               <div className="footer-payment-trust" aria-label="Secure payments powered by PayFast">
                 <p className="payment-trust-label">Secure checkout powered by PayFast</p>
-                <div className="payfast-trust-panel" role="img" aria-label="PayFast safe and secure payments">
-                  <div className="payfast-trust-main">
-                    <div>
-                      <div className="payfast-trust-logo">
-                        <span>Pay</span>Fast
-                      </div>
-                      <div className="payfast-trust-company">A DPO Company</div>
-                    </div>
-                    <div className="payfast-trust-divider" />
-                    <div className="payfast-trust-message">Safe and secure payments</div>
+                <div className="payfast-trust-panel">
+                  <div className="payfast-trust-heading">
+                    <img
+                      className="payfast-official-logo"
+                      src="/images/payment-methods/payfast-by-network.svg"
+                      alt="PayFast by Network"
+                      loading="lazy"
+                    />
+                    <span>Safe and secure payments</span>
                   </div>
-                  <div className="payfast-trust-methods" aria-hidden="true">
-                    <span className="trust-method trust-method-eft">instant EFT</span>
-                    <span className="trust-method trust-method-bank">ABSA</span>
-                    <span className="trust-method trust-method-bank">FNB</span>
-                    <span className="trust-method trust-method-bank">Nedbank</span>
-                    <span className="trust-method trust-method-bank">Standard Bank</span>
-                    <span className="trust-method trust-method-visa">VISA</span>
-                    <span className="trust-method trust-method-mastercard">Mastercard</span>
+                  <div className="payfast-bank-logos" role="img" aria-label="Instant EFT, Absa, FNB, Nedbank, Standard Bank, Capitec, Visa and Masterpass">
+                    <img src="/images/payfast-secure-payments.png" alt="" loading="lazy" />
                   </div>
                 </div>
                 <PaymentMethodsStrip compact />
