@@ -2,11 +2,39 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getStorefrontAnalyticsIdentity } from '../../lib/analytics';
 
+const currentSouthAfricanMonth = () => {
+  const parts = new Intl.DateTimeFormat('en-ZA', {
+    timeZone: 'Africa/Johannesburg',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  return `${year}-${month}`;
+};
+
+const csvCell = (value) => {
+  let text = value === null || value === undefined ? '' : String(value);
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [analytics, setAnalytics] = useState(null);
   const [traffic, setTraffic] = useState(null);
+  const [reportMonth, setReportMonth] = useState(currentSouthAfricanMonth);
+  const [monthlyReport, setMonthlyReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
   const { token } = useAuth();
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'https://snuggleup-backend.onrender.com';
@@ -155,17 +183,195 @@ export default function Analytics() {
       case 'image_view': return `Viewed image ${step.eventValue || ''} of ${step.productName || 'a product'}`.trim();
       case 'section_open': return `Opened ${page}`;
       case 'add_to_cart': return `Added ${step.productName || 'a product'} to cart`;
-      case 'remove_from_cart': return `Removed ${step.productName || 'a product'} from cart`;
+      case 'remove_from_cart':
+      case 'cart_item_removed': return `Removed ${step.productName || 'a product'} from cart`;
+      case 'cart_opened': return 'Opened the shopping cart';
+      case 'quantity_changed': return `Changed ${step.productName || 'a product'} quantity${step.eventValue ? ` to ${step.eventValue}` : ''}`;
       case 'begin_checkout': return 'Started checkout';
+      case 'checkout_clicked': return 'Clicked checkout';
+      case 'checkout_loaded': return 'Checkout form loaded';
       case 'checkout_step': return `Continued checkout${step.eventValue ? ` (step ${step.eventValue})` : ''}`;
+      case 'delivery_location_entered': return 'Entered a delivery location';
+      case 'delivery_quote_shown': return 'Received delivery quotes';
+      case 'delivery_option_selected': return `Selected ${step.deliveryOption || 'a delivery option'}`;
+      case 'customer_details_started': return 'Started entering customer details';
+      case 'customer_details_completed': return 'Completed customer details';
+      case 'payment_clicked': return 'Clicked the payment button';
       case 'payment_started': return 'Opened PayFast';
+      case 'payfast_redirected': return 'Redirected to PayFast';
+      case 'payment_success': return 'Payment confirmed';
+      case 'payment_failed': return `Payment failed${step.failureReason ? `: ${step.failureReason}` : ''}`;
       case 'purchase': return 'Completed a purchase';
+      case 'purchase_complete': return 'Purchase completed';
       case 'scroll_depth': return `Scrolled ${step.eventValue || 0}% down ${page}`;
       case 'page_exit': return `Exited from ${page}`;
       default: return step.eventName;
     }
   };
+  const checkoutEvents = new Set([
+    'add_to_cart', 'cart_opened', 'cart_item_removed', 'remove_from_cart',
+    'quantity_changed', 'checkout_clicked', 'begin_checkout', 'checkout_loaded',
+    'delivery_location_entered', 'delivery_quote_shown', 'delivery_option_selected',
+    'customer_details_started', 'customer_details_completed', 'payment_clicked',
+    'payfast_redirected', 'payment_started', 'payment_success', 'payment_failed',
+    'purchase_complete', 'purchase',
+  ]);
+  const formatMoney = (value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? `R${amount.toFixed(2)}` : null;
+  };
+  const journeyStepDetails = (step) => {
+    const parts = [];
+    const items = Array.isArray(step.cartItems) ? step.cartItems : [];
+    if (items.length) {
+      parts.push(items.map((item) => `${item.quantity || 1} x ${item.productName || 'Product'}`).join(' | '));
+    }
+    if (formatMoney(step.cartValue)) parts.push(`Cart ${formatMoney(step.cartValue)}`);
+    if (formatMoney(step.deliveryCost)) parts.push(`Delivery ${formatMoney(step.deliveryCost)}`);
+    if (step.deliveryOption) parts.push(step.deliveryOption);
+    if (step.orderReference) parts.push(`Order ${step.orderReference}`);
+    return parts;
+  };
   const formatStaffLabel = (value) => value === 'superuser' ? 'Superuser' : 'Other admins';
+
+  const loadMonthlyReport = async () => {
+    setReportLoading(true);
+    setReportError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/traffic-insights/export?month=${encodeURIComponent(reportMonth)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to analyse this month');
+      setMonthlyReport(data);
+    } catch (reportFailure) {
+      setReportError(reportFailure.message);
+      setMonthlyReport(null);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const downloadMonthlyCsv = () => {
+    if (!monthlyReport) return;
+    const summary = monthlyReport.summary || {};
+    const bots = monthlyReport.botSummary || {};
+    const rows = [
+      ['SnuggleUp customer analytics report', monthlyReport.period?.label || reportMonth],
+      ['Normal visitors', summary.visitors || 0],
+      ['Normal sessions', summary.sessions || 0],
+      ['Detected bot/crawler visitors (total only)', bots.visitors || 0],
+      ['Detected bot/crawler sessions (total only)', bots.sessions || 0],
+      ['High-intent visitors adding 3+ products without purchase', monthlyReport.similarBehavior?.visitors || 0],
+      [],
+      [
+        'Visitor ID', 'Visit started (SA time)', 'Latest action (SA time)', 'Sessions/tabs',
+        'Source', 'Campaign', 'Country', 'Province', 'Municipality / city',
+        'Device', 'Duration', 'Pages viewed',
+        'Products viewed', 'Products added', 'Checkout started', 'Payment started',
+        'Purchased', 'Exit page', 'Action time (SA time)', 'Action',
+      ],
+    ];
+
+    (monthlyReport.journeys || []).forEach((journey) => {
+      const steps = journey.steps?.length ? journey.steps : [{}];
+      steps.forEach((step) => rows.push([
+        String(journey.visitor_id || '').slice(-10).toUpperCase(),
+        formatVisitTime(journey.started_at),
+        formatVisitTime(journey.latest_activity),
+        journey.session_count || 0,
+        journey.source || journey.referrer_host || 'Direct',
+        [journey.campaign, journey.ad_group].filter(Boolean).join(' / '),
+        formatRegion(journey),
+        journey.province_name || journey.region_name || '',
+        journey.municipality_name || journey.city_name || '',
+        [journey.device_type, journey.browser_name, journey.os_name].filter(Boolean).join(' / '),
+        formatDuration(journey.session_duration_seconds),
+        journey.pages_viewed || 0,
+        (journey.products_viewed || []).join(' | '),
+        (journey.added_products || []).join(' | '),
+        journey.checkout_started ? 'Yes' : 'No',
+        journey.payment_started ? 'Yes' : 'No',
+        journey.purchased ? 'Yes' : 'No',
+        journey.exit_page || '',
+        step.occurredAt ? formatVisitTime(step.occurredAt) : '',
+        step.eventName ? formatJourneyStep(step) : '',
+      ]));
+    });
+
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `snuggleup-customer-analytics-${monthlyReport.period?.month || reportMonth}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const printMonthlyPdf = () => {
+    if (!monthlyReport) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setReportError('Please allow pop-ups once so the PDF report can open.');
+      return;
+    }
+    const summary = monthlyReport.summary || {};
+    const bots = monthlyReport.botSummary || {};
+    const journeyHtml = (monthlyReport.journeys || []).map((journey) => {
+      const steps = (journey.steps || []).map((step, index) => `
+        <li><b>${index + 1}. ${escapeHtml(formatVisitTime(step.occurredAt))}</b> ${escapeHtml(formatJourneyStep(step))}</li>
+      `).join('');
+      return `
+        <section class="journey">
+          <div class="journey-title">
+            <h2>Visitor ${escapeHtml(String(journey.visitor_id || '').slice(-10).toUpperCase())}</h2>
+            <span>${escapeHtml(formatVisitTime(journey.started_at))}</span>
+          </div>
+          <div class="facts">
+            <p><b>Source:</b> ${escapeHtml(journey.source || journey.referrer_host || 'Direct')}</p>
+            <p><b>Sessions/tabs:</b> ${escapeHtml(journey.session_count || 0)}</p>
+            <p><b>Duration:</b> ${escapeHtml(formatDuration(journey.session_duration_seconds))}</p>
+            <p><b>Country:</b> ${escapeHtml(formatRegion(journey))}</p>
+            <p><b>Province:</b> ${escapeHtml(journey.province_name || journey.region_name || 'Unknown')}</p>
+            <p><b>Municipality / city:</b> ${escapeHtml(journey.municipality_name || journey.city_name || 'Unknown')}</p>
+            <p><b>Products viewed:</b> ${escapeHtml((journey.products_viewed || []).join(', ') || 'None recorded')}</p>
+            <p><b>Products added:</b> ${escapeHtml((journey.added_products || []).join(', ') || 'None')}</p>
+            <p><b>Checkout / purchase:</b> ${journey.checkout_started ? 'Started' : 'No'} / ${journey.purchased ? 'Completed' : 'No'}</p>
+            <p><b>Exit page:</b> ${escapeHtml(journey.exit_page || 'Not recorded')}</p>
+          </div>
+          <h3>Action timeline</h3>
+          <ol>${steps || '<li>No detailed actions recorded.</li>'}</ol>
+        </section>`;
+    }).join('');
+
+    printWindow.document.write(`<!doctype html><html><head><title>SnuggleUp analytics ${escapeHtml(reportMonth)}</title>
+      <style>
+        @page{size:A4;margin:14mm} body{font-family:Arial,sans-serif;color:#243746;margin:0;font-size:11px;line-height:1.45}
+        header{border-bottom:4px solid #147a7d;padding-bottom:14px;margin-bottom:18px} h1{color:#147a7d;margin:0 0 4px} h2{font-size:15px;margin:0} h3{font-size:12px;margin:12px 0 5px}
+        .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.stat{border:1px solid #d8e7e5;padding:9px}.stat b{display:block;font-size:17px;color:#147a7d}
+        .notice{padding:10px;border-left:4px solid #f45b93;background:#fff5f8;margin:12px 0}.journey{break-inside:avoid;border:1px solid #d8e7e5;padding:12px;margin:0 0 12px}
+        .journey-title{display:flex;justify-content:space-between;border-bottom:1px solid #e6eceb;padding-bottom:7px}.facts{display:grid;grid-template-columns:1fr 1fr;gap:2px 15px}.facts p{margin:4px 0}ol{margin:4px 0;padding-left:22px}li{padding:3px 0}
+        .bots{color:#5d6f75} @media print{button{display:none}}
+      </style></head><body>
+      <header><h1>SnuggleUp Customer Analytics</h1><div>${escapeHtml(monthlyReport.period?.label || reportMonth)} - Times shown in South African time</div></header>
+      <div class="summary">
+        <div class="stat"><b>${escapeHtml(summary.visitors || 0)}</b>normal visitors</div>
+        <div class="stat"><b>${escapeHtml(summary.sessions || 0)}</b>normal sessions</div>
+        <div class="stat"><b>${escapeHtml(summary.pageViews || 0)}</b>page views</div>
+        <div class="stat"><b>${escapeHtml(summary.productViews || 0)}</b>product views</div>
+        <div class="stat"><b>${escapeHtml(summary.addToCartActions || 0)}</b>add-to-cart actions</div>
+        <div class="stat"><b>${escapeHtml(summary.purchases || 0)}</b>purchases recorded</div>
+      </div>
+      <div class="notice"><b>${escapeHtml(monthlyReport.similarBehavior?.visitors || 0)} similar high-intent visitors:</b> ${escapeHtml(monthlyReport.similarBehavior?.label || '')}</div>
+      <p class="bots"><b>Bots/crawlers excluded from details:</b> ${escapeHtml(bots.visitors || 0)} visitors, ${escapeHtml(bots.sessions || 0)} sessions, ${escapeHtml(bots.events || 0)} events.</p>
+      ${journeyHtml || '<p>No normal-customer journeys were recorded for this month.</p>'}
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 350);
+  };
 
   return (
     <div className="analytics-container">
@@ -221,13 +427,57 @@ export default function Analytics() {
               <div className="analytics-card"><div className="analytics-card-content"><h3>Page views</h3><p className="analytics-card-value">{formatNumber(trafficSummary.page_views)}</p></div></div>
               <div className="analytics-card"><div className="analytics-card-content"><h3>Product views</h3><p className="analytics-card-value">{formatNumber(trafficSummary.product_views)}</p></div></div>
               <div className="analytics-card"><div className="analytics-card-content"><h3>Average visit time</h3><p className="analytics-card-value">{formatDuration(trafficSummary.average_seconds)}</p></div></div>
+              <div className="analytics-card"><div className="analytics-card-content"><h3>Bots/crawlers excluded</h3><p className="analytics-card-value">{formatNumber(traffic.botSummary?.visitors)}</p></div></div>
             </div>
+
+            <section className="analytics-history-report">
+              <div className="analytics-history-heading">
+                <div>
+                  <h3>Monthly customer analytics history</h3>
+                  <p>Analyse a full calendar month. Customer visits remain detailed; detected bots and crawlers appear only as totals.</p>
+                </div>
+                <div className="analytics-history-controls">
+                  <label>
+                    Month
+                    <input type="month" value={reportMonth} onChange={(event) => setReportMonth(event.target.value)} />
+                  </label>
+                  <button type="button" onClick={loadMonthlyReport} disabled={reportLoading}>
+                    {reportLoading ? 'Analysing...' : 'Analyse month'}
+                  </button>
+                </div>
+              </div>
+              {reportError && <p className="analytics-history-error">{reportError}</p>}
+              {monthlyReport && (
+                <div className="analytics-history-results">
+                  <div className="analytics-history-stat"><strong>{formatNumber(monthlyReport.summary?.visitors)}</strong><span>normal visitors</span></div>
+                  <div className="analytics-history-stat"><strong>{formatNumber(monthlyReport.similarBehavior?.visitors)}</strong><span>similar high-intent visits</span></div>
+                  <div className="analytics-history-stat muted"><strong>{formatNumber(monthlyReport.botSummary?.visitors)}</strong><span>bots/crawlers, total only</span></div>
+                  <p className="analytics-history-finding">
+                    <strong>Similar to the journey you highlighted:</strong> {monthlyReport.similarBehavior?.label}. Found {formatNumber(monthlyReport.similarBehavior?.visitors)} during {monthlyReport.period?.label}.
+                  </p>
+                  {monthlyReport.similarBehavior?.examples?.length > 0 && (
+                    <div className="analytics-history-examples">
+                      {monthlyReport.similarBehavior.examples.map((example) => (
+                        <span key={example.visitor_id}>
+                          {String(example.visitor_id || '').slice(-10).toUpperCase()}: {example.added_products.join(', ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="analytics-history-actions">
+                    <button type="button" onClick={downloadMonthlyCsv}>Download for Excel</button>
+                    <button type="button" className="secondary" onClick={printMonthlyPdf}>Save as PDF</button>
+                  </div>
+                  {monthlyReport.truncated && <p className="analytics-history-error">This unusually large month reached the 100,000-event export limit.</p>}
+                </div>
+              )}
+            </section>
 
             <div className="traffic-funnel" aria-label="Customer journey funnel">
               <div className="traffic-funnel-heading">
                 <div>
-                  <h3>Customer journey funnel</h3>
-                  <p>See exactly where visitors continue and where they leave.</p>
+                  <h3>High-intent checkout funnel</h3>
+                  <p>See each step from adding a product through confirmed purchase.</p>
                 </div>
                 <span>Unique sessions</span>
               </div>
@@ -288,12 +538,14 @@ export default function Analytics() {
 
             <div className="analytics-table" style={{ marginTop: '24px' }}>
               <h3>Visitor regions</h3>
-              <p className="analytics-table-note">Approximate location based on country routing information or browser time zone. Precise location and IP addresses are not stored.</p>
+              <p className="analytics-table-note">Approximate country, province, and municipality/city based on routing information. GPS coordinates and IP addresses are not stored.</p>
               {traffic.regions?.length ? (
-                <table><thead><tr><th>Country or region</th><th>Visitor time zone</th><th>Sessions</th><th>Most recent visit (SA time)</th></tr></thead><tbody>
+                <table><thead><tr><th>Country</th><th>Province</th><th>Municipality / city</th><th>Visitor time zone</th><th>Sessions</th><th>Most recent visit (SA time)</th></tr></thead><tbody>
                   {traffic.regions.map((item, index) => (
-                    <tr key={`${item.country_code || item.timezone_name}-${index}`}>
+                    <tr key={`${item.country_code || item.timezone_name}-${item.province_name || ''}-${item.municipality_name || ''}-${index}`}>
                       <td>{formatRegion(item)}</td>
+                      <td>{item.province_name || '-'}</td>
+                      <td>{item.municipality_name || '-'}</td>
                       <td>{item.timezone_name || '-'}</td>
                       <td>{formatNumber(item.sessions)}</td>
                       <td>{formatVisitTime(item.latest_visit)}</td>
@@ -352,12 +604,10 @@ export default function Analytics() {
                 const steps = Array.isArray(journey.steps) ? journey.steps : [];
                 const source = journey.source || journey.referrer_host || 'Direct';
                 const products = Array.isArray(journey.products_viewed) ? journey.products_viewed : [];
-                const location = [
-                  journey.city_name,
-                  journey.region_name,
-                  formatRegion(journey),
-                ].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(', ');
                 const yesNo = (value) => value ? 'Yes' : 'No';
+                const checkoutSteps = steps.filter((step) => checkoutEvents.has(step.eventName));
+                const lastCheckoutStep = checkoutSteps[checkoutSteps.length - 1];
+                const completedPurchase = steps.some((step) => ['purchase_complete', 'purchase'].includes(step.eventName));
                 return (
                   <article className="visitor-card" key={journey.journey_id || journey.session_id}>
                     <header className="visitor-card-header">
@@ -381,7 +631,9 @@ export default function Analytics() {
                       {journey.google_search_term && <div><dt>Google search term</dt><dd>{journey.google_search_term}</dd></div>}
                       <div><dt>Campaign / ad group</dt><dd>{[journey.campaign, journey.ad_group].filter(Boolean).join(' / ') || '—'}</dd></div>
                       <div><dt>Device / browser</dt><dd>{[journey.device_type, journey.browser_name, journey.os_name].filter(Boolean).join(' · ') || 'Unknown'}</dd></div>
-                      <div><dt>City or region</dt><dd>{location || 'Unknown region'}</dd></div>
+                      <div><dt>Country</dt><dd>{formatRegion(journey)}</dd></div>
+                      <div><dt>Province</dt><dd>{journey.province_name || journey.region_name || 'Unknown'}</dd></div>
+                      <div><dt>Municipality / city</dt><dd>{journey.municipality_name || journey.city_name || 'Unknown'}</dd></div>
                       <div><dt>Visit duration</dt><dd>{formatDuration(journey.session_duration_seconds)}</dd></div>
                       <div><dt>Pages viewed</dt><dd>{formatNumber(journey.pages_viewed)}</dd></div>
                       <div><dt>Products viewed</dt><dd>{products.length ? products.join(', ') : formatNumber(journey.products_viewed_count)}</dd></div>
@@ -391,6 +643,7 @@ export default function Analytics() {
                       <div><dt>Added to cart</dt><dd>{yesNo(journey.added_to_cart)}</dd></div>
                       <div><dt>Checkout started</dt><dd>{yesNo(journey.checkout_started)}</dd></div>
                       <div><dt>Purchase completed</dt><dd>{yesNo(journey.purchased)}</dd></div>
+                      <div className="visitor-checkout-stop"><dt>Checkout journey ended</dt><dd>{lastCheckoutStep ? (completedPurchase ? 'Purchase completed' : `After: ${formatJourneyStep(lastCheckoutStep)}`) : 'No checkout activity'}</dd></div>
                       <div><dt>Exit page</dt><dd>{journey.exit_page || 'Not recorded yet'}</dd></div>
                     </dl>
 
@@ -405,7 +658,12 @@ export default function Analytics() {
                       {steps.map((step, index) => (
                         <li key={`${step.eventName}-${step.pagePath}-${step.productName}-${step.eventValue}-${step.occurredAt}-${index}`}>
                           <time>{formatActionTime(step.occurredAt)}</time>
-                          <span>{formatJourneyStep(step)}</span>
+                          <span>
+                            {formatJourneyStep(step)}
+                            {journeyStepDetails(step).length > 0 && (
+                              <small className="visitor-timeline-details">{journeyStepDetails(step).join(' · ')}</small>
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ol>

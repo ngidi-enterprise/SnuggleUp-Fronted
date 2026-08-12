@@ -52,7 +52,7 @@ import ShippingPolicy from './pages/ShippingPolicy';
 import ReturnsPolicy from './pages/ReturnsPolicy';
 import LearningCentre from './pages/LearningCentre';
 import { useAuth } from './context/AuthContext';
-import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackPaymentStarted, setStorefrontAnalyticsPaused, setStorefrontAnalyticsAuthToken, getStorefrontAnalyticsIdentity } from './lib/analytics';
+import { trackPageView, trackProductClick, trackProductView, trackAddToCart, trackRemoveFromCart, trackBeginCheckout, trackCheckoutJourney, createAnalyticsInteractionId, setStorefrontAnalyticsPaused, setStorefrontAnalyticsAuthToken, getStorefrontAnalyticsIdentity } from './lib/analytics';
 import { PAGE_SEO, setPageSeo } from './lib/seo';
 
 function App() {
@@ -671,9 +671,18 @@ function App() {
       } else if (route.includes('/checkout/success')) {
         setCurrentPage('success');
         trackPageView('/checkout/success', 'Checkout Success');
+        const orderReference = new URLSearchParams(route.split('?')[1] || '').get('m_payment_id') || '';
+        const savedItems = (() => { try { return JSON.parse(localStorage.getItem('cart') || '[]'); } catch { return []; } })();
+        const savedCheckout = (() => { try { return JSON.parse(localStorage.getItem('checkoutData') || '{}'); } catch { return {}; } })();
+        const deliveryCost = Number(savedCheckout.importShipping || 0) + Number(savedCheckout.localShipping || 0);
+        trackCheckoutJourney('payment_success', { cartItems: savedItems, deliveryCost, orderReference, interactionId: `payfast:${orderReference || 'unknown'}:payment_success` });
+        trackCheckoutJourney('purchase_complete', { cartItems: savedItems, deliveryCost, orderReference, interactionId: `payfast:${orderReference || 'unknown'}:purchase_complete` });
       } else if (route.includes('/checkout/cancel')) {
         setCurrentPage('cancel');
         trackPageView('/checkout/cancel', 'Checkout Cancelled');
+        const orderReference = new URLSearchParams(route.split('?')[1] || '').get('m_payment_id') || '';
+        const savedItems = (() => { try { return JSON.parse(localStorage.getItem('cart') || '[]'); } catch { return []; } })();
+        trackCheckoutJourney('payment_failed', { cartItems: savedItems, orderReference, failureReason: 'Customer returned before payment completed', interactionId: `payfast:${orderReference || 'unknown'}:payment_failed` });
       } else if (route.startsWith('/forgot-password')) {
         setCurrentPage('home');
         setAuthView('forgot-password');
@@ -1050,6 +1059,17 @@ function App() {
 
       setLocalShippingQuotes(rates);
 
+      if (matchingRates.length > 0) {
+        const lowestRate = Math.min(...matchingRates.map(rate => Number(rate.priceZAR || 0)));
+        trackCheckoutJourney('delivery_quote_shown', {
+          cartItems,
+          cartValue: getSubtotal(),
+          deliveryCost: lowestRate,
+          deliveryOption: localDeliveryMode,
+          interactionId: createAnalyticsInteractionId(),
+        });
+      }
+
       if (matchingRates.length === 0) {
         const label = localDeliveryMode === 'pickup' ? 'pick-up point' : 'express';
         const outsideGauteng = String(shippingDetails.province || '').trim().toLowerCase() !== 'gauteng';
@@ -1079,28 +1099,33 @@ function App() {
       return;
     }
 
-    setCartItems(prevItems => {
-      const existingIndex = prevItems.findIndex(item => String(item.id) === String(normalizedProduct.id));
+    const existingIndex = cartItems.findIndex(item => String(item.id) === String(normalizedProduct.id));
+    let nextItems = cartItems;
 
-      if (existingIndex >= 0) {
-        const existingItem = prevItems[existingIndex];
+    if (existingIndex >= 0) {
+        const existingItem = cartItems[existingIndex];
         if (existingItem.quantity >= stockQty) {
           alert(`Only ${stockQty} available in stock.`);
-          return prevItems;
+          return;
         }
 
-        const updatedItems = [...prevItems];
+        const updatedItems = [...cartItems];
         updatedItems[existingIndex] = {
           ...existingItem,
           quantity: existingItem.quantity + 1
         };
-        return updatedItems;
-      }
-
-      return [...prevItems, normalizedProduct];
-    });
-
-    trackAddToCart(normalizedProduct, 1);
+        nextItems = updatedItems;
+        trackCheckoutJourney('quantity_changed', {
+          cartItems: nextItems,
+          product: normalizedProduct,
+          quantity: updatedItems[existingIndex].quantity,
+          interactionId: createAnalyticsInteractionId(),
+        });
+    } else {
+      nextItems = [...cartItems, normalizedProduct];
+      trackAddToCart(normalizedProduct, 1, nextItems);
+    }
+    setCartItems(nextItems);
   };
 
   const addLocalBundle = (bundle) => {
@@ -1138,7 +1163,7 @@ function App() {
         } else {
           nextItems.push(normalizedProduct);
         }
-        trackAddToCart(normalizedProduct, 1);
+        trackAddToCart(normalizedProduct, 1, nextItems);
       });
       return nextItems;
     });
@@ -1169,15 +1194,20 @@ function App() {
             ? { ...item, quantity: item.quantity - 1 }
             : item
         );
-        trackRemoveFromCart(item, 1);
+        trackCheckoutJourney('quantity_changed', {
+          cartItems: updated,
+          product: item,
+          quantity: Number(item.quantity) - 1,
+          interactionId: createAnalyticsInteractionId(),
+        });
         setBundleSelections(selections => (
           reconcileBundleSelections(updated, selections, localBundles)
         ));
         return updated;
       }
 
-      trackRemoveFromCart(item, item.quantity || 0);
       const updated = prevItems.filter(item => String(item.id) !== String(productId));
+      trackRemoveFromCart(item, item.quantity || 0, updated);
       setBundleSelections(selections => (
         reconcileBundleSelections(updated, selections, localBundles)
       ));
@@ -1397,6 +1427,14 @@ function App() {
   };
 
   const toggleCart = () => {
+    const opening = currentPage !== 'home' || !showCart;
+    if (opening) {
+      trackCheckoutJourney('cart_opened', {
+        cartItems,
+        cartValue: getSubtotal(),
+        interactionId: createAnalyticsInteractionId(),
+      });
+    }
     if (currentPage !== 'home') {
       setCurrentPage('home');
       setLearningSlug('');
@@ -1466,6 +1504,21 @@ function App() {
     };
     setShippingFormData(detailsWithName);
 
+    trackCheckoutJourney('customer_details_completed', {
+      cartItems,
+      cartValue: getSubtotal(),
+      deliveryCost: getImportShippingCost() + getLocalShippingCost(),
+      deliveryOption: getLocalShippingMethod() || getImportShippingMethod(),
+      interactionId: createAnalyticsInteractionId(),
+    });
+    trackCheckoutJourney('payment_clicked', {
+      cartItems,
+      cartValue: getSubtotal(),
+      deliveryCost: getImportShippingCost() + getLocalShippingCost(),
+      deliveryOption: getLocalShippingMethod() || getImportShippingMethod(),
+      interactionId: createAnalyticsInteractionId(),
+    });
+
     if (hasLocal && localDeliveryMode !== 'economy' && !selectedLocalShipping) {
       await fetchLocalShippingQuotes(detailsWithName);
       return;
@@ -1512,6 +1565,7 @@ function App() {
 
       // helper to actually post the payment data
       const postPayment = async (hdrs) => {
+        const analyticsIdentity = getStorefrontAnalyticsIdentity();
         return fetch(`${apiBaseInUse}/api/payments/create`, {
           method: 'POST',
           headers: hdrs,
@@ -1527,6 +1581,8 @@ function App() {
             shippingMethod: importShippingMethod,
             localShippingMethod,
             localDeliveryMode,
+            analyticsVisitorId: analyticsIdentity.visitorId,
+            analyticsSessionId: analyticsIdentity.sessionId,
             shippingQuoted: importShipping,
             shippingCountry: shippingCountry,
             shippingDetails: detailsWithName,
@@ -1564,7 +1620,13 @@ function App() {
       }
 
       // The payment request was accepted and the customer is about to leave for PayFast.
-      trackPaymentStarted();
+      trackCheckoutJourney('payfast_redirected', {
+        cartItems,
+        cartValue: getSubtotal(),
+        deliveryCost: importShipping + localShipping,
+        deliveryOption: localShippingMethod || importShippingMethod,
+        interactionId: createAnalyticsInteractionId(),
+      });
 
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
@@ -1581,6 +1643,14 @@ function App() {
       }
     } catch (error) {
       console.error('Checkout error:', error);
+      trackCheckoutJourney('payment_failed', {
+        cartItems,
+        cartValue: getSubtotal(),
+        deliveryCost: getImportShippingCost() + getLocalShippingCost(),
+        deliveryOption: getLocalShippingMethod() || getImportShippingMethod(),
+        failureReason: 'Payment handoff could not be started',
+        interactionId: createAnalyticsInteractionId(),
+      });
       alert(error.message || 'Connection error. Please check if the backend server is running.');
     }
   };
@@ -1604,6 +1674,13 @@ function App() {
                 setLocalDeliveryMode(option.key);
                 setSelectedLocalShipping(null);
                 setLocalShippingError('');
+                trackCheckoutJourney('delivery_option_selected', {
+                  cartItems,
+                  cartValue: getSubtotal(),
+                  deliveryCost: option.key === 'economy' ? getLocalShippingCost() : undefined,
+                  deliveryOption: option.label,
+                  interactionId: createAnalyticsInteractionId(),
+                });
               }}
             >
               {option.label}
@@ -1670,6 +1747,13 @@ function App() {
           onChange={(event) => {
             const option = shippingOptions.find(rate => rate.logisticName === event.target.value);
             setSelectedShipping(option || null);
+            if (option) trackCheckoutJourney('delivery_option_selected', {
+              cartItems,
+              cartValue: getSubtotal(),
+              deliveryCost: Number(option.logisticPrice || option.price || 0),
+              deliveryOption: option.logisticName,
+              interactionId: createAnalyticsInteractionId(),
+            });
           }}
           style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
         >
@@ -2244,6 +2328,13 @@ function App() {
                                               onChange={(e) => {
                                                 const opt = shippingOptions.find(o => o.logisticName === e.target.value);
                                                 setSelectedShipping(opt || null);
+                                                if (opt) trackCheckoutJourney('delivery_option_selected', {
+                                                  cartItems,
+                                                  cartValue: getSubtotal(),
+                                                  deliveryCost: Number(opt.logisticPrice || opt.price || 0),
+                                                  deliveryOption: opt.logisticName,
+                                                  interactionId: createAnalyticsInteractionId(),
+                                                });
                                               }}
                                               style={{width: '100%', padding:'8px', marginTop: '6px', borderRadius: '4px', border: '1px solid #ddd'}}
                                             >
@@ -2569,6 +2660,16 @@ function App() {
                 setLocalShippingError('');
               }}
               onCheckLocalShippingRates={fetchLocalShippingQuotes}
+              onJourneyEvent={(eventName, details = {}) => {
+                const selectedDeliveryCost = details.deliveryCost ?? (getImportShippingCost() + getLocalShippingCost());
+                trackCheckoutJourney(eventName, {
+                  cartItems,
+                  cartValue: getSubtotal(),
+                  deliveryCost: selectedDeliveryCost,
+                  deliveryOption: details.deliveryOption || getLocalShippingMethod() || getImportShippingMethod(),
+                  interactionId: details.interactionId || createAnalyticsInteractionId(),
+                });
+              }}
             />
           )}
 

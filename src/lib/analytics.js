@@ -44,6 +44,7 @@ const shouldSuppressClientDuplicate = (eventName, details, pagePath, pageLoadId)
     pagePath,
     productId,
     eventValue,
+    details.interactionId || '',
     AUTOMATIC_EVENT_NAMES.has(eventName) ? pageLoadId : '',
   ].join('|');
   const windowMs = AUTOMATIC_EVENT_NAMES.has(eventName) ? 30 * 60 * 1000 : 1500;
@@ -187,6 +188,60 @@ export const getStorefrontAnalyticsIdentity = () => ({
   visitorId: getStorageId(VISITOR_KEY, window.localStorage),
 });
 
+export const createAnalyticsInteractionId = () => randomId();
+
+const money = (value) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+};
+
+export const buildAnalyticsCartSnapshot = (items = []) => (
+  (Array.isArray(items) ? items : []).slice(0, 100).map((item) => {
+    const quantity = Math.max(1, Number(item?.quantity || 1));
+    const unitPrice = money(item?.price);
+    return {
+      productId: String(item?.id || item?.pid || item?.cj_pid || ''),
+      productName: String(item?.name || item?.product_name || 'Product').slice(0, 240),
+      productCategory: String(item?.category || '').slice(0, 120),
+      quantity,
+      unitPrice,
+      lineTotal: money(unitPrice * quantity),
+    };
+  })
+);
+
+export const trackCheckoutJourney = (eventName, {
+  cartItems = [],
+  cartValue,
+  deliveryCost,
+  deliveryOption,
+  interactionId,
+  orderReference,
+  failureReason,
+  product = null,
+  quantity,
+  pagePath,
+  pageTitle,
+} = {}) => {
+  const snapshot = buildAnalyticsCartSnapshot(cartItems);
+  const calculatedCartValue = snapshot.reduce((sum, item) => sum + item.lineTotal, 0);
+  return sendStorefrontEvent(eventName, {
+    pagePath,
+    pageTitle,
+    productId: product?.id || product?.pid || product?.cj_pid,
+    productName: product?.name || product?.product_name,
+    productCategory: product?.category,
+    eventValue: Number.isFinite(Number(quantity)) ? Math.max(0, Number(quantity)) : undefined,
+    cartItems: snapshot,
+    cartValue: money(cartValue ?? calculatedCartValue),
+    deliveryCost: deliveryCost == null ? undefined : money(deliveryCost),
+    deliveryOption: deliveryOption ? String(deliveryOption).slice(0, 160) : undefined,
+    interactionId: interactionId || createAnalyticsInteractionId(),
+    orderReference: orderReference ? String(orderReference).slice(0, 160) : undefined,
+    failureReason: failureReason ? String(failureReason).slice(0, 160) : undefined,
+  });
+};
+
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', closeActivePage);
   window.addEventListener('scroll', () => {
@@ -280,12 +335,8 @@ export const trackProductView = (product) => {
  * @param {object} product - Product data
  * @param {number} quantity - Quantity added
  */
-export const trackAddToCart = (product, quantity = 1) => {
-  sendStorefrontEvent('add_to_cart', {
-    productId: product.id || product.pid,
-    productName: product.name,
-    productCategory: product.category,
-  });
+export const trackAddToCart = (product, quantity = 1, cartItems = []) => {
+  trackCheckoutJourney('add_to_cart', { product, quantity, cartItems });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'add_to_cart', {
       currency: 'ZAR',
@@ -306,13 +357,8 @@ export const trackAddToCart = (product, quantity = 1) => {
  * @param {object} product - Product data
  * @param {number} quantity - Quantity removed
  */
-export const trackRemoveFromCart = (product, quantity = 1) => {
-  sendStorefrontEvent('remove_from_cart', {
-    productId: product.id || product.pid,
-    productName: product.name || product.product_name,
-    productCategory: product.category,
-    eventValue: Math.max(1, Number(quantity) || 1),
-  });
+export const trackRemoveFromCart = (product, quantity = 1, cartItems = []) => {
+  trackCheckoutJourney('cart_item_removed', { product, quantity, cartItems });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'remove_from_cart', {
       currency: 'ZAR',
@@ -334,7 +380,7 @@ export const trackRemoveFromCart = (product, quantity = 1) => {
  * @param {number} totalValue - Total cart value
  */
 export const trackBeginCheckout = (cartItems, totalValue) => {
-  sendStorefrontEvent('begin_checkout');
+  trackCheckoutJourney('checkout_clicked', { cartItems, cartValue: totalValue });
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'begin_checkout', {
       currency: 'ZAR',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './ShippingForm.css';
 
 // South African ID validator (13 digits + checksum)
@@ -36,7 +36,8 @@ export default function ShippingForm({
   localShippingError = '',
   onLocalDeliveryModeChange,
   onLocalShippingSelect,
-  onCheckLocalShippingRates
+  onCheckLocalShippingRates,
+  onJourneyEvent
 }) {
   // Be resilient to null/undefined initialData
   const safeInit = initialData ?? {};
@@ -55,6 +56,14 @@ export default function ShippingForm({
 
   const [errors, setErrors] = useState({});
   const [deliverySelectionError, setDeliverySelectionError] = useState('');
+  const detailsStartedRef = useRef(false);
+  const checkoutLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (checkoutLoadedRef.current) return;
+    checkoutLoadedRef.current = true;
+    onJourneyEvent?.('checkout_loaded');
+  }, [onJourneyEvent]);
 
   // helper to assemble full name for parent
   const getCustomerName = () => `${formData.firstName} ${formData.lastName}`.trim();
@@ -119,6 +128,10 @@ export default function ShippingForm({
     const { name, type, value, checked } = e.target;
     const nextValue = type === 'checkbox' ? checked : value;
     setFormData(prev => ({ ...prev, [name]: nextValue }));
+    if (!detailsStartedRef.current && type !== 'checkbox') {
+      detailsStartedRef.current = true;
+      onJourneyEvent?.('customer_details_started');
+    }
     
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -141,12 +154,14 @@ export default function ShippingForm({
       return;
     }
 
+    onJourneyEvent?.('delivery_location_entered');
     onSubmit(formData);
   };
 
   const requestLocalShippingRates = () => {
     if (!validateForm()) return;
     setDeliverySelectionError('');
+    onJourneyEvent?.('delivery_location_entered');
     onCheckLocalShippingRates?.({
       ...formData,
       customerName: getCustomerName()
@@ -358,6 +373,10 @@ export default function ShippingForm({
                     onLocalDeliveryModeChange?.('economy');
                     onLocalShippingSelect?.(null);
                     setDeliverySelectionError('');
+                    onJourneyEvent?.('delivery_option_selected', {
+                      deliveryOption: 'Standard delivery',
+                      deliveryCost: localFreeDeliveryEligible ? 0 : 99,
+                    });
                   }}
                   className="btn-cancel"
                   style={{
@@ -373,6 +392,7 @@ export default function ShippingForm({
                     onLocalDeliveryModeChange?.('express');
                     onLocalShippingSelect?.(null);
                     setDeliverySelectionError('');
+                    onJourneyEvent?.('delivery_option_selected', { deliveryOption: 'Express live rate' });
                   }}
                   className="btn-cancel"
                   style={{
@@ -388,6 +408,7 @@ export default function ShippingForm({
                     onLocalDeliveryModeChange?.('pickup');
                     onLocalShippingSelect?.(null);
                     setDeliverySelectionError('');
+                    onJourneyEvent?.('delivery_option_selected', { deliveryOption: 'Pick-up point live rate' });
                   }}
                   className="btn-cancel"
                   style={{
@@ -425,6 +446,10 @@ export default function ShippingForm({
                           onClick={() => {
                             onLocalShippingSelect?.(rate);
                             setDeliverySelectionError('');
+                            onJourneyEvent?.('delivery_option_selected', {
+                              deliveryOption: rate.label || localDeliveryMode,
+                              deliveryCost: localDeliveryMode === 'pickup' && localDeliveryIsFree ? 0 : Number(rate.priceZAR || 0),
+                            });
                           }}
                           style={{
                             display: 'flex',
